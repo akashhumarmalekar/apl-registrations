@@ -210,6 +210,8 @@
   }
   table.data tr:hover td { background: #FAF8F2; }
   .pct-cell { font-variant-numeric: tabular-nums; font-weight: 600; }
+  table.data tr.total-row td { background: #F0EEE6; border-top: 2px solid var(--border); }
+  table.data tr.total-row:hover td { background: #F0EEE6; }
 
   .toolbar {
     display: flex;
@@ -434,6 +436,7 @@
     }
     table.data td.actions-cell::before, table.data td.share-cell::before { content: none; }
     table.data td.actions-cell button, table.data td.share-cell button { margin: 0 0 0 8px; }
+    table.data tr.total-row td.share-cell { display: none; }
 
     .modal-overlay { padding: 10px; }
     .modal-box { padding: 18px; }
@@ -870,14 +873,22 @@ function buildGroupReport(groupKey) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function renderGroupTable(wrapId, headerLabel, rows, groupKey) {
+function renderGroupTable(wrapId, headerLabel, rows, groupKey, showTotal) {
   const wrap = document.getElementById(wrapId);
   if (rows.length === 0) {
     wrap.innerHTML = '<div class="empty-state">No data yet.</div>';
     return;
   }
+  let totalRowHtml = '';
+  if (showTotal) {
+    const totTotal = rows.reduce((s, r) => s + r.total, 0);
+    const totRegistered = rows.reduce((s, r) => s + r.registered, 0);
+    const totPending = rows.reduce((s, r) => s + r.pending, 0);
+    const totPct = totTotal > 0 ? Math.round((totRegistered / totTotal) * 1000) / 10 : 0;
+    totalRowHtml = `<tr class="total-row"><td data-label="${escapeHtml(headerLabel)}"><strong>Total</strong></td><td data-label="Total"><strong>${totTotal}</strong></td><td data-label="Registered"><strong>${totRegistered}</strong></td><td data-label="Pending"><strong>${totPending}</strong></td><td class="pct-cell" data-label="Registration %"><strong>${totPct}%</strong></td><td class="share-cell" data-label="Share"></td></tr>`;
+  }
   wrap.innerHTML = `<table class="data"><thead><tr><th>${headerLabel}</th><th>Total</th><th>Registered</th><th>Pending</th><th>Registration %</th><th></th></tr></thead><tbody>
-    ${rows.map(r => `<tr><td data-label="${escapeHtml(headerLabel)}">${escapeHtml(r.name)}</td><td data-label="Total">${r.total}</td><td data-label="Registered">${r.registered}</td><td data-label="Pending">${r.pending}</td><td class="pct-cell" data-label="Registration %">${r.pct}%</td><td class="share-cell" data-label="Share"><button class="btn small whatsapp share-group-btn" data-group-key="${escapeHtml(groupKey)}" data-group-name="${escapeHtml(r.name)}">Share</button></td></tr>`).join('')}
+    ${rows.map(r => `<tr><td data-label="${escapeHtml(headerLabel)}">${escapeHtml(r.name)}</td><td data-label="Total">${r.total}</td><td data-label="Registered">${r.registered}</td><td data-label="Pending">${r.pending}</td><td class="pct-cell" data-label="Registration %">${r.pct}%</td><td class="share-cell" data-label="Share"><button class="btn small whatsapp share-group-btn" data-group-key="${escapeHtml(groupKey)}" data-group-name="${escapeHtml(r.name)}">Share</button></td></tr>`).join('')}${totalRowHtml}
   </tbody></table>`;
 
   wrap.querySelectorAll('.share-group-btn').forEach(btn => {
@@ -889,8 +900,8 @@ function renderGroupTable(wrapId, headerLabel, rows, groupKey) {
   });
 }
 
-function renderFollowupReport() { renderGroupTable('followupTableWrap', 'Followup', buildGroupReport('followup'), 'followup'); }
-function renderRegisterFollowupSummary() { renderGroupTable('registerFollowupWrap', 'Followup', buildGroupReport('followup'), 'followup'); }
+function renderFollowupReport() { renderGroupTable('followupTableWrap', 'Followup', buildGroupReport('followup'), 'followup', true); }
+function renderRegisterFollowupSummary() { renderGroupTable('registerFollowupWrap', 'Followup', buildGroupReport('followup'), 'followup', true); }
 function renderCategoryReport() { renderGroupTable('categoryTableWrap', 'Category', buildGroupReport('category'), 'category'); }
 
 function renderLog() {
