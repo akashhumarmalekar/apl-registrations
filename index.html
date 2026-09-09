@@ -120,7 +120,7 @@
     gap: 8px;
     margin-bottom: 12px;
   }
-  .tracker-top .value { display: flex; align-items: center; gap: 6px; }
+  .tracker-top .value { display: flex; align-items: center; gap: 6px; font-size: 26px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
   .tracker-top input[type="number"] {
     width: 74px;
     font-size: 20px;
@@ -323,6 +323,46 @@
   /* Applied briefly while generating a shareable image, so per-row Share buttons don't appear in it */
   .hide-share-column .share-cell,
   .hide-share-column .share-th { display: none !important; }
+
+  /* Applied briefly while generating a shareable image: locks a narrower, phone-portrait
+     width and forces the normal (desktop-style) table layout - never the mobile
+     "stacked card" view - regardless of the device's actual screen width, so the
+     exported image is always a tall, easy-to-read portrait shot. */
+  .export-portrait {
+    width: 520px !important;
+    max-width: 520px !important;
+    margin: 0 auto !important;
+  }
+  .export-portrait table.data {
+    display: table !important;
+    width: 100% !important;
+    border: 1px solid var(--border) !important;
+    background: var(--card) !important;
+  }
+  .export-portrait table.data thead { display: table-header-group !important; }
+  .export-portrait table.data tbody { display: table-row-group !important; }
+  .export-portrait table.data tr {
+    display: table-row !important;
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+  .export-portrait table.data td {
+    display: table-cell !important;
+    text-align: left !important;
+    padding: 8px 10px !important;
+    font-size: 12.5px !important;
+    border-top: 1px solid var(--border) !important;
+  }
+  .export-portrait table.data tr td:first-child { border-top: 1px solid var(--border) !important; }
+  .export-portrait table.data td::before { content: none !important; }
+  .export-portrait table.data td.pct-cell { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .export-portrait table.data td.share-cell,
+  .export-portrait table.data td.actions-cell { text-align: right !important; white-space: nowrap !important; }
+  .export-portrait .tracker-card-attached { padding: 12px 14px !important; }
+  .export-portrait .tracker-top .value { font-size: 22px !important; }
 
   .filter-input {
     width: 100%;
@@ -1748,19 +1788,16 @@ async function shareFollowupImage() {
   btn.disabled = true;
   btn.textContent = 'Generating image...';
   target.classList.add('hide-share-column'); // keep per-row Share buttons out of the exported image
+  target.classList.add('export-portrait'); // lock a phone-portrait width + force the normal table layout
 
   try {
-    // Render at a desktop-sized virtual viewport so mobile visitors still get a
-    // compact table image instead of the mobile "stacked card" layout.
     // Scale resolution to the device's pixel density (capped) so text stays crisp
     // when the image is viewed full-size on a high-DPI phone screen.
     const captureScale = Math.min(Math.max(window.devicePixelRatio || 2, 2), 3);
     const canvas = await html2canvas(target, {
       backgroundColor: '#F6F3EC',
       scale: captureScale,
-      useCORS: true,
-      windowWidth: 1000,
-      windowHeight: Math.max(window.innerHeight, target.scrollHeight + 200)
+      useCORS: true
     });
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -1796,6 +1833,7 @@ async function shareFollowupImage() {
     alert('Could not generate the image. Please try again.');
   } finally {
     target.classList.remove('hide-share-column');
+    target.classList.remove('export-portrait');
     btn.disabled = false;
     btn.textContent = originalLabel;
   }
