@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anand APL 2026 - Tournament Registration</title>
+<style>
+  :root {
+    --navy: #16233F;
+    --navy-light: #223460;
+    --gold: #C9932C;
+    --gold-dark: #a3781f;
+    --bg: #F6F3EC;
+    --card: #FFFFFF;
+    --border: #E3DFD2;
+    --text: #23262B;
+    --muted: #7A7A72;
+    --green: #2E7D4F;
+    --green-bg: #E7F3EB;
+    --red: #B3392C;
+    --red-bg: #FBEAE7;
+    --amber: #A3781F;
+    --amber-bg: #FBF1DD;
+    --blue: #2A5C8A;
+    --blue-bg: #E8F0F7;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px 60px; }
+
+  header.top {
+    background: var(--navy);
+    color: #fff;
+    padding: 28px 20px 22px;
+    margin-bottom: 0;
+  }
+  header.top .inner { max-width: 980px; margin: 0 auto; }
+  header.top h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  header.top p {
+    margin: 4px 0 0;
+    color: var(--gold);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+  }
+
+  nav.tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--navy-light);
+    padding: 0 20px;
+    overflow-x: auto;
+  }
+  nav.tabs .inner { max-width: 980px; margin: 0 auto; display: flex; width: 100%; gap: 4px; }
+  nav.tabs button {
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.65);
+    padding: 12px 16px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+  }
+  nav.tabs button.active {
+    color: #fff;
+    border-bottom-color: var(--gold);
+  }
+  nav.tabs button:hover { color: #fff; }
+
+  section.panel { display: none; padding-top: 24px; }
+  section.panel.active { display: block; }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .stat-card .label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card .value { font-size: 26px; font-weight: 700; color: var(--navy); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+  .search-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+  }
+  .search-card label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  #searchInput {
+    width: 100%;
+    font-size: 18px;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+  }
+  #searchInput:focus { border-color: var(--gold); }
+
+  #suggestions {
+    margin-top: 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+    display: none;
+    background: #fff;
+  }
+  #suggestions.show { display: block; }
+  .suggestion-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 15px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item .sub { color: var(--muted); font-size: 12.5px; }
+  .suggestion-item.highlighted { background: var(--amber-bg); }
+
+  .status-msg {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14.5px;
+    font-weight: 600;
+    display: none;
+  }
+  .status-msg.show { display: block; }
+  .status-msg.ok { background: var(--green-bg); color: var(--green); }
+  .status-msg.warn { background: var(--amber-bg); color: var(--amber); }
+  .status-msg.err { background: var(--red-bg); color: var(--red); }
+  .status-msg.info { background: var(--blue-bg); color: var(--blue); }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  button.btn {
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 9px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+  }
+  button.btn:hover { background: #F0EEE6; }
+  button.btn.primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+  button.btn.primary:hover { background: var(--navy-light); }
+  button.btn.danger { color: var(--red); }
+
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+  kbd {
+    background: #EFEDE4;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11.5px;
+    font-family: inherit;
+  }
+
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: 14px;
+  }
+  table.data th {
+    text-align: left;
+    background: #F0EEE6;
+    color: var(--muted);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 10px 12px;
+    font-weight: 700;
+  }
+  table.data td {
+    padding: 9px 12px;
+    border-top: 1px solid var(--border);
+  }
+  table.data tr:hover td { background: #FAF8F2; }
+  .pct-cell { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 10px; }
+  .toolbar h2 { font-size: 17px; margin: 0; }
+  .count-pill {
+    background: var(--navy);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  button.btn.small {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+  button.btn.whatsapp {
+    color: #1f8a4c;
+    border-color: #bfe3cc;
+    background: #f1faf4;
+  }
+  button.btn.whatsapp:hover { background: #e3f5e9; }
+  button.btn.excel {
+    color: var(--blue);
+    border-color: #c3d7e7;
+    background: var(--blue-bg);
+  }
+  button.btn.excel:hover { background: #dcebf6; }
+  .toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  td.share-cell { text-align: right; white-space: nowrap; }
+  td.actions-cell { text-align: right; white-space: nowrap; }
+  td.actions-cell button { margin-left: 6px; }
+
+  .filter-input {
+    width: 100%;
+    font-size: 14px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .filter-input:focus { border-color: var(--gold); }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 18, 14, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 22px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 12px 44px rgba(0,0,0,0.25);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-box h3 { margin: 0 0 6px; font-size: 17px; }
+  .modal-box label { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 12px 0 4px; }
+  .modal-box input, .modal-box select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .modal-box input:focus, .modal-box select:focus { border-color: var(--gold); }
+  .modal-warning {
+    display: none;
+    color: var(--amber);
+    background: var(--amber-bg);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    margin-top: 12px;
+  }
+  .modal-error {
+    display: none;
+    color: var(--red);
+    font-size: 12.5px;
+    margin-top: 8px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    font-size: 14px;
+  }
+
+  textarea.data-input {
+    width: 100%;
+    min-height: 160px;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 12.5px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    resize: vertical;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 15px; }
+  .card p.desc { margin: 0 0 14px; color: var(--muted); font-size: 13.5px; }
+  .import-summary {
+    margin-top: 12px;
+    font-size: 13.5px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    display: none;
+  }
+  .import-summary.show { display: block; }
+  .import-summary.ok { background: var(--green-bg); color: var(--green); }
+  .import-summary.warn { background: var(--amber-bg); color: var(--amber); }
+  .import-summary.err { background: var(--red-bg); color: var(--red); }
+  .import-summary.info { background: var(--blue-bg); color: var(--blue); }
+
+  .save-indicator {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    background: var(--navy);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 20px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .save-indicator.show { opacity: 1; }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 12px 60px; }
+    header.top { padding: 20px 14px 18px; }
+    header.top h1 { font-size: 21px; }
+    header.top p { font-size: 11.5px; letter-spacing: 1px; }
+    nav.tabs { padding: 0 8px; }
+    nav.tabs button { padding: 12px 12px; font-size: 13px; }
+
+    .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat-card { padding: 12px 14px; }
+    .stat-card .value { font-size: 22px; }
+
+    .search-card { padding: 16px; }
+    #searchInput { font-size: 16px; padding: 12px; }
+
+    /* Prevent iOS Safari auto-zoom on focus by keeping form fields at 16px+ */
+    input, select, textarea, .filter-input { font-size: 16px !important; }
+
+    .btn-row { gap: 8px; }
+    button.btn { padding: 11px 16px; font-size: 14px; min-height: 42px; }
+    button.btn.small { padding: 8px 13px; font-size: 12.5px; min-height: 34px; }
+
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar-left { justify-content: space-between; }
+    .toolbar-right { justify-content: flex-start; }
+    .toolbar-right .btn, .toolbar-right button { flex: 1 1 auto; }
+
+    /* Card-style tables: each row becomes a stacked card, labelled via data-label */
+    table.data thead { display: none; }
+    table.data, table.data tbody, table.data tr, table.data td { display: block; width: 100%; }
+    table.data { border: none; background: transparent; }
+    table.data tr {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      padding: 2px 0;
+    }
+    table.data td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 14px;
+      border-top: 1px solid var(--border);
+      text-align: right;
+      font-size: 14px;
+    }
+    table.data tr td:first-child { border-top: none; }
+    table.data td::before {
+      content: attr(data-label);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--muted);
+      text-align: left;
+      flex: 0 0 auto;
+    }
+    table.data td.actions-cell, table.data td.share-cell {
+      justify-content: flex-end;
+    }
+    table.data td.actions-cell::before, table.data td.share-cell::before { content: none; }
+    table.data td.actions-cell button, table.data td.share-cell button { margin: 0 0 0 8px; }
+
+    .modal-overlay { padding: 10px; }
+    .modal-box { padding: 18px; }
+    .modal-box .btn-row { flex-direction: column; }
+    .modal-box .btn-row .btn { width: 100%; }
+
+    #pinInput { max-width: none !important; width: 100%; }
+  }
+
+  @media (max-width: 380px) {
+    .stat-card .value { font-size: 19px; }
+    header.top h1 { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="inner">
+    <h1>ANAND APL 2026</h1>
+    <p>TOURNAMENT REGISTRATION</p>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="inner">
+    <button class="tab-btn active" data-tab="register">Register</button>
+    <button class="tab-btn" data-tab="registered">Registered</button>
+    <button class="tab-btn" data-tab="pending">Pending</button>
+    <button class="tab-btn" data-tab="followup">Followup</button>
+    <button class="tab-btn" data-tab="category">Category</button>
+    <button class="tab-btn" data-tab="log">Log</button>
+    <button class="tab-btn" data-tab="data">Import / Export</button>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <section class="panel active" id="panel-register">
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Total</div><div class="value" id="statTotal">0</div></div>
+      <div class="stat-card"><div class="label">Registered</div><div class="value" id="statRegistered">0</div></div>
+      <div class="stat-card"><div class="label">Pending</div><div class="value" id="statPending">0</div></div>
+      <div class="stat-card"><div class="label">Registration</div><div class="value" id="statPct">0%</div></div>
+    </div>
+
+    <div class="search-card">
+      <label for="searchInput">Type name to register for Anand APL 2026</label>
+      <input type="text" id="searchInput" autocomplete="off" placeholder="Start typing a name...">
+      <div id="suggestions"></div>
+      <div class="status-msg" id="statusMsg"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="btnRegister">Register (Enter)</button>
+        <button class="btn danger" id="btnUndo">Undo last registration</button>
+        <button class="btn" id="btnRefresh">Refresh</button>
+      </div>
+      <div class="hint">Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> to move between matches, <kbd>Enter</kbd> to register the highlighted one. Only participants who are not yet registered appear here.</div>
+    </div>
+
+    <div class="toolbar" style="margin-top:24px;">
+      <div class="toolbar-left"><h2>Followup-wise summary</h2></div>
+      <button class="btn small excel" id="btnExcelRegisterFollowup">Download Excel</button>
+    </div>
+    <div id="registerFollowupWrap"></div>
+  </section>
+
+  <section class="panel" id="panel-registered">
+    <div class="toolbar">
+      <div class="toolbar-left"><h2>Registered participants</h2><span class="count-pill" id="registeredCount">0</span></div>
+      <div class="toolbar-right">
+        <button class="btn small excel" id="btnExcelRegistered">Download Excel</button>
+        <button class="btn small whatsapp" id="btnShareRegistered">Share via WhatsApp</button>
+      </div>
+    </div>
+    <input type="text" class="filter-input" id="registeredFilterInput" placeholder="Filter by name, mobile, followup, or category...">
+    <div id="registeredTableWrap"></div>
+  </section>
+
+  <section class="panel" id="panel-pending">
+    <div class="toolbar">
+      <div class="toolbar-left"><h2>Pending participants</h2><span class="count-pill" id="pendingCount">0</span></div>
+      <div class="toolbar-right">
+        <button class="btn small excel" id="btnExcelPending">Download Excel</button>
+        <button class="btn small whatsapp" id="btnSharePending">Share via WhatsApp</button>
+      </div>
+    </div>
+    <input type="text" class="filter-input" id="pendingFilterInput" placeholder="Filter by name, mobile, followup, or category...">
+    <div id="pendingTableWrap"></div>
+  </section>
+
+  <section class="panel" id="panel-followup">
+    <div class="toolbar">
+      <h2>Followup report</h2>
+      <button class="btn small excel" id="btnExcelFollowup">Download Excel</button>
+    </div>
+    <p class="hint" style="margin-top:-6px;margin-bottom:14px;">Click "Share" next to a followup person to send them just their own pending list on WhatsApp.</p>
+    <div id="followupTableWrap"></div>
+  </section>
+
+  <section class="panel" id="panel-category">
+    <div class="toolbar">
+      <h2>Category report</h2>
+      <button class="btn small excel" id="btnExcelCategory">Download Excel</button>
+    </div>
+    <div id="categoryTableWrap"></div>
+  </section>
+
+  <section class="panel" id="panel-log">
+    <div class="toolbar">
+      <h2>Registration log</h2>
+      <div class="toolbar-right">
+        <span class="count-pill" id="logCount">0</span>
+        <button class="btn small excel" id="btnExcelLog">Download Excel</button>
+      </div>
+    </div>
+    <div id="logTableWrap"></div>
+  </section>
+
+  <section class="panel" id="panel-data">
+    <div class="card">
+      <h3>Import participants</h3>
+      <p class="desc">Paste rows copied straight from Excel (columns in this order: Full Name, Followup, Mobile, Status, Category — tab or comma separated, header row optional).</p>
+      <textarea class="data-input" id="importArea" placeholder="Abhay Ramesh Kotadiya	Yash Jayanti Kaila	8928478896	Registered	Yuvak"></textarea>
+      <div class="btn-row">
+        <button class="btn primary" id="btnImportReplace">Replace all participants</button>
+        <button class="btn" id="btnImportAppend">Append as new participants</button>
+      </div>
+      <div class="import-summary" id="importSummary"></div>
+    </div>
+
+    <div class="card">
+      <h3>Export</h3>
+      <p class="desc">Download your current data as CSV files you can open in Excel or bring back into this app later.</p>
+      <div class="btn-row">
+        <button class="btn" id="btnExportParticipants">Download participants CSV</button>
+        <button class="btn" id="btnExportLog">Download registration log CSV</button>
+        <button class="btn excel" id="btnExportParticipantsXlsx">Download participants Excel</button>
+        <button class="btn excel" id="btnExportLogXlsx">Download registration log Excel</button>
+        <button class="btn excel" id="btnExportAllXlsx">Download full workbook (all sheets)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Security PIN</h3>
+      <p class="desc">Set a 4-6 digit PIN to protect "Replace all participants" and "Reset to sample data" from accidental taps on a shared device. Leave the field blank and save to remove protection.</p>
+      <div class="btn-row" style="align-items:center;">
+        <input type="password" id="pinInput" inputmode="numeric" placeholder="4-6 digit PIN" style="max-width:180px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;">
+        <button class="btn primary" id="btnSavePin">Save PIN</button>
+        <span class="hint" id="pinStatus" style="margin:0;"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Reset sample data</h3>
+      <p class="desc">Restore the four sample rows this app started with, clearing everything else including the log. This cannot be undone.</p>
+      <div class="btn-row">
+        <button class="btn danger" id="btnReset">Reset to sample data</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="save-indicator" id="saveIndicator">Saved</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ============================================================
+// FIREBASE SETUP — fill this in with your own project's config
+// (Firebase console → Project settings → General → Your apps → SDK setup and config)
+// ============================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCVxe8CqMxR--SS9Dajo5IUwO2c3bBCmaU",
+  authDomain: "anand-attendance.firebaseapp.com",
+  projectId: "anand-attendance",
+  storageBucket: "anand-attendance.firebasestorage.app",
+  messagingSenderId: "33645380972",
+  appId: "1:33645380972:web:1f4dcd6a09c03f959a9f49"
+};
+// All devices that load this page with the same config below share one live document.
+const FIRESTORE_COLLECTION = 'anand_apl_2026';
+const FIRESTORE_DOC = 'state';
+
+const SAMPLE_PARTICIPANTS = [
+  { fullName: "Abhay Ramesh Kotadiya", followup: "Yash Jayanti Kaila", mobile: "8928478896", status: "Registered", category: "Yuvak" },
+  { fullName: "Aditya Piyush Shrotriya", followup: "Vinit Sanjay Hindocha", mobile: "8879823171", status: "Not Registered", category: "Yuvak" },
+  { fullName: "Ajay Pravin Savaliya", followup: "Dhaval Dhiru Chhaya", mobile: "8898424976", status: "Not Registered", category: "Yuvak" },
+  { fullName: "Akash Shekhar Humarmalekar", followup: "Vinit Sanjay Hindocha", mobile: "8288345989", status: "Not Registered", category: "Yuvak" }
+];
+
+const REGISTERED = "Registered";
+const NOT_REGISTERED = "Not Registered";
+
+let participants = [];
+let log = [];
+let lastRegisteredId = null;
+let highlightedIndex = -1;
+let currentSuggestions = [];
+let pinCode = null;
+let registeredFilterText = '';
+let pendingFilterText = '';
+let db = null;
+let firestoreUnsubscribe = null;
+let firebaseReady = false;
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function isFirebaseConfigured() {
+  return FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith('YOUR_');
+}
+
+function showConnectionBanner(text, kind) {
+  let el = document.getElementById('connectionBanner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'connectionBanner';
+    el.style.cssText = 'position:sticky;top:0;z-index:900;padding:9px 16px;font-size:13px;font-weight:600;text-align:center;';
+    document.body.insertBefore(el, document.body.firstChild);
+  }
+  el.textContent = text;
+  const colors = {
+    err: ['#B3392C', '#FBEAE7'],
+    warn: ['#A3781F', '#FBF1DD'],
+    ok: ['#2E7D4F', '#E7F3EB']
+  };
+  const c = colors[kind] || colors.warn;
+  el.style.color = c[0];
+  el.style.background = c[1];
+}
+function clearConnectionBanner() {
+  const el = document.getElementById('connectionBanner');
+  if (el) el.remove();
+}
+
+function applyRemoteState(data) {
+  participants = Array.isArray(data.participants) ? data.participants : [];
+  log = Array.isArray(data.log) ? data.log : [];
+  lastRegisteredId = data.lastRegisteredId != null ? data.lastRegisteredId : null;
+}
+
+async function loadState() {
+  // PIN is a per-device setting, kept locally (not synced across devices).
+  try {
+    const raw = localStorage.getItem('anandAplPin');
+    pinCode = raw ? JSON.parse(raw) : null;
+  } catch (e) { pinCode = null; }
+
+  if (!isFirebaseConfigured()) {
+    showConnectionBanner('Firebase is not configured yet — running in local-only demo mode. Edit FIREBASE_CONFIG in the HTML file to enable multi-device sync.', 'warn');
+    participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
+    log = [];
+    return;
+  }
+
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) { /* multiple tabs or unsupported browser — fine, just no offline cache */ }
+    firebaseReady = true;
+  } catch (e) {
+    console.error('Firebase init failed', e);
+    showConnectionBanner('Could not connect to Firebase — check FIREBASE_CONFIG. Running in local-only demo mode for now.', 'err');
+    participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
+    log = [];
+    return;
+  }
+
+  const docRef = db.collection(FIRESTORE_COLLECTION).doc(FIRESTORE_DOC);
+  try {
+    const snap = await docRef.get();
+    if (snap.exists) {
+      applyRemoteState(snap.data());
+    } else {
+      participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
+      log = [];
+      await docRef.set({ participants, log, lastRegisteredId: null, updatedAt: Date.now() });
+    }
+  } catch (e) {
+    console.error('Initial Firestore load failed', e);
+    showConnectionBanner('Could not reach Firestore — check your connection. Showing sample data for now.', 'err');
+    participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
+    log = [];
+  }
+
+  firestoreUnsubscribe = docRef.onSnapshot(snap => {
+    if (snap.metadata.hasPendingWrites) return; // this is the echo of our own write, ignore
+    if (!snap.exists) return;
+    applyRemoteState(snap.data());
+    renderAll();
+    refreshSuggestions();
+    clearConnectionBanner();
+  }, err => {
+    console.error('Firestore listener error', err);
+    showConnectionBanner('Live sync interrupted — changes will retry automatically.', 'warn');
+  });
+}
+
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveState, 150);
+}
+async function saveState() {
+  if (!firebaseReady || !db) { flashSaveIndicator(); return; }
+  try {
+    const docRef = db.collection(FIRESTORE_COLLECTION).doc(FIRESTORE_DOC);
+    await docRef.set({ participants, log, lastRegisteredId, updatedAt: Date.now() });
+    clearConnectionBanner();
+    flashSaveIndicator();
+  } catch (e) {
+    console.error('Save failed', e);
+    showConnectionBanner('Could not save — check your connection. Your last change is kept locally and will retry.', 'err');
+  }
+}
+function flashSaveIndicator() {
+  const el = document.getElementById('saveIndicator');
+  el.classList.add('show');
+  clearTimeout(flashSaveIndicator._t);
+  flashSaveIndicator._t = setTimeout(() => el.classList.remove('show'), 900);
+}
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, m => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[m]));
+}
+
+function computeStats() {
+  const total = participants.length;
+  const registered = participants.filter(p => p.status === REGISTERED).length;
+  const pending = total - registered;
+  const pct = total > 0 ? Math.round((registered / total) * 1000) / 10 : 0;
+  return { total, registered, pending, pct };
+}
+
+function renderStats() {
+  const s = computeStats();
+  document.getElementById('statTotal').textContent = s.total;
+  document.getElementById('statRegistered').textContent = s.registered;
+  document.getElementById('statPending').textContent = s.pending;
+  document.getElementById('statPct').textContent = s.pct + '%';
+}
+
+function matchesFilter(p, q) {
+  if (!q) return true;
+  const hay = (p.fullName + ' ' + p.mobile + ' ' + p.followup + ' ' + p.category).toLowerCase();
+  return hay.includes(q);
+}
+
+function wireRowActionButtons(wrap) {
+  wrap.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => openEditModal(btn.dataset.id));
+  });
+  wrap.querySelectorAll('.cancel-btn').forEach(btn => {
+    btn.addEventListener('click', () => cancelRegistration(btn.dataset.id));
+  });
+}
+
+function renderRegisteredList() {
+  const all = participants.filter(p => p.status === REGISTERED);
+  const q = registeredFilterText.trim().toLowerCase();
+  const rows = all
+    .filter(p => matchesFilter(p, q))
+    .slice()
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  document.getElementById('registeredCount').textContent = q ? `${rows.length} of ${all.length}` : all.length;
+  const wrap = document.getElementById('registeredTableWrap');
+  if (all.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No one registered yet.</div>';
+    return;
+  }
+  if (rows.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No matches for that filter.</div>';
+    return;
+  }
+  wrap.innerHTML = `<table class="data"><thead><tr><th>Full name</th><th>Followup</th><th>Mobile</th><th>Category</th><th>Actions</th></tr></thead><tbody>
+    ${rows.map(p => `<tr><td data-label="Full name">${escapeHtml(p.fullName)}</td><td data-label="Followup">${escapeHtml(p.followup)}</td><td data-label="Mobile">${escapeHtml(p.mobile)}</td><td data-label="Category">${escapeHtml(p.category)}</td><td class="actions-cell" data-label="Actions"><button class="btn small edit-btn" data-id="${p.id}">Edit</button><button class="btn small danger cancel-btn" data-id="${p.id}">Cancel</button></td></tr>`).join('')}
+  </tbody></table>`;
+  wireRowActionButtons(wrap);
+}
+
+function renderPendingList() {
+  const all = participants.filter(p => p.status !== REGISTERED);
+  const q = pendingFilterText.trim().toLowerCase();
+  const rows = all
+    .filter(p => matchesFilter(p, q))
+    .slice()
+    .sort((a, b) => {
+      const f = a.followup.localeCompare(b.followup);
+      if (f !== 0) return f;
+      return a.fullName.localeCompare(b.fullName);
+    });
+  document.getElementById('pendingCount').textContent = q ? `${rows.length} of ${all.length}` : all.length;
+  const wrap = document.getElementById('pendingTableWrap');
+  if (all.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">Everyone is registered.</div>';
+    return;
+  }
+  if (rows.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No matches for that filter.</div>';
+    return;
+  }
+  wrap.innerHTML = `<table class="data"><thead><tr><th>Full name</th><th>Followup</th><th>Mobile</th><th>Category</th><th>Actions</th></tr></thead><tbody>
+    ${rows.map(p => `<tr><td data-label="Full name">${escapeHtml(p.fullName)}</td><td data-label="Followup">${escapeHtml(p.followup)}</td><td data-label="Mobile">${escapeHtml(p.mobile)}</td><td data-label="Category">${escapeHtml(p.category)}</td><td class="actions-cell" data-label="Actions"><button class="btn small edit-btn" data-id="${p.id}">Edit</button></td></tr>`).join('')}
+  </tbody></table>`;
+  wireRowActionButtons(wrap);
+}
+
+function buildGroupReport(groupKey) {
+  const map = new Map();
+  participants.forEach(p => {
+    const key = (p[groupKey] || '(blank)').trim() || '(blank)';
+    if (!map.has(key)) map.set(key, { total: 0, registered: 0 });
+    const entry = map.get(key);
+    entry.total += 1;
+    if (p.status === REGISTERED) entry.registered += 1;
+  });
+  return Array.from(map.entries())
+    .map(([name, v]) => ({
+      name,
+      total: v.total,
+      registered: v.registered,
+      pending: v.total - v.registered,
+      pct: v.total > 0 ? Math.round((v.registered / v.total) * 1000) / 10 : 0
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function renderGroupTable(wrapId, headerLabel, rows, groupKey) {
+  const wrap = document.getElementById(wrapId);
+  if (rows.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No data yet.</div>';
+    return;
+  }
+  wrap.innerHTML = `<table class="data"><thead><tr><th>${headerLabel}</th><th>Total</th><th>Registered</th><th>Pending</th><th>Registration %</th><th></th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td data-label="${escapeHtml(headerLabel)}">${escapeHtml(r.name)}</td><td data-label="Total">${r.total}</td><td data-label="Registered">${r.registered}</td><td data-label="Pending">${r.pending}</td><td class="pct-cell" data-label="Registration %">${r.pct}%</td><td class="share-cell" data-label="Share"><button class="btn small whatsapp share-group-btn" data-group-key="${escapeHtml(groupKey)}" data-group-name="${escapeHtml(r.name)}">Share</button></td></tr>`).join('')}
+  </tbody></table>`;
+
+  wrap.querySelectorAll('.share-group-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-group-key');
+      const name = btn.getAttribute('data-group-name');
+      shareGroupPending(key, name);
+    });
+  });
+}
+
+function renderFollowupReport() { renderGroupTable('followupTableWrap', 'Followup', buildGroupReport('followup'), 'followup'); }
+function renderRegisterFollowupSummary() { renderGroupTable('registerFollowupWrap', 'Followup', buildGroupReport('followup'), 'followup'); }
+function renderCategoryReport() { renderGroupTable('categoryTableWrap', 'Category', buildGroupReport('category'), 'category'); }
+
+function renderLog() {
+  const rows = log.slice().reverse();
+  document.getElementById('logCount').textContent = log.length;
+  const wrap = document.getElementById('logTableWrap');
+  if (rows.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No registrations logged yet.</div>';
+    return;
+  }
+  wrap.innerHTML = `<table class="data"><thead><tr><th>Timestamp</th><th>Full name</th><th>Mobile</th><th>Followup</th><th>Category</th><th>Previous</th><th>New</th></tr></thead><tbody>
+    ${rows.map(l => `<tr><td data-label="Timestamp">${escapeHtml(l.timestamp)}</td><td data-label="Full name">${escapeHtml(l.fullName)}</td><td data-label="Mobile">${escapeHtml(l.mobile)}</td><td data-label="Followup">${escapeHtml(l.followup)}</td><td data-label="Category">${escapeHtml(l.category)}</td><td data-label="Previous">${escapeHtml(l.prevStatus)}</td><td data-label="New">${escapeHtml(l.newStatus)}</td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+function renderAll() {
+  renderStats();
+  renderRegisteredList();
+  renderPendingList();
+  renderFollowupReport();
+  renderRegisterFollowupSummary();
+  renderCategoryReport();
+  renderLog();
+}
+
+function formatTimestamp(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}-${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function showStatus(text, kind) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = text;
+  el.className = 'status-msg show ' + kind;
+}
+
+function clearStatusIfEmpty() {
+}
+
+function registerParticipant(participant) {
+  if (participant.status === REGISTERED) {
+    showStatus('Already Registered', 'warn');
+    return;
+  }
+  const prevStatus = participant.status;
+  participant.status = REGISTERED;
+
+  const entry = {
+    timestamp: formatTimestamp(new Date()),
+    fullName: participant.fullName,
+    mobile: participant.mobile,
+    followup: participant.followup,
+    category: participant.category,
+    prevStatus: prevStatus,
+    newStatus: REGISTERED
+  };
+  log.push(entry);
+  lastRegisteredId = participant.id;
+
+  showStatus(participant.fullName + ' - Registered Successfully', 'ok');
+  renderAll();
+  scheduleSave();
+}
+
+function undoLastRegistration() {
+  if (lastRegisteredId == null) {
+    showStatus('Nothing to undo', 'info');
+    return;
+  }
+  const participant = participants.find(p => p.id === lastRegisteredId);
+  if (!participant) {
+    showStatus('Nothing to undo', 'info');
+    lastRegisteredId = null;
+    return;
+  }
+  participant.status = NOT_REGISTERED;
+  if (log.length > 0) log.pop();
+  showStatus(participant.fullName + ' - registration undone', 'info');
+  lastRegisteredId = null;
+  renderAll();
+  refreshSuggestions();
+  scheduleSave();
+}
+
+function cancelRegistration(id) {
+  const participant = participants.find(p => p.id === id);
+  if (!participant || participant.status !== REGISTERED) return;
+  if (!confirm(`Cancel registration for ${participant.fullName}? They will move back to Pending.`)) return;
+  const prevStatus = participant.status;
+  participant.status = NOT_REGISTERED;
+  log.push({
+    timestamp: formatTimestamp(new Date()),
+    fullName: participant.fullName,
+    mobile: participant.mobile,
+    followup: participant.followup,
+    category: participant.category,
+    prevStatus: prevStatus,
+    newStatus: NOT_REGISTERED
+  });
+  if (lastRegisteredId === id) lastRegisteredId = null;
+  renderAll();
+  refreshSuggestions();
+  scheduleSave();
+}
+
+// ---------------- Modal (edit participant / PIN entry) ----------------
+
+function openModal(html) {
+  document.getElementById('modalBox').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+  document.getElementById('modalBox').innerHTML = '';
+}
+function setupModal() {
+  const overlay = document.getElementById('modalOverlay');
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && overlay.classList.contains('show')) closeModal();
+  });
+}
+
+function findDuplicateMobile(mobile, excludeId) {
+  const m = (mobile || '').trim();
+  if (!m) return null;
+  return participants.find(p => p.id !== excludeId && (p.mobile || '').trim() === m) || null;
+}
+
+function openEditModal(id) {
+  const p = participants.find(x => x.id === id);
+  if (!p) return;
+  openModal(`
+    <h3>Edit participant</h3>
+    <label for="editFullName">Full Name</label>
+    <input id="editFullName" value="${escapeHtml(p.fullName)}">
+    <label for="editFollowup">Followup</label>
+    <input id="editFollowup" value="${escapeHtml(p.followup)}">
+    <label for="editMobile">Mobile</label>
+    <input id="editMobile" value="${escapeHtml(p.mobile)}">
+    <label for="editCategory">Category</label>
+    <input id="editCategory" value="${escapeHtml(p.category)}">
+    <label for="editStatus">Status</label>
+    <select id="editStatus">
+      <option value="${REGISTERED}" ${p.status === REGISTERED ? 'selected' : ''}>Registered</option>
+      <option value="${NOT_REGISTERED}" ${p.status !== REGISTERED ? 'selected' : ''}>Not Registered</option>
+    </select>
+    <div class="modal-warning" id="editWarning"></div>
+    <div class="btn-row">
+      <button class="btn primary" id="editSaveBtn">Save</button>
+      <button class="btn" id="editCancelBtn">Cancel</button>
+    </div>
+  `);
+  document.getElementById('editCancelBtn').addEventListener('click', closeModal);
+  document.getElementById('editSaveBtn').addEventListener('click', () => saveEdit(id));
+  document.getElementById('editFullName').focus();
+}
+
+function saveEdit(id) {
+  const p = participants.find(x => x.id === id);
+  if (!p) { closeModal(); return; }
+  const saveBtn = document.getElementById('editSaveBtn');
+  const warnEl = document.getElementById('editWarning');
+  const fullName = document.getElementById('editFullName').value.trim();
+  const followup = document.getElementById('editFollowup').value.trim();
+  const mobile = document.getElementById('editMobile').value.trim();
+  const category = document.getElementById('editCategory').value.trim();
+  const newStatus = document.getElementById('editStatus').value === REGISTERED ? REGISTERED : NOT_REGISTERED;
+
+  if (!fullName) {
+    warnEl.textContent = 'Full name is required.';
+    warnEl.style.display = 'block';
+    return;
+  }
+
+  const dup = findDuplicateMobile(mobile, id);
+  if (dup && saveBtn.dataset.confirmed !== '1') {
+    warnEl.textContent = `This mobile number is already used by ${dup.fullName}. Click Save again to confirm.`;
+    warnEl.style.display = 'block';
+    saveBtn.dataset.confirmed = '1';
+    return;
+  }
+  saveBtn.dataset.confirmed = '';
+
+  const prevStatus = p.status;
+  p.fullName = fullName;
+  p.followup = followup;
+  p.mobile = mobile;
+  p.category = category;
+  p.status = newStatus;
+
+  if (prevStatus !== newStatus) {
+    log.push({
+      timestamp: formatTimestamp(new Date()),
+      fullName: p.fullName,
+      mobile: p.mobile,
+      followup: p.followup,
+      category: p.category,
+      prevStatus: prevStatus,
+      newStatus: newStatus
+    });
+    if (newStatus !== REGISTERED && lastRegisteredId === id) lastRegisteredId = null;
+  }
+
+  closeModal();
+  renderAll();
+  refreshSuggestions();
+  scheduleSave();
+}
+
+function requirePin(callback) {
+  if (!pinCode) { callback(); return; }
+  openModal(`
+    <h3>Enter PIN</h3>
+    <p class="desc" style="margin-top:0;">This action is protected. Enter the PIN to continue.</p>
+    <input type="password" id="pinConfirmInput" inputmode="numeric" placeholder="PIN">
+    <div class="modal-error" id="pinConfirmError">Incorrect PIN.</div>
+    <div class="btn-row">
+      <button class="btn primary" id="pinConfirmOk">Confirm</button>
+      <button class="btn" id="pinConfirmCancel">Cancel</button>
+    </div>
+  `);
+  document.getElementById('pinConfirmCancel').addEventListener('click', closeModal);
+  const input = document.getElementById('pinConfirmInput');
+  const tryConfirm = () => {
+    if (input.value === pinCode) { closeModal(); callback(); }
+    else { document.getElementById('pinConfirmError').style.display = 'block'; input.value = ''; input.focus(); }
+  };
+  document.getElementById('pinConfirmOk').addEventListener('click', tryConfirm);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') tryConfirm(); });
+  input.focus();
+}
+
+function setupSecurity() {
+  const pinStatus = document.getElementById('pinStatus');
+  function updatePinStatusText() {
+    pinStatus.textContent = pinCode ? 'PIN protection is ON.' : 'No PIN set — actions are unprotected.';
+  }
+  updatePinStatusText();
+  document.getElementById('btnSavePin').addEventListener('click', () => {
+    const val = document.getElementById('pinInput').value.trim();
+    if (val && !/^\d{4,6}$/.test(val)) {
+      showImportSummary('PIN must be 4 to 6 digits.', 'warn');
+      return;
+    }
+    pinCode = val || null;
+    localStorage.setItem('anandAplPin', JSON.stringify(pinCode));
+    document.getElementById('pinInput').value = '';
+    updatePinStatusText();
+    showImportSummary(pinCode ? 'PIN protection enabled.' : 'PIN protection removed.', 'ok');
+  });
+}
+
+function setupFilters() {
+  document.getElementById('registeredFilterInput').addEventListener('input', e => {
+    registeredFilterText = e.target.value;
+    renderRegisteredList();
+  });
+  document.getElementById('pendingFilterInput').addEventListener('input', e => {
+    pendingFilterText = e.target.value;
+    renderPendingList();
+  });
+}
+
+function getPendingMatches(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return participants
+    .filter(p => p.status !== REGISTERED && p.fullName.toLowerCase().includes(q))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+}
+
+function refreshSuggestions() {
+  const input = document.getElementById('searchInput');
+  renderSuggestions(input.value);
+}
+
+function renderSuggestions(query) {
+  const box = document.getElementById('suggestions');
+  const matches = getPendingMatches(query);
+  currentSuggestions = matches;
+  highlightedIndex = -1;
+
+  if (matches.length === 0) {
+    box.innerHTML = '';
+    box.classList.remove('show');
+    return;
+  }
+
+  const q = query.trim().toLowerCase();
+  const exactIdx = matches.findIndex(p => p.fullName.trim().toLowerCase() === q);
+
+  if (matches.length === 1) {
+    highlightedIndex = 0;
+  } else if (exactIdx >= 0) {
+    highlightedIndex = exactIdx;
+  }
+
+  box.innerHTML = matches.slice(0, 50).map((p, i) =>
+    `<div class="suggestion-item${i === highlightedIndex ? ' highlighted' : ''}" data-index="${i}">
+      <span>${escapeHtml(p.fullName)}</span>
+      <span class="sub">${escapeHtml(p.followup)}</span>
+    </div>`
+  ).join('');
+  box.classList.add('show');
+
+  box.querySelectorAll('.suggestion-item').forEach(el => {
+    el.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const idx = parseInt(el.getAttribute('data-index'), 10);
+      highlightedIndex = idx;
+      attemptRegister();
+    });
+    el.addEventListener('mouseenter', () => {
+      highlightedIndex = parseInt(el.getAttribute('data-index'), 10);
+      updateHighlight();
+    });
+  });
+}
+
+function updateHighlight() {
+  const box = document.getElementById('suggestions');
+  box.querySelectorAll('.suggestion-item').forEach(el => {
+    const idx = parseInt(el.getAttribute('data-index'), 10);
+    el.classList.toggle('highlighted', idx === highlightedIndex);
+  });
+}
+
+function attemptRegister() {
+  const input = document.getElementById('searchInput');
+  const typed = input.value.trim();
+  if (!typed) return;
+
+  let chosen = null;
+  if (highlightedIndex >= 0 && currentSuggestions[highlightedIndex]) {
+    chosen = currentSuggestions[highlightedIndex];
+  } else if (currentSuggestions.length === 1) {
+    chosen = currentSuggestions[0];
+  } else if (currentSuggestions.length === 0) {
+    showStatus('No matching pending participant found.', 'err');
+    return;
+  } else {
+    showStatus('Multiple matches - use \u2191/\u2193 and Enter to pick one.', 'warn');
+    return;
+  }
+
+  registerParticipant(chosen);
+  input.value = '';
+  document.getElementById('suggestions').innerHTML = '';
+  document.getElementById('suggestions').classList.remove('show');
+  currentSuggestions = [];
+  highlightedIndex = -1;
+  input.focus();
+}
+
+function setupSearch() {
+  const input = document.getElementById('searchInput');
+  input.addEventListener('input', () => renderSuggestions(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (currentSuggestions.length === 0) return;
+      highlightedIndex = (highlightedIndex + 1) % currentSuggestions.length;
+      updateHighlight();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (currentSuggestions.length === 0) return;
+      highlightedIndex = (highlightedIndex - 1 + currentSuggestions.length) % currentSuggestions.length;
+      updateHighlight();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      attemptRegister();
+    } else if (e.key === 'Escape') {
+      input.value = '';
+      document.getElementById('suggestions').innerHTML = '';
+      document.getElementById('suggestions').classList.remove('show');
+      currentSuggestions = [];
+      highlightedIndex = -1;
+    }
+  });
+  document.getElementById('btnRegister').addEventListener('click', attemptRegister);
+  document.getElementById('btnUndo').addEventListener('click', undoLastRegistration);
+  document.getElementById('btnRefresh').addEventListener('click', () => {
+    renderAll();
+    refreshSuggestions();
+    input.focus();
+  });
+}
+
+function setupTabs() {
+  const buttons = document.querySelectorAll('.tab-btn');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + btn.getAttribute('data-tab')).classList.add('active');
+      if (btn.getAttribute('data-tab') === 'register') {
+        document.getElementById('searchInput').focus();
+      }
+    });
+  });
+}
+
+function parseDelimited(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  const rows = lines.map(line => {
+    const delim = line.includes('\t') ? '\t' : ',';
+    return line.split(delim).map(c => c.trim());
+  });
+  if (rows.length === 0) return [];
+  const firstRow = rows[0].map(c => c.toLowerCase());
+  const looksLikeHeader = firstRow.some(c => c.includes('full name') || c.includes('fullname'));
+  const dataRows = looksLikeHeader ? rows.slice(1) : rows;
+
+  return dataRows
+    .filter(r => r.length >= 1 && r[0])
+    .map(r => {
+      const fullName = r[0] || '';
+      const followup = r[1] || '';
+      const mobile = r[2] || '';
+      let status = (r[3] || NOT_REGISTERED).trim();
+      if (status.toLowerCase() === 'registered') status = REGISTERED;
+      else status = NOT_REGISTERED;
+      const category = r[4] || '';
+      return { fullName, followup, mobile, status, category };
+    });
+}
+
+function findMobileConflicts() {
+  const map = new Map();
+  participants.forEach(p => {
+    const m = (p.mobile || '').trim();
+    if (!m) return;
+    if (!map.has(m)) map.set(m, []);
+    map.get(m).push(p);
+  });
+  let conflictCount = 0, affected = 0;
+  map.forEach(list => { if (list.length > 1) { conflictCount++; affected += list.length; } });
+  return { conflictCount, affected };
+}
+
+function setupDataTab() {
+  document.getElementById('btnImportReplace').addEventListener('click', () => {
+    requirePin(() => {
+      const text = document.getElementById('importArea').value;
+      const rows = parseDelimited(text);
+      if (rows.length === 0) {
+        showImportSummary('No valid rows found. Check the format and try again.', 'err');
+        return;
+      }
+      participants = rows.map(r => ({ id: genId(), ...r }));
+      lastRegisteredId = null;
+      renderAll();
+      refreshSuggestions();
+      scheduleSave();
+      const { conflictCount, affected } = findMobileConflicts();
+      let msg = `Replaced master data with ${rows.length} participant(s).`;
+      if (conflictCount > 0) msg += ` Warning: ${affected} participant(s) share ${conflictCount} duplicate mobile number(s) — check Registered/Pending.`;
+      showImportSummary(msg, conflictCount > 0 ? 'warn' : 'ok');
+    });
+  });
+
+  document.getElementById('btnImportAppend').addEventListener('click', () => {
+    const text = document.getElementById('importArea').value;
+    const rows = parseDelimited(text);
+    if (rows.length === 0) {
+      showImportSummary('No valid rows found. Check the format and try again.', 'err');
+      return;
+    }
+    const existingNames = new Set(participants.map(p => p.fullName.trim().toLowerCase()));
+    let added = 0, skipped = 0;
+    rows.forEach(r => {
+      const key = r.fullName.trim().toLowerCase();
+      if (existingNames.has(key)) { skipped++; return; }
+      participants.push({ id: genId(), ...r });
+      existingNames.add(key);
+      added++;
+    });
+    renderAll();
+    refreshSuggestions();
+    scheduleSave();
+    const { conflictCount, affected } = findMobileConflicts();
+    let msg = `Added ${added} new participant(s). Skipped ${skipped} duplicate name(s) already in the table.`;
+    if (conflictCount > 0) msg += ` Warning: ${affected} participant(s) share ${conflictCount} duplicate mobile number(s) — check Registered/Pending.`;
+    showImportSummary(msg, conflictCount > 0 ? 'warn' : 'ok');
+  });
+
+  document.getElementById('btnExportParticipants').addEventListener('click', () => {
+    const header = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category'];
+    const rows = participants.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category]);
+    downloadCsv('anand_apl_2026_participants.csv', header, rows);
+  });
+
+  document.getElementById('btnExportLog').addEventListener('click', () => {
+    const header = ['Timestamp', 'Full Name', 'Mobile', 'Followup', 'Category', 'Previous Status', 'New Status'];
+    const rows = log.map(l => [l.timestamp, l.fullName, l.mobile, l.followup, l.category, l.prevStatus, l.newStatus]);
+    downloadCsv('anand_apl_2026_registration_log.csv', header, rows);
+  });
+
+  document.getElementById('btnReset').addEventListener('click', () => {
+    requirePin(() => {
+      if (!confirm('This will erase all current participants and the registration log, and restore the 4 sample rows. Continue?')) return;
+      participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
+      log = [];
+      lastRegisteredId = null;
+      renderAll();
+      refreshSuggestions();
+      scheduleSave();
+      showImportSummary('Reset to sample data.', 'info');
+    });
+  });
+}
+
+function showImportSummary(text, kind) {
+  const el = document.getElementById('importSummary');
+  el.textContent = text;
+  el.className = 'import-summary show ' + kind;
+}
+
+function csvEscape(val) {
+  const s = String(val == null ? '' : val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function downloadCsv(filename, header, rows) {
+  const lines = [header.map(csvEscape).join(',')].concat(rows.map(r => r.map(csvEscape).join(',')));
+  const csv = lines.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---------------- Excel (.xlsx) export ----------------
+
+function autoSizeColumns(ws, header, rows) {
+  ws['!cols'] = header.map((h, i) => {
+    let max = String(h == null ? '' : h).length;
+    rows.forEach(r => {
+      const v = r[i];
+      const len = String(v == null ? '' : v).length;
+      if (len > max) max = len;
+    });
+    return { wch: Math.min(Math.max(max + 2, 10), 45) };
+  });
+}
+
+function sheetFromRows(header, rows) {
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  autoSizeColumns(ws, header, rows);
+  return ws;
+}
+
+function downloadXlsx(filename, sheetName, header, rows) {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheetFromRows(header, rows), sheetName.slice(0, 31));
+  XLSX.writeFile(wb, filename);
+}
+
+function participantRows(list) {
+  return list.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category]);
+}
+
+function groupReportRows(rows) {
+  return rows.map(r => [r.name, r.total, r.registered, r.pending, r.pct]);
+}
+
+function logRows() {
+  return log.map(l => [l.timestamp, l.fullName, l.mobile, l.followup, l.category, l.prevStatus, l.newStatus]);
+}
+
+function setupExcelButtons() {
+  const PARTICIPANT_HEADER = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category'];
+  const GROUP_HEADER = ['Name', 'Total', 'Registered', 'Pending', 'Registration %'];
+  const LOG_HEADER = ['Timestamp', 'Full Name', 'Mobile', 'Followup', 'Category', 'Previous Status', 'New Status'];
+
+  document.getElementById('btnExportParticipantsXlsx').addEventListener('click', () => {
+    downloadXlsx('anand_apl_2026_participants.xlsx', 'Participants', PARTICIPANT_HEADER, participantRows(participants));
+  });
+  document.getElementById('btnExportLogXlsx').addEventListener('click', () => {
+    downloadXlsx('anand_apl_2026_registration_log.xlsx', 'Registration Log', LOG_HEADER, logRows());
+  });
+  document.getElementById('btnExcelRegistered').addEventListener('click', () => {
+    const rows = participants.filter(p => p.status === REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
+    downloadXlsx('anand_apl_2026_registered.xlsx', 'Registered', PARTICIPANT_HEADER, participantRows(rows));
+  });
+  document.getElementById('btnExcelPending').addEventListener('click', () => {
+    const rows = participants.filter(p => p.status !== REGISTERED).slice().sort((a, b) => {
+      const f = a.followup.localeCompare(b.followup);
+      return f !== 0 ? f : a.fullName.localeCompare(b.fullName);
+    });
+    downloadXlsx('anand_apl_2026_pending.xlsx', 'Pending', PARTICIPANT_HEADER, participantRows(rows));
+  });
+  document.getElementById('btnExcelFollowup').addEventListener('click', () => {
+    downloadXlsx('anand_apl_2026_followup_report.xlsx', 'Followup Report', GROUP_HEADER, groupReportRows(buildGroupReport('followup')));
+  });
+  document.getElementById('btnExcelRegisterFollowup').addEventListener('click', () => {
+    downloadXlsx('anand_apl_2026_followup_summary.xlsx', 'Followup Summary', GROUP_HEADER, groupReportRows(buildGroupReport('followup')));
+  });
+  document.getElementById('btnExcelCategory').addEventListener('click', () => {
+    downloadXlsx('anand_apl_2026_category_report.xlsx', 'Category Report', GROUP_HEADER, groupReportRows(buildGroupReport('category')));
+  });
+  document.getElementById('btnExcelLog').addEventListener('click', () => {
+    downloadXlsx('anand_apl_2026_registration_log.xlsx', 'Registration Log', LOG_HEADER, logRows());
+  });
+
+  document.getElementById('btnExportAllXlsx').addEventListener('click', () => {
+    const wb = XLSX.utils.book_new();
+    const registeredRows = participants.filter(p => p.status === REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
+    const pendingRows = participants.filter(p => p.status !== REGISTERED).slice().sort((a, b) => {
+      const f = a.followup.localeCompare(b.followup);
+      return f !== 0 ? f : a.fullName.localeCompare(b.fullName);
+    });
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(PARTICIPANT_HEADER, participantRows(participants)), 'All Participants');
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(PARTICIPANT_HEADER, participantRows(registeredRows)), 'Registered');
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(PARTICIPANT_HEADER, participantRows(pendingRows)), 'Pending');
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(GROUP_HEADER, groupReportRows(buildGroupReport('followup'))), 'Followup Report');
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(GROUP_HEADER, groupReportRows(buildGroupReport('category'))), 'Category Report');
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(LOG_HEADER, logRows()), 'Registration Log');
+    XLSX.writeFile(wb, 'anand_apl_2026_full_workbook.xlsx');
+  });
+}
+
+// ---------------- WhatsApp sharing ----------------
+
+const WHATSAPP_FULL_LIST_LIMIT = 80; // beyond this, send a summary + CSV instead of naming everyone
+
+async function shareText(text) {
+  if (navigator.share) {
+    try {
+      await navigator.share({ text });
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // user cancelled the native share sheet, do nothing further
+      // otherwise fall through to the WhatsApp web link below
+    }
+  }
+  const encoded = encodeURIComponent(text);
+  window.open('https://wa.me/?text=' + encoded, '_blank');
+}
+
+function groupRowsByCategory(rows) {
+  const map = new Map();
+  rows.forEach(p => {
+    const cat = (p.category || '').trim() || '(No category)';
+    if (!map.has(cat)) map.set(cat, []);
+    map.get(cat).push(p);
+  });
+  return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+function formatParticipantListMessage(headline, rows, groupByCat) {
+  const lines = [headline, ''];
+  if (!groupByCat) {
+    rows.forEach((p, i) => {
+      const mobilePart = p.mobile ? ` - ${p.mobile}` : '';
+      lines.push(`${i + 1}. ${p.fullName}${mobilePart}`);
+    });
+    return lines.join('\n');
+  }
+  const groups = groupRowsByCategory(rows);
+  groups.forEach(([cat, list], idx) => {
+    lines.push(`*${cat}* (${list.length})`);
+    list.forEach((p, i) => {
+      const mobilePart = p.mobile ? ` - ${p.mobile}` : '';
+      lines.push(`${i + 1}. ${p.fullName}${mobilePart}`);
+    });
+    if (idx < groups.length - 1) lines.push('');
+  });
+  return lines.join('\n');
+}
+
+function shareParticipantRows(rows, headline, csvFilename, groupByCat = true) {
+  if (rows.length === 0) {
+    alert('Nothing to share - this list is empty.');
+    return;
+  }
+  if (rows.length <= WHATSAPP_FULL_LIST_LIMIT) {
+    shareText(formatParticipantListMessage(`${headline} (${rows.length})`, rows, groupByCat));
+  } else {
+    downloadCsv(csvFilename, ['Full Name', 'Followup', 'Mobile', 'Status', 'Category'],
+      rows.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category]));
+    const summary = `${headline}\nTotal: ${rows.length}\n\n(List is long, so it's been downloaded as a CSV instead - attach "${csvFilename}" manually in WhatsApp.)`;
+    shareText(summary);
+  }
+}
+
+function shareGroupPending(groupKey, groupName) {
+  const rows = participants
+    .filter(p => (p[groupKey] || '').trim() === groupName && p.status !== REGISTERED)
+    .slice()
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  const label = groupKey === 'followup' ? 'Followup' : 'Category';
+  // If we're already sharing a single category's list, grouping by category again would be redundant.
+  const groupByCat = groupKey !== 'category';
+  shareParticipantRows(
+    rows,
+    `ANAND APL 2026 - Pending list for ${groupName} (${label})`,
+    `anand_apl_2026_pending_${groupName.replace(/[^a-z0-9]+/gi, '_')}.csv`,
+    groupByCat
+  );
+}
+
+function setupShareButtons() {
+  document.getElementById('btnShareRegistered').addEventListener('click', () => {
+    const rows = participants.filter(p => p.status === REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
+    shareParticipantRows(rows, 'ANAND APL 2026 - Registered participants', 'anand_apl_2026_registered.csv');
+  });
+  document.getElementById('btnSharePending').addEventListener('click', () => {
+    const rows = participants.filter(p => p.status !== REGISTERED).slice().sort((a, b) => {
+      const f = a.followup.localeCompare(b.followup);
+      return f !== 0 ? f : a.fullName.localeCompare(b.fullName);
+    });
+    shareParticipantRows(rows, 'ANAND APL 2026 - Pending participants', 'anand_apl_2026_pending.csv');
+  });
+}
+
+async function init() {
+  await loadState();
+  setupTabs();
+  setupSearch();
+  setupDataTab();
+  setupShareButtons();
+  setupExcelButtons();
+  setupModal();
+  setupSecurity();
+  setupFilters();
+  renderAll();
+  document.getElementById('searchInput').focus();
+}
+
+init();
+</script>
+
+</body>
+</html>
