@@ -276,7 +276,9 @@
     border-top: 1px solid var(--border);
   }
   table.data tr:hover td { background: #FAF8F2; }
-  .pct-cell { font-variant-numeric: tabular-nums; font-weight: 600; }
+  table.data th.num-th, table.data th.pct-th { text-align: right; }
+  table.data td.num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+  .pct-cell { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
   table.data tr.total-row td { background: #F0EEE6; border-top: 2px solid var(--border); }
   table.data tr.total-row:hover td { background: #F0EEE6; }
 
@@ -359,6 +361,8 @@
   .export-portrait table.data tr td:first-child { border-top: 1px solid var(--border) !important; }
   .export-portrait table.data td::before { content: none !important; }
   .export-portrait table.data td.pct-cell { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .export-portrait table.data th.num-th, .export-portrait table.data th.pct-th { text-align: right !important; }
+  .export-portrait table.data td.num-cell, .export-portrait table.data td.pct-cell { text-align: right !important; font-variant-numeric: tabular-nums; }
   .export-portrait table.data td.share-cell,
   .export-portrait table.data td.actions-cell { text-align: right !important; white-space: nowrap !important; }
   .export-portrait .tracker-card-attached { padding: 12px 14px !important; }
@@ -1061,10 +1065,10 @@ function renderGroupTable(wrapId, headerLabel, rows, groupKey, showTotal) {
     const totRegistered = rows.reduce((s, r) => s + r.registered, 0);
     const totPending = rows.reduce((s, r) => s + r.pending, 0);
     const totPct = totTotal > 0 ? Math.round((totRegistered / totTotal) * 1000) / 10 : 0;
-    totalRowHtml = `<tr class="total-row"><td data-label="${escapeHtml(headerLabel)}"><strong>Total</strong></td><td data-label="Total"><strong>${totTotal}</strong></td><td data-label="Registered"><strong>${totRegistered}</strong></td><td data-label="Pending"><strong>${totPending}</strong></td><td class="pct-cell" data-label="Registration %"><strong>${totPct}%</strong></td><td class="share-cell" data-label="Share"></td></tr>`;
+    totalRowHtml = `<tr class="total-row"><td data-label="${escapeHtml(headerLabel)}"><strong>Total</strong></td><td class="num-cell" data-label="Total"><strong>${totTotal}</strong></td><td class="num-cell" data-label="Registered"><strong>${totRegistered}</strong></td><td class="num-cell" data-label="Pending"><strong>${totPending}</strong></td><td class="pct-cell" data-label="Registration %"><strong>${totPct}%</strong></td><td class="share-cell" data-label="Share"></td></tr>`;
   }
-  wrap.innerHTML = `<table class="data"><thead><tr><th>${headerLabel}</th><th>Total</th><th>Registered</th><th>Pending</th><th>Registration %</th><th class="share-th"></th></tr></thead><tbody>
-    ${rows.map(r => `<tr><td data-label="${escapeHtml(headerLabel)}">${escapeHtml(r.name)}</td><td data-label="Total">${r.total}</td><td data-label="Registered">${r.registered}</td><td data-label="Pending">${r.pending}</td><td class="pct-cell" data-label="Registration %">${r.pct}%</td><td class="share-cell" data-label="Share"><button class="btn small whatsapp share-group-btn" data-group-key="${escapeHtml(groupKey)}" data-group-name="${escapeHtml(r.name)}">Share</button></td></tr>`).join('')}${totalRowHtml}
+  wrap.innerHTML = `<table class="data"><thead><tr><th>${headerLabel}</th><th class="num-th">Total</th><th class="num-th">Registered</th><th class="num-th">Pending</th><th class="pct-th">Registration %</th><th class="share-th"></th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td data-label="${escapeHtml(headerLabel)}">${escapeHtml(r.name)}</td><td class="num-cell" data-label="Total">${r.total}</td><td class="num-cell" data-label="Registered">${r.registered}</td><td class="num-cell" data-label="Pending">${r.pending}</td><td class="pct-cell" data-label="Registration %">${r.pct}%</td><td class="share-cell" data-label="Share"><button class="btn small whatsapp share-group-btn" data-group-key="${escapeHtml(groupKey)}" data-group-name="${escapeHtml(r.name)}">Share</button></td></tr>`).join('')}${totalRowHtml}
   </tbody></table>`;
 
   wrap.querySelectorAll('.share-group-btn').forEach(btn => {
