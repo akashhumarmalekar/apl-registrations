@@ -86,7 +86,7 @@
 
   .stats-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 12px;
     margin-bottom: 24px;
   }
@@ -98,6 +98,60 @@
   }
   .stat-card .label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
   .stat-card .value { font-size: 26px; font-weight: 700; color: var(--navy); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+  .target-card { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+  .target-card .value { display: flex; align-items: center; gap: 6px; }
+  .target-card input[type="number"] {
+    width: 64px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-family: inherit;
+  }
+  .target-card .edit-target-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--blue);
+    font-weight: 600;
+    padding: 4px;
+  }
+
+  .progress-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 24px;
+  }
+  .progress-card .progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .progress-card .progress-top .label { font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
+  .progress-card .progress-top .progress-pct { font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
+  .progress-track {
+    width: 100%;
+    height: 12px;
+    border-radius: 999px;
+    background: #EFEBDF;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+    transition: width 0.3s ease;
+  }
+  .progress-fill.reached { background: linear-gradient(90deg, var(--green), #4CAF74); }
 
   .search-card {
     background: var(--card);
@@ -481,6 +535,26 @@
       <div class="stat-card"><div class="label">Registered</div><div class="value" id="statRegistered">0</div></div>
       <div class="stat-card"><div class="label">Pending</div><div class="value" id="statPending">0</div></div>
       <div class="stat-card"><div class="label">Registration</div><div class="value" id="statPct">0%</div></div>
+      <div class="stat-card target-card">
+        <div>
+          <div class="label">Target</div>
+          <div class="value" id="targetDisplayWrap">
+            <span id="targetDisplayValue">60</span>
+          </div>
+          <div class="value" id="targetEditWrap" style="display:none;">
+            <input type="number" id="targetInput" min="0" step="1">
+          </div>
+        </div>
+        <button class="edit-target-btn" id="btnEditTarget">Edit</button>
+      </div>
+    </div>
+
+    <div class="progress-card">
+      <div class="progress-top">
+        <span class="label" id="progressLabel">0 of 60 registered towards target</span>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
     </div>
 
     <div class="search-card">
@@ -642,6 +716,7 @@ let lastRegisteredId = null;
 let highlightedIndex = -1;
 let currentSuggestions = [];
 let pinCode = null;
+let targetCount = 60;
 let registeredFilterText = '';
 let pendingFilterText = '';
 let db = null;
@@ -683,6 +758,7 @@ function applyRemoteState(data) {
   participants = Array.isArray(data.participants) ? data.participants : [];
   log = Array.isArray(data.log) ? data.log : [];
   lastRegisteredId = data.lastRegisteredId != null ? data.lastRegisteredId : null;
+  if (typeof data.targetCount === 'number' && data.targetCount >= 0) targetCount = data.targetCount;
 }
 
 async function loadState() {
@@ -691,6 +767,15 @@ async function loadState() {
     const raw = localStorage.getItem('anandAplPin');
     pinCode = raw ? JSON.parse(raw) : null;
   } catch (e) { pinCode = null; }
+
+  // Local fallback target (used until/unless a synced value arrives from Firestore).
+  try {
+    const rawTarget = localStorage.getItem('anandAplTarget');
+    if (rawTarget != null) {
+      const parsed = parseInt(rawTarget, 10);
+      if (!isNaN(parsed) && parsed >= 0) targetCount = parsed;
+    }
+  } catch (e) { /* ignore */ }
 
   if (!isFirebaseConfigured()) {
     showConnectionBanner('Firebase is not configured yet — running in local-only demo mode. Edit FIREBASE_CONFIG in the HTML file to enable multi-device sync.', 'warn');
@@ -720,7 +805,7 @@ async function loadState() {
     } else {
       participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
       log = [];
-      await docRef.set({ participants, log, lastRegisteredId: null, updatedAt: Date.now() });
+      await docRef.set({ participants, log, lastRegisteredId: null, targetCount, updatedAt: Date.now() });
     }
   } catch (e) {
     console.error('Initial Firestore load failed', e);
@@ -742,6 +827,7 @@ async function loadState() {
   });
 }
 
+
 let saveTimer = null;
 function scheduleSave() {
   clearTimeout(saveTimer);
@@ -751,7 +837,7 @@ async function saveState() {
   if (!firebaseReady || !db) { flashSaveIndicator(); return; }
   try {
     const docRef = db.collection(FIRESTORE_COLLECTION).doc(FIRESTORE_DOC);
-    await docRef.set({ participants, log, lastRegisteredId, updatedAt: Date.now() });
+    await docRef.set({ participants, log, lastRegisteredId, targetCount, updatedAt: Date.now() });
     clearConnectionBanner();
     flashSaveIndicator();
   } catch (e) {
@@ -786,6 +872,33 @@ function renderStats() {
   document.getElementById('statRegistered').textContent = s.registered;
   document.getElementById('statPending').textContent = s.pending;
   document.getElementById('statPct').textContent = s.pct + '%';
+  renderTargetProgress();
+}
+
+function renderTargetProgress() {
+  const registered = participants.filter(p => p.status === REGISTERED).length;
+  document.getElementById('targetDisplayValue').textContent = targetCount;
+  const targetInput = document.getElementById('targetInput');
+  if (document.activeElement !== targetInput) targetInput.value = targetCount;
+
+  const pct = targetCount > 0 ? Math.min(100, Math.round((registered / targetCount) * 1000) / 10) : 0;
+  const remaining = Math.max(0, targetCount - registered);
+  const fill = document.getElementById('progressFill');
+  fill.style.width = pct + '%';
+  fill.classList.toggle('reached', registered >= targetCount && targetCount > 0);
+  document.getElementById('progressPct').textContent = pct + '%';
+  const label = remaining === 0 && targetCount > 0
+    ? `${registered} of ${targetCount} registered — target reached!`
+    : `${registered} of ${targetCount} registered towards target (${remaining} to go)`;
+  document.getElementById('progressLabel').textContent = label;
+}
+
+function setTarget(newTarget) {
+  const n = Math.max(0, Math.round(newTarget));
+  targetCount = n;
+  try { localStorage.setItem('anandAplTarget', String(n)); } catch (e) { /* ignore */ }
+  renderTargetProgress();
+  scheduleSave();
 }
 
 function matchesFilter(p, q) {
@@ -1291,6 +1404,41 @@ function setupSearch() {
   });
 }
 
+function setupTargetEditor() {
+  const displayWrap = document.getElementById('targetDisplayWrap');
+  const editWrap = document.getElementById('targetEditWrap');
+  const editBtn = document.getElementById('btnEditTarget');
+  const input = document.getElementById('targetInput');
+
+  function enterEditMode() {
+    displayWrap.style.display = 'none';
+    editWrap.style.display = '';
+    editBtn.textContent = 'Save';
+    input.value = targetCount;
+    input.focus();
+    input.select();
+  }
+  function exitEditMode() {
+    const parsed = parseInt(input.value, 10);
+    if (!isNaN(parsed) && parsed >= 0) setTarget(parsed);
+    displayWrap.style.display = '';
+    editWrap.style.display = 'none';
+    editBtn.textContent = 'Edit';
+  }
+
+  editBtn.addEventListener('click', () => {
+    if (editWrap.style.display === 'none') enterEditMode();
+    else exitEditMode();
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); exitEditMode(); }
+    else if (e.key === 'Escape') { input.value = targetCount; exitEditMode(); }
+  });
+  input.addEventListener('blur', () => {
+    if (editWrap.style.display !== 'none') exitEditMode();
+  });
+}
+
 function setupTabs() {
   const buttons = document.querySelectorAll('.tab-btn');
   buttons.forEach(btn => {
@@ -1638,6 +1786,7 @@ async function init() {
   setupModal();
   setupSecurity();
   setupFilters();
+  setupTargetEditor();
   renderAll();
   document.getElementById('searchInput').focus();
 }
