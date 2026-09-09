@@ -84,7 +84,7 @@
   section.panel { display: none; padding-top: 24px; }
   section.panel.active { display: block; }
 
-  .shareable-dashboard {
+  .shareable-followup-card {
     background: var(--bg);
     padding: 2px;
     border-radius: var(--radius);
@@ -93,7 +93,7 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 24px;
   }
   .stat-card {
     background: var(--card);
@@ -109,6 +109,9 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 14px 16px;
+  }
+  .tracker-card-attached {
+    margin-top: 12px;
   }
   .tracker-top {
     display: flex;
@@ -316,6 +319,10 @@
   td.share-cell { text-align: right; white-space: nowrap; }
   td.actions-cell { text-align: right; white-space: nowrap; }
   td.actions-cell button { margin-left: 6px; }
+
+  /* Applied briefly while generating a shareable image, so per-row Share buttons don't appear in it */
+  .hide-share-column .share-cell,
+  .hide-share-column .share-th { display: none !important; }
 
   .filter-input {
     width: 100%;
@@ -540,37 +547,11 @@
 <div class="wrap">
 
   <section class="panel active" id="panel-register">
-    <div id="shareableDashboard" class="shareable-dashboard">
-      <div class="stats-row">
-        <div class="stat-card"><div class="label">Total</div><div class="value" id="statTotal">0</div></div>
-        <div class="stat-card"><div class="label">Registered</div><div class="value" id="statRegistered">0</div></div>
-        <div class="stat-card"><div class="label">Pending</div><div class="value" id="statPending">0</div></div>
-        <div class="stat-card"><div class="label">Registration</div><div class="value" id="statPct">0%</div></div>
-      </div>
-
-      <div class="tracker-card">
-        <div class="tracker-top">
-          <div>
-            <div class="label">Target</div>
-            <div class="value" id="targetDisplayWrap">
-              <span id="targetDisplayValue">60</span>
-            </div>
-            <div class="value" id="targetEditWrap" style="display:none;">
-              <input type="number" id="targetInput" min="0" step="1">
-            </div>
-          </div>
-          <button class="edit-target-btn" id="btnEditTarget" data-html2canvas-ignore="true">Edit</button>
-        </div>
-        <div class="progress-top">
-          <span class="label" id="progressLabel">0 of 60 registered towards target</span>
-          <span class="progress-pct" id="progressPct">0%</span>
-        </div>
-        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-      </div>
-    </div>
-
-    <div class="btn-row" style="margin-top:12px; margin-bottom:24px;">
-      <button class="btn small whatsapp" id="btnShareDashboard">Share progress as image</button>
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Total</div><div class="value" id="statTotal">0</div></div>
+      <div class="stat-card"><div class="label">Registered</div><div class="value" id="statRegistered">0</div></div>
+      <div class="stat-card"><div class="label">Pending</div><div class="value" id="statPending">0</div></div>
+      <div class="stat-card"><div class="label">Registration</div><div class="value" id="statPct">0%</div></div>
     </div>
 
     <div class="search-card">
@@ -590,7 +571,32 @@
       <div class="toolbar-left"><h2>Followup-wise summary</h2></div>
       <button class="btn small excel" id="btnExcelRegisterFollowup">Download Excel</button>
     </div>
-    <div id="registerFollowupWrap"></div>
+    <div id="followupShareCard" class="shareable-followup-card">
+      <div id="registerFollowupWrap"></div>
+
+      <div class="tracker-card tracker-card-attached">
+        <div class="tracker-top">
+          <div>
+            <div class="label">Target</div>
+            <div class="value" id="targetDisplayWrap">
+              <span id="targetDisplayValue">60</span>
+            </div>
+            <div class="value" id="targetEditWrap" style="display:none;">
+              <input type="number" id="targetInput" min="0" step="1">
+            </div>
+          </div>
+          <button class="edit-target-btn" id="btnEditTarget" data-html2canvas-ignore="true">Edit</button>
+        </div>
+        <div class="progress-top">
+          <span class="label" id="progressLabel">0 of 60 registered towards target</span>
+          <span class="progress-pct" id="progressPct">0%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:12px; margin-bottom:24px;">
+      <button class="btn small whatsapp" id="btnShareFollowupTable">Share table as image</button>
+    </div>
   </section>
 
   <section class="panel" id="panel-registered">
@@ -1017,7 +1023,7 @@ function renderGroupTable(wrapId, headerLabel, rows, groupKey, showTotal) {
     const totPct = totTotal > 0 ? Math.round((totRegistered / totTotal) * 1000) / 10 : 0;
     totalRowHtml = `<tr class="total-row"><td data-label="${escapeHtml(headerLabel)}"><strong>Total</strong></td><td data-label="Total"><strong>${totTotal}</strong></td><td data-label="Registered"><strong>${totRegistered}</strong></td><td data-label="Pending"><strong>${totPending}</strong></td><td class="pct-cell" data-label="Registration %"><strong>${totPct}%</strong></td><td class="share-cell" data-label="Share"></td></tr>`;
   }
-  wrap.innerHTML = `<table class="data"><thead><tr><th>${headerLabel}</th><th>Total</th><th>Registered</th><th>Pending</th><th>Registration %</th><th></th></tr></thead><tbody>
+  wrap.innerHTML = `<table class="data"><thead><tr><th>${headerLabel}</th><th>Total</th><th>Registered</th><th>Pending</th><th>Registration %</th><th class="share-th"></th></tr></thead><tbody>
     ${rows.map(r => `<tr><td data-label="${escapeHtml(headerLabel)}">${escapeHtml(r.name)}</td><td data-label="Total">${r.total}</td><td data-label="Registered">${r.registered}</td><td data-label="Pending">${r.pending}</td><td class="pct-cell" data-label="Registration %">${r.pct}%</td><td class="share-cell" data-label="Share"><button class="btn small whatsapp share-group-btn" data-group-key="${escapeHtml(groupKey)}" data-group-name="${escapeHtml(r.name)}">Share</button></td></tr>`).join('')}${totalRowHtml}
   </tbody></table>`;
 
@@ -1717,11 +1723,11 @@ async function shareText(text) {
   window.open('https://wa.me/?text=' + encoded, '_blank');
 }
 
-function buildDashboardShareCaption() {
+function buildFollowupShareCaption() {
   const s = computeStats();
   const remaining = Math.max(0, targetCount - s.registered);
   const lines = [
-    'ANAND APL 2026 - Registration progress',
+    'ANAND APL 2026 - Followup-wise summary',
     `Registered: ${s.registered} / ${targetCount} target`,
     `Pending: ${s.pending}`,
     remaining > 0 ? `${remaining} more to reach target` : 'Target reached!'
@@ -1729,9 +1735,9 @@ function buildDashboardShareCaption() {
   return lines.join('\n');
 }
 
-async function shareDashboardImage() {
-  const target = document.getElementById('shareableDashboard');
-  const btn = document.getElementById('btnShareDashboard');
+async function shareFollowupImage() {
+  const target = document.getElementById('followupShareCard');
+  const btn = document.getElementById('btnShareFollowupTable');
   const originalLabel = btn.textContent;
 
   if (typeof html2canvas !== 'function') {
@@ -1741,6 +1747,7 @@ async function shareDashboardImage() {
 
   btn.disabled = true;
   btn.textContent = 'Generating image...';
+  target.classList.add('hide-share-column'); // keep per-row Share buttons out of the exported image
 
   try {
     const canvas = await html2canvas(target, {
@@ -1752,13 +1759,13 @@ async function shareDashboardImage() {
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('toBlob returned null');
 
-    const fileName = 'anand_apl_2026_progress.png';
+    const fileName = 'anand_apl_2026_followup_summary.png';
     const file = new File([blob], fileName, { type: 'image/png' });
-    const caption = buildDashboardShareCaption();
+    const caption = buildFollowupShareCaption();
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], title: 'Anand APL 2026 Registration Progress', text: caption });
+        await navigator.share({ files: [file], title: 'Anand APL 2026 Followup Summary', text: caption });
         return;
       } catch (e) {
         if (e && e.name === 'AbortError') return; // user cancelled the native share sheet
@@ -1778,9 +1785,10 @@ async function shareDashboardImage() {
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     alert('This browser can\'t share images directly, so the image has been downloaded instead — attach it to a WhatsApp chat manually.');
   } catch (e) {
-    console.error('Dashboard image generation failed', e);
+    console.error('Followup image generation failed', e);
     alert('Could not generate the image. Please try again.');
   } finally {
+    target.classList.remove('hide-share-column');
     btn.disabled = false;
     btn.textContent = originalLabel;
   }
@@ -1860,7 +1868,7 @@ function setupShareButtons() {
     });
     shareParticipantRows(rows, 'ANAND APL 2026 - Pending participants', 'anand_apl_2026_pending.csv');
   });
-  document.getElementById('btnShareDashboard').addEventListener('click', shareDashboardImage);
+  document.getElementById('btnShareFollowupTable').addEventListener('click', shareFollowupImage);
 }
 
 async function init() {
