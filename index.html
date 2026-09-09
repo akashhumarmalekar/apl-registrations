@@ -89,6 +89,15 @@
     padding: 2px;
     border-radius: var(--radius);
   }
+  .share-card-title {
+    margin: 0 0 12px;
+    padding: 2px 2px 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: 0.2px;
+  }
+  .export-portrait .share-card-title { font-size: 18px !important; margin-bottom: 10px !important; }
   .stats-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -616,6 +625,7 @@
       <button class="btn small excel" id="btnExcelRegisterFollowup">Download Excel</button>
     </div>
     <div id="followupShareCard" class="shareable-followup-card">
+      <h3 class="share-card-title">Anand Premier League Registration</h3>
       <div id="registerFollowupWrap"></div>
 
       <div class="tracker-card tracker-card-attached">
