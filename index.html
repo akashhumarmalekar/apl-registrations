@@ -1750,10 +1750,17 @@ async function shareFollowupImage() {
   target.classList.add('hide-share-column'); // keep per-row Share buttons out of the exported image
 
   try {
+    // Render at a desktop-sized virtual viewport so mobile visitors still get a
+    // compact table image instead of the mobile "stacked card" layout.
+    // Scale resolution to the device's pixel density (capped) so text stays crisp
+    // when the image is viewed full-size on a high-DPI phone screen.
+    const captureScale = Math.min(Math.max(window.devicePixelRatio || 2, 2), 3);
     const canvas = await html2canvas(target, {
       backgroundColor: '#F6F3EC',
-      scale: 2,
-      useCORS: true
+      scale: captureScale,
+      useCORS: true,
+      windowWidth: 1000,
+      windowHeight: Math.max(window.innerHeight, target.scrollHeight + 200)
     });
 
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
