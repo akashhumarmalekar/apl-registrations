@@ -84,11 +84,16 @@
   section.panel { display: none; padding-top: 24px; }
   section.panel.active { display: block; }
 
+  .shareable-dashboard {
+    background: var(--bg);
+    padding: 2px;
+    border-radius: var(--radius);
+  }
   .stats-row {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 12px;
-    margin-bottom: 24px;
+    margin-bottom: 12px;
   }
   .stat-card {
     background: var(--card);
@@ -99,10 +104,22 @@
   .stat-card .label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
   .stat-card .value { font-size: 26px; font-weight: 700; color: var(--navy); margin-top: 4px; font-variant-numeric: tabular-nums; }
 
-  .target-card { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
-  .target-card .value { display: flex; align-items: center; gap: 6px; }
-  .target-card input[type="number"] {
-    width: 64px;
+  .tracker-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .tracker-top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .tracker-top .value { display: flex; align-items: center; gap: 6px; }
+  .tracker-top input[type="number"] {
+    width: 74px;
     font-size: 20px;
     font-weight: 700;
     color: var(--navy);
@@ -112,32 +129,25 @@
     padding: 2px 6px;
     font-family: inherit;
   }
-  .target-card .edit-target-btn {
-    border: none;
-    background: none;
+  .tracker-top .edit-target-btn {
+    border: 1px solid var(--border);
+    background: var(--bg);
     cursor: pointer;
     font-size: 13px;
     color: var(--blue);
     font-weight: 600;
-    padding: 4px;
+    padding: 5px 12px;
+    border-radius: 6px;
   }
-
-  .progress-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    margin-bottom: 24px;
-  }
-  .progress-card .progress-top {
+  .progress-top {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     margin-bottom: 8px;
     font-size: 13px;
   }
-  .progress-card .progress-top .label { font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
-  .progress-card .progress-top .progress-pct { font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
+  .progress-top .label { font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-size: 12px; }
+  .progress-top .progress-pct { font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
   .progress-track {
     width: 100%;
     height: 12px;
@@ -530,31 +540,37 @@
 <div class="wrap">
 
   <section class="panel active" id="panel-register">
-    <div class="stats-row">
-      <div class="stat-card"><div class="label">Total</div><div class="value" id="statTotal">0</div></div>
-      <div class="stat-card"><div class="label">Registered</div><div class="value" id="statRegistered">0</div></div>
-      <div class="stat-card"><div class="label">Pending</div><div class="value" id="statPending">0</div></div>
-      <div class="stat-card"><div class="label">Registration</div><div class="value" id="statPct">0%</div></div>
-      <div class="stat-card target-card">
-        <div>
-          <div class="label">Target</div>
-          <div class="value" id="targetDisplayWrap">
-            <span id="targetDisplayValue">60</span>
+    <div id="shareableDashboard" class="shareable-dashboard">
+      <div class="stats-row">
+        <div class="stat-card"><div class="label">Total</div><div class="value" id="statTotal">0</div></div>
+        <div class="stat-card"><div class="label">Registered</div><div class="value" id="statRegistered">0</div></div>
+        <div class="stat-card"><div class="label">Pending</div><div class="value" id="statPending">0</div></div>
+        <div class="stat-card"><div class="label">Registration</div><div class="value" id="statPct">0%</div></div>
+      </div>
+
+      <div class="tracker-card">
+        <div class="tracker-top">
+          <div>
+            <div class="label">Target</div>
+            <div class="value" id="targetDisplayWrap">
+              <span id="targetDisplayValue">60</span>
+            </div>
+            <div class="value" id="targetEditWrap" style="display:none;">
+              <input type="number" id="targetInput" min="0" step="1">
+            </div>
           </div>
-          <div class="value" id="targetEditWrap" style="display:none;">
-            <input type="number" id="targetInput" min="0" step="1">
-          </div>
+          <button class="edit-target-btn" id="btnEditTarget" data-html2canvas-ignore="true">Edit</button>
         </div>
-        <button class="edit-target-btn" id="btnEditTarget">Edit</button>
+        <div class="progress-top">
+          <span class="label" id="progressLabel">0 of 60 registered towards target</span>
+          <span class="progress-pct" id="progressPct">0%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
       </div>
     </div>
 
-    <div class="progress-card">
-      <div class="progress-top">
-        <span class="label" id="progressLabel">0 of 60 registered towards target</span>
-        <span class="progress-pct" id="progressPct">0%</span>
-      </div>
-      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="btn-row" style="margin-top:12px; margin-bottom:24px;">
+      <button class="btn small whatsapp" id="btnShareDashboard">Share progress as image</button>
     </div>
 
     <div class="search-card">
@@ -683,6 +699,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 // ============================================================
 // FIREBASE SETUP — fill this in with your own project's config
@@ -1700,6 +1717,75 @@ async function shareText(text) {
   window.open('https://wa.me/?text=' + encoded, '_blank');
 }
 
+function buildDashboardShareCaption() {
+  const s = computeStats();
+  const remaining = Math.max(0, targetCount - s.registered);
+  const lines = [
+    'ANAND APL 2026 - Registration progress',
+    `Registered: ${s.registered} / ${targetCount} target`,
+    `Pending: ${s.pending}`,
+    remaining > 0 ? `${remaining} more to reach target` : 'Target reached!'
+  ];
+  return lines.join('\n');
+}
+
+async function shareDashboardImage() {
+  const target = document.getElementById('shareableDashboard');
+  const btn = document.getElementById('btnShareDashboard');
+  const originalLabel = btn.textContent;
+
+  if (typeof html2canvas !== 'function') {
+    alert('Could not generate the image - the image library failed to load. Check your internet connection and try again.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Generating image...';
+
+  try {
+    const canvas = await html2canvas(target, {
+      backgroundColor: '#F6F3EC',
+      scale: 2,
+      useCORS: true
+    });
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('toBlob returned null');
+
+    const fileName = 'anand_apl_2026_progress.png';
+    const file = new File([blob], fileName, { type: 'image/png' });
+    const caption = buildDashboardShareCaption();
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Anand APL 2026 Registration Progress', text: caption });
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return; // user cancelled the native share sheet
+        // otherwise fall through to the download fallback below
+      }
+    }
+
+    // Fallback for browsers/desktops that can't share files directly:
+    // download the image so it can be attached to WhatsApp manually.
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    alert('This browser can\'t share images directly, so the image has been downloaded instead — attach it to a WhatsApp chat manually.');
+  } catch (e) {
+    console.error('Dashboard image generation failed', e);
+    alert('Could not generate the image. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
 function groupRowsByCategory(rows) {
   const map = new Map();
   rows.forEach(p => {
@@ -1774,6 +1860,7 @@ function setupShareButtons() {
     });
     shareParticipantRows(rows, 'ANAND APL 2026 - Pending participants', 'anand_apl_2026_pending.csv');
   });
+  document.getElementById('btnShareDashboard').addEventListener('click', shareDashboardImage);
 }
 
 async function init() {
