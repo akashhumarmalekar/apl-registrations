@@ -89,15 +89,6 @@
     padding: 2px;
     border-radius: var(--radius);
   }
-  .share-card-title {
-    margin: 0 0 12px;
-    padding: 2px 2px 0;
-    font-size: 19px;
-    font-weight: 700;
-    color: var(--navy);
-    letter-spacing: 0.2px;
-  }
-  .export-portrait .share-card-title { font-size: 18px !important; margin-bottom: 10px !important; }
   .stats-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -285,9 +276,7 @@
     border-top: 1px solid var(--border);
   }
   table.data tr:hover td { background: #FAF8F2; }
-  table.data th.num-th, table.data th.pct-th { text-align: right; }
-  table.data td.num-cell { text-align: right; font-variant-numeric: tabular-nums; }
-  .pct-cell { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .pct-cell { font-variant-numeric: tabular-nums; font-weight: 600; }
   table.data tr.total-row td { background: #F0EEE6; border-top: 2px solid var(--border); }
   table.data tr.total-row:hover td { background: #F0EEE6; }
 
@@ -370,12 +359,46 @@
   .export-portrait table.data tr td:first-child { border-top: 1px solid var(--border) !important; }
   .export-portrait table.data td::before { content: none !important; }
   .export-portrait table.data td.pct-cell { font-variant-numeric: tabular-nums; font-weight: 600; }
-  .export-portrait table.data th.num-th, .export-portrait table.data th.pct-th { text-align: right !important; }
-  .export-portrait table.data td.num-cell, .export-portrait table.data td.pct-cell { text-align: right !important; font-variant-numeric: tabular-nums; }
   .export-portrait table.data td.share-cell,
   .export-portrait table.data td.actions-cell { text-align: right !important; white-space: nowrap !important; }
   .export-portrait .tracker-card-attached { padding: 12px 14px !important; }
   .export-portrait .tracker-top .value { font-size: 22px !important; }
+
+  .list-export-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    font-family: inherit;
+    color: var(--text);
+  }
+  .list-export-title { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); }
+  .list-export-sub { font-size: 20px; font-weight: 700; color: var(--navy); margin-top: 2px; }
+  .list-export-status {
+    display: inline-block;
+    margin-top: 10px;
+    margin-bottom: 14px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .list-export-status.registered { background: var(--green-bg); color: var(--green); }
+  .list-export-status.pending { background: var(--red-bg); color: var(--red); }
+  .list-export-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 0;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .list-export-row:first-child { border-top: none; }
+  .list-export-idx { color: var(--muted); font-variant-numeric: tabular-nums; width: 26px; flex-shrink: 0; }
+  .list-export-name { flex: 1; }
+  .list-export-mobile { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
 
   .filter-input {
     width: 100%;
@@ -625,7 +648,6 @@
       <button class="btn small excel" id="btnExcelRegisterFollowup">Download Excel</button>
     </div>
     <div id="followupShareCard" class="shareable-followup-card">
-      <h3 class="share-card-title">Anand Premier League Registration</h3>
       <div id="registerFollowupWrap"></div>
 
       <div class="tracker-card tracker-card-attached">
@@ -1075,17 +1097,17 @@ function renderGroupTable(wrapId, headerLabel, rows, groupKey, showTotal) {
     const totRegistered = rows.reduce((s, r) => s + r.registered, 0);
     const totPending = rows.reduce((s, r) => s + r.pending, 0);
     const totPct = totTotal > 0 ? Math.round((totRegistered / totTotal) * 1000) / 10 : 0;
-    totalRowHtml = `<tr class="total-row"><td data-label="${escapeHtml(headerLabel)}"><strong>Total</strong></td><td class="num-cell" data-label="Total"><strong>${totTotal}</strong></td><td class="num-cell" data-label="Registered"><strong>${totRegistered}</strong></td><td class="num-cell" data-label="Pending"><strong>${totPending}</strong></td><td class="pct-cell" data-label="Registration %"><strong>${totPct}%</strong></td><td class="share-cell" data-label="Share"></td></tr>`;
+    totalRowHtml = `<tr class="total-row"><td data-label="${escapeHtml(headerLabel)}"><strong>Total</strong></td><td data-label="Total"><strong>${totTotal}</strong></td><td data-label="Registered"><strong>${totRegistered}</strong></td><td data-label="Pending"><strong>${totPending}</strong></td><td class="pct-cell" data-label="Registration %"><strong>${totPct}%</strong></td><td class="share-cell" data-label="Share"></td></tr>`;
   }
-  wrap.innerHTML = `<table class="data"><thead><tr><th>${headerLabel}</th><th class="num-th">Total</th><th class="num-th">Registered</th><th class="num-th">Pending</th><th class="pct-th">Registration %</th><th class="share-th"></th></tr></thead><tbody>
-    ${rows.map(r => `<tr><td data-label="${escapeHtml(headerLabel)}">${escapeHtml(r.name)}</td><td class="num-cell" data-label="Total">${r.total}</td><td class="num-cell" data-label="Registered">${r.registered}</td><td class="num-cell" data-label="Pending">${r.pending}</td><td class="pct-cell" data-label="Registration %">${r.pct}%</td><td class="share-cell" data-label="Share"><button class="btn small whatsapp share-group-btn" data-group-key="${escapeHtml(groupKey)}" data-group-name="${escapeHtml(r.name)}">Share</button></td></tr>`).join('')}${totalRowHtml}
+  wrap.innerHTML = `<table class="data"><thead><tr><th>${headerLabel}</th><th>Total</th><th>Registered</th><th>Pending</th><th>Registration %</th><th class="share-th"></th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td data-label="${escapeHtml(headerLabel)}">${escapeHtml(r.name)}</td><td data-label="Total">${r.total}</td><td data-label="Registered">${r.registered}</td><td data-label="Pending">${r.pending}</td><td class="pct-cell" data-label="Registration %">${r.pct}%</td><td class="share-cell" data-label="Share"><button class="btn small whatsapp share-group-btn" data-group-key="${escapeHtml(groupKey)}" data-group-name="${escapeHtml(r.name)}">Share</button></td></tr>`).join('')}${totalRowHtml}
   </tbody></table>`;
 
   wrap.querySelectorAll('.share-group-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.getAttribute('data-group-key');
       const name = btn.getAttribute('data-group-name');
-      shareGroupPending(key, name);
+      openGroupShareModal(key, name);
     });
   });
 }
@@ -1899,20 +1921,125 @@ function shareParticipantRows(rows, headline, csvFilename, groupByCat = true) {
   }
 }
 
-function shareGroupPending(groupKey, groupName) {
-  const rows = participants
-    .filter(p => (p[groupKey] || '').trim() === groupName && p.status !== REGISTERED)
+function getGroupRows(groupKey, groupName, statusFilter) {
+  return participants
+    .filter(p => (p[groupKey] || '').trim() === groupName && (statusFilter === 'registered' ? p.status === REGISTERED : p.status !== REGISTERED))
     .slice()
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
+}
+
+function shareGroupListText(groupKey, groupName, statusFilter) {
+  const rows = getGroupRows(groupKey, groupName, statusFilter);
   const label = groupKey === 'followup' ? 'Followup' : 'Category';
+  const statusLabel = statusFilter === 'registered' ? 'Registered' : 'Pending';
   // If we're already sharing a single category's list, grouping by category again would be redundant.
   const groupByCat = groupKey !== 'category';
   shareParticipantRows(
     rows,
-    `ANAND APL 2026 - Pending list for ${groupName} (${label})`,
-    `anand_apl_2026_pending_${groupName.replace(/[^a-z0-9]+/gi, '_')}.csv`,
+    `ANAND APL 2026 - ${statusLabel} list for ${groupName} (${label})`,
+    `anand_apl_2026_${statusFilter}_${groupName.replace(/[^a-z0-9]+/gi, '_')}.csv`,
     groupByCat
   );
+}
+
+async function shareGroupListImage(groupKey, groupName, statusFilter) {
+  const rows = getGroupRows(groupKey, groupName, statusFilter);
+  if (rows.length === 0) {
+    alert('Nothing to share - this list is empty.');
+    return;
+  }
+  const label = groupKey === 'followup' ? 'Followup' : 'Category';
+  const statusLabel = statusFilter === 'registered' ? 'Registered' : 'Not Registered';
+  const statusClass = statusFilter === 'registered' ? 'registered' : 'pending';
+
+  if (typeof html2canvas !== 'function') {
+    alert('Could not generate the image - the image library failed to load. Check your internet connection and try again.');
+    return;
+  }
+
+  // Build the list off-screen (not visible, but still laid out) so html2canvas can capture it.
+  const sandbox = document.createElement('div');
+  sandbox.style.position = 'fixed';
+  sandbox.style.left = '-9999px';
+  sandbox.style.top = '0';
+  sandbox.style.width = '520px';
+  sandbox.innerHTML = `
+    <div class="list-export-card">
+      <div class="list-export-header">
+        <div class="list-export-title">ANAND APL 2026</div>
+        <div class="list-export-sub">${escapeHtml(groupName)}</div>
+      </div>
+      <div class="list-export-status ${statusClass}">${statusLabel.toUpperCase()} (${rows.length})</div>
+      <div class="list-export-rows">
+        ${rows.map((p, i) => `<div class="list-export-row"><span class="list-export-idx">${i + 1}.</span><span class="list-export-name">${escapeHtml(p.fullName)}</span>${p.mobile ? `<span class="list-export-mobile">${escapeHtml(p.mobile)}</span>` : ''}</div>`).join('')}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(sandbox);
+
+  try {
+    const captureScale = Math.min(Math.max(window.devicePixelRatio || 2, 2), 3);
+    const canvas = await html2canvas(sandbox, { backgroundColor: '#F6F3EC', scale: captureScale, useCORS: true });
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('toBlob returned null');
+
+    const safeName = groupName.replace(/[^a-z0-9]+/gi, '_');
+    const fileName = `anand_apl_2026_${statusFilter}_${safeName}.png`;
+    const file = new File([blob], fileName, { type: 'image/png' });
+    const caption = `ANAND APL 2026 - ${statusLabel} list for ${groupName} (${label})\nTotal: ${rows.length}`;
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: `${groupName} - ${statusLabel}`, text: caption });
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return; // user cancelled the native share sheet
+        // otherwise fall through to the download fallback below
+      }
+    }
+
+    // Fallback for browsers/desktops that can't share files directly.
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    alert('This browser can\'t share images directly, so the image has been downloaded instead — attach it to a WhatsApp chat manually.');
+  } catch (e) {
+    console.error('List image generation failed', e);
+    alert('Could not generate the image. Please try again.');
+  } finally {
+    sandbox.remove();
+  }
+}
+
+function openGroupShareModal(groupKey, groupName) {
+  const registeredCount = getGroupRows(groupKey, groupName, 'registered').length;
+  const pendingCount = getGroupRows(groupKey, groupName, 'pending').length;
+  openModal(`
+    <h3>Share — ${escapeHtml(groupName)}</h3>
+    <label>Registered (${registeredCount})</label>
+    <div class="btn-row">
+      <button class="btn small" id="shareRegText">Share as Text</button>
+      <button class="btn small whatsapp" id="shareRegImage">Share as Image</button>
+    </div>
+    <label>Not Registered (${pendingCount})</label>
+    <div class="btn-row">
+      <button class="btn small" id="sharePendText">Share as Text</button>
+      <button class="btn small whatsapp" id="sharePendImage">Share as Image</button>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn" id="shareModalClose" style="width:100%;">Close</button>
+    </div>
+  `);
+  document.getElementById('shareRegText').addEventListener('click', () => { closeModal(); shareGroupListText(groupKey, groupName, 'registered'); });
+  document.getElementById('shareRegImage').addEventListener('click', () => { closeModal(); shareGroupListImage(groupKey, groupName, 'registered'); });
+  document.getElementById('sharePendText').addEventListener('click', () => { closeModal(); shareGroupListText(groupKey, groupName, 'pending'); });
+  document.getElementById('sharePendImage').addEventListener('click', () => { closeModal(); shareGroupListImage(groupKey, groupName, 'pending'); });
+  document.getElementById('shareModalClose').addEventListener('click', closeModal);
 }
 
 function setupShareButtons() {
