@@ -399,6 +399,15 @@
   .list-export-idx { color: var(--muted); font-variant-numeric: tabular-nums; width: 26px; flex-shrink: 0; }
   .list-export-name { flex: 1; }
   .list-export-mobile { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
+  .list-export-subhead {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-top: 12px;
+    padding-bottom: 4px;
+  }
+  .list-export-rows > .list-export-subhead:first-child { margin-top: 0; }
+  .list-export-empty { color: var(--muted); font-size: 13px; padding: 6px 0; }
 
   .filter-input {
     width: 100%;
@@ -672,7 +681,10 @@
     </div>
     <div class="btn-row" style="margin-top:12px; margin-bottom:24px;">
       <button class="btn small whatsapp" id="btnShareFollowupTable">Share table as image</button>
+      <button class="btn small" id="btnShareConsolidatedText">Share consolidated (Text)</button>
+      <button class="btn small whatsapp" id="btnShareConsolidatedImage">Share consolidated (Image)</button>
     </div>
+    <p class="hint" style="margin-top:-16px; margin-bottom:24px;">Consolidated share sends everyone, bifurcated into Registered / Not Registered, each broken down followup-wise.</p>
   </section>
 
   <section class="panel" id="panel-registered">
@@ -1875,44 +1887,65 @@ async function shareFollowupImage() {
   }
 }
 
-function groupRowsByCategory(rows) {
+// groupField: 'category' | 'followup' | null (null/falsy = flat list, no bifurcation)
+function groupRowsByField(rows, groupField) {
+  const emptyLabel = groupField === 'followup' ? '(No followup)' : '(No category)';
   const map = new Map();
   rows.forEach(p => {
-    const cat = (p.category || '').trim() || '(No category)';
-    if (!map.has(cat)) map.set(cat, []);
-    map.get(cat).push(p);
+    const key = (p[groupField] || '').trim() || emptyLabel;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(p);
   });
   return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
 }
 
-function formatParticipantListMessage(headline, rows, groupByCat) {
-  const lines = [headline, ''];
-  if (!groupByCat) {
+// Shared row/line builders so the text message, the on-tab card, and the
+// off-screen image cards all bifurcate the same way.
+function buildGroupedLines(rows, groupField) {
+  const lines = [];
+  if (!groupField) {
     rows.forEach((p, i) => {
       const mobilePart = p.mobile ? ` - ${p.mobile}` : '';
       lines.push(`${i + 1}. ${p.fullName}${mobilePart}`);
     });
-    return lines.join('\n');
+    return lines;
   }
-  const groups = groupRowsByCategory(rows);
-  groups.forEach(([cat, list], idx) => {
-    lines.push(`*${cat}* (${list.length})`);
+  const groups = groupRowsByField(rows, groupField);
+  groups.forEach(([name, list], idx) => {
+    lines.push(`*${name}* (${list.length})`);
     list.forEach((p, i) => {
       const mobilePart = p.mobile ? ` - ${p.mobile}` : '';
       lines.push(`${i + 1}. ${p.fullName}${mobilePart}`);
     });
     if (idx < groups.length - 1) lines.push('');
   });
+  return lines;
+}
+
+function buildGroupedRowsHtml(rows, groupField) {
+  if (!groupField) {
+    return rows.map((p, i) => `<div class="list-export-row"><span class="list-export-idx">${i + 1}.</span><span class="list-export-name">${escapeHtml(p.fullName)}</span>${p.mobile ? `<span class="list-export-mobile">${escapeHtml(p.mobile)}</span>` : ''}</div>`).join('');
+  }
+  const groups = groupRowsByField(rows, groupField);
+  return groups.map(([name, list]) => `
+    <div class="list-export-subhead">${escapeHtml(name)} (${list.length})</div>
+    ${list.map((p, i) => `<div class="list-export-row"><span class="list-export-idx">${i + 1}.</span><span class="list-export-name">${escapeHtml(p.fullName)}</span>${p.mobile ? `<span class="list-export-mobile">${escapeHtml(p.mobile)}</span>` : ''}</div>`).join('')}
+  `).join('');
+}
+
+function formatParticipantListMessage(headline, rows, groupField) {
+  const lines = [headline, '', ...buildGroupedLines(rows, groupField)];
   return lines.join('\n');
 }
 
-function shareParticipantRows(rows, headline, csvFilename, groupByCat = true) {
+// groupField: 'category' | 'followup' | null - how the text message bifurcates the list.
+function shareParticipantRows(rows, headline, csvFilename, groupField = 'category') {
   if (rows.length === 0) {
     alert('Nothing to share - this list is empty.');
     return;
   }
   if (rows.length <= WHATSAPP_FULL_LIST_LIMIT) {
-    shareText(formatParticipantListMessage(`${headline} (${rows.length})`, rows, groupByCat));
+    shareText(formatParticipantListMessage(`${headline} (${rows.length})`, rows, groupField));
   } else {
     downloadCsv(csvFilename, ['Full Name', 'Followup', 'Mobile', 'Status', 'Category'],
       rows.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category]));
@@ -1921,76 +1954,29 @@ function shareParticipantRows(rows, headline, csvFilename, groupByCat = true) {
   }
 }
 
-function getGroupRows(groupKey, groupName, statusFilter) {
-  return participants
-    .filter(p => (p[groupKey] || '').trim() === groupName && (statusFilter === 'registered' ? p.status === REGISTERED : p.status !== REGISTERED))
-    .slice()
-    .sort((a, b) => a.fullName.localeCompare(b.fullName));
-}
-
-function shareGroupListText(groupKey, groupName, statusFilter) {
-  const rows = getGroupRows(groupKey, groupName, statusFilter);
-  const label = groupKey === 'followup' ? 'Followup' : 'Category';
-  const statusLabel = statusFilter === 'registered' ? 'Registered' : 'Pending';
-  // If we're already sharing a single category's list, grouping by category again would be redundant.
-  const groupByCat = groupKey !== 'category';
-  shareParticipantRows(
-    rows,
-    `ANAND APL 2026 - ${statusLabel} list for ${groupName} (${label})`,
-    `anand_apl_2026_${statusFilter}_${groupName.replace(/[^a-z0-9]+/gi, '_')}.csv`,
-    groupByCat
-  );
-}
-
-async function shareGroupListImage(groupKey, groupName, statusFilter) {
-  const rows = getGroupRows(groupKey, groupName, statusFilter);
-  if (rows.length === 0) {
-    alert('Nothing to share - this list is empty.');
-    return;
-  }
-  const label = groupKey === 'followup' ? 'Followup' : 'Category';
-  const statusLabel = statusFilter === 'registered' ? 'Registered' : 'Not Registered';
-  const statusClass = statusFilter === 'registered' ? 'registered' : 'pending';
-
+// Shared html2canvas capture + native-share/download-fallback used by every
+// off-screen "card" image (consolidated, per-followup, per-category shares).
+async function captureAndShareCard(sandbox, fileName, shareTitle, caption) {
   if (typeof html2canvas !== 'function') {
     alert('Could not generate the image - the image library failed to load. Check your internet connection and try again.');
     return;
   }
-
-  // Build the list off-screen (not visible, but still laid out) so html2canvas can capture it.
-  const sandbox = document.createElement('div');
   sandbox.style.position = 'fixed';
   sandbox.style.left = '-9999px';
   sandbox.style.top = '0';
   sandbox.style.width = '520px';
-  sandbox.innerHTML = `
-    <div class="list-export-card">
-      <div class="list-export-header">
-        <div class="list-export-title">ANAND APL 2026</div>
-        <div class="list-export-sub">${escapeHtml(groupName)}</div>
-      </div>
-      <div class="list-export-status ${statusClass}">${statusLabel.toUpperCase()} (${rows.length})</div>
-      <div class="list-export-rows">
-        ${rows.map((p, i) => `<div class="list-export-row"><span class="list-export-idx">${i + 1}.</span><span class="list-export-name">${escapeHtml(p.fullName)}</span>${p.mobile ? `<span class="list-export-mobile">${escapeHtml(p.mobile)}</span>` : ''}</div>`).join('')}
-      </div>
-    </div>
-  `;
   document.body.appendChild(sandbox);
-
   try {
     const captureScale = Math.min(Math.max(window.devicePixelRatio || 2, 2), 3);
     const canvas = await html2canvas(sandbox, { backgroundColor: '#F6F3EC', scale: captureScale, useCORS: true });
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('toBlob returned null');
 
-    const safeName = groupName.replace(/[^a-z0-9]+/gi, '_');
-    const fileName = `anand_apl_2026_${statusFilter}_${safeName}.png`;
     const file = new File([blob], fileName, { type: 'image/png' });
-    const caption = `ANAND APL 2026 - ${statusLabel} list for ${groupName} (${label})\nTotal: ${rows.length}`;
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], title: `${groupName} - ${statusLabel}`, text: caption });
+        await navigator.share({ files: [file], title: shareTitle, text: caption });
         return;
       } catch (e) {
         if (e && e.name === 'AbortError') return; // user cancelled the native share sheet
@@ -2009,11 +1995,198 @@ async function shareGroupListImage(groupKey, groupName, statusFilter) {
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     alert('This browser can\'t share images directly, so the image has been downloaded instead — attach it to a WhatsApp chat manually.');
   } catch (e) {
-    console.error('List image generation failed', e);
+    console.error('Card image generation failed', e);
     alert('Could not generate the image. Please try again.');
   } finally {
     sandbox.remove();
   }
+}
+
+// ---------------- Consolidated (Registered + Not Registered, followup-wise) ----------------
+
+function buildConsolidatedMessage() {
+  const s = computeStats();
+  const regRows = participants.filter(p => p.status === REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
+  const pendRows = participants.filter(p => p.status !== REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
+  const lines = [
+    'ANAND APL 2026 - Consolidated report',
+    `Total: ${s.total} | Registered: ${s.registered} | Pending: ${s.pending}`,
+    '',
+    `*REGISTERED* (${regRows.length})`,
+    ''
+  ];
+  lines.push(...buildGroupedLines(regRows, 'followup'));
+  lines.push('', `*NOT REGISTERED* (${pendRows.length})`, '');
+  lines.push(...buildGroupedLines(pendRows, 'followup'));
+  return lines.join('\n');
+}
+
+function shareConsolidatedText() {
+  const s = computeStats();
+  if (s.total === 0) {
+    alert('Nothing to share - no participants yet.');
+    return;
+  }
+  if (s.total <= WHATSAPP_FULL_LIST_LIMIT) {
+    shareText(buildConsolidatedMessage());
+    return;
+  }
+  // Too long to name everyone in a WhatsApp message: attach a full CSV and
+  // send a followup-wise Registered/Pending count summary instead.
+  const rows = participants.slice().sort((a, b) => {
+    const f = a.followup.localeCompare(b.followup);
+    return f !== 0 ? f : a.fullName.localeCompare(b.fullName);
+  });
+  const csvFilename = 'anand_apl_2026_consolidated.csv';
+  downloadCsv(csvFilename, ['Full Name', 'Followup', 'Mobile', 'Status', 'Category'],
+    rows.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category]));
+  const lines = [
+    'ANAND APL 2026 - Consolidated report',
+    `Total: ${s.total} | Registered: ${s.registered} | Pending: ${s.pending}`,
+    '',
+    `(List is long, so it's been downloaded as a CSV instead - attach "${csvFilename}" manually in WhatsApp.)`,
+    '',
+    'Followup-wise (Registered/Total):'
+  ];
+  buildGroupReport('followup').forEach(r => lines.push(`${r.name}: ${r.registered}/${r.total} registered`));
+  shareText(lines.join('\n'));
+}
+
+async function shareConsolidatedImage() {
+  const s = computeStats();
+  if (s.total === 0) {
+    alert('Nothing to share - no participants yet.');
+    return;
+  }
+  const btn = document.getElementById('btnShareConsolidatedImage');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Generating image...';
+  try {
+    const regRows = participants.filter(p => p.status === REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
+    const pendRows = participants.filter(p => p.status !== REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
+    const sandbox = document.createElement('div');
+    sandbox.innerHTML = `
+      <div class="list-export-card">
+        <div class="list-export-header">
+          <div class="list-export-title">ANAND APL 2026</div>
+          <div class="list-export-sub">Consolidated report</div>
+        </div>
+        <div class="list-export-status registered">REGISTERED (${regRows.length})</div>
+        <div class="list-export-rows">${buildGroupedRowsHtml(regRows, 'followup') || '<div class="list-export-empty">None</div>'}</div>
+        <div class="list-export-status pending" style="margin-top:16px;">NOT REGISTERED (${pendRows.length})</div>
+        <div class="list-export-rows">${buildGroupedRowsHtml(pendRows, 'followup') || '<div class="list-export-empty">None</div>'}</div>
+      </div>
+    `;
+    const caption = `ANAND APL 2026 - Consolidated report\nTotal: ${s.total} | Registered: ${s.registered} | Pending: ${s.pending}`;
+    await captureAndShareCard(sandbox, 'anand_apl_2026_consolidated_summary.png', 'Anand APL 2026 Consolidated', caption);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+function getGroupRows(groupKey, groupName, statusFilter) {
+  return participants
+    .filter(p => (p[groupKey] || '').trim() === groupName && (statusFilter === 'registered' ? p.status === REGISTERED : p.status !== REGISTERED))
+    .slice()
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+}
+
+function shareGroupListText(groupKey, groupName, statusFilter) {
+  const rows = getGroupRows(groupKey, groupName, statusFilter);
+  const label = groupKey === 'followup' ? 'Followup' : 'Category';
+  const statusLabel = statusFilter === 'registered' ? 'Registered' : 'Pending';
+  // If we're already sharing a single category's list, grouping by category again would be redundant.
+  const groupField = groupKey !== 'category' ? 'category' : null;
+  shareParticipantRows(
+    rows,
+    `ANAND APL 2026 - ${statusLabel} list for ${groupName} (${label})`,
+    `anand_apl_2026_${statusFilter}_${groupName.replace(/[^a-z0-9]+/gi, '_')}.csv`,
+    groupField
+  );
+}
+
+async function shareGroupListImage(groupKey, groupName, statusFilter) {
+  const rows = getGroupRows(groupKey, groupName, statusFilter);
+  if (rows.length === 0) {
+    alert('Nothing to share - this list is empty.');
+    return;
+  }
+  const label = groupKey === 'followup' ? 'Followup' : 'Category';
+  const statusLabel = statusFilter === 'registered' ? 'Registered' : 'Not Registered';
+  const statusClass = statusFilter === 'registered' ? 'registered' : 'pending';
+
+  const sandbox = document.createElement('div');
+  sandbox.innerHTML = `
+    <div class="list-export-card">
+      <div class="list-export-header">
+        <div class="list-export-title">ANAND APL 2026</div>
+        <div class="list-export-sub">${escapeHtml(groupName)}</div>
+      </div>
+      <div class="list-export-status ${statusClass}">${statusLabel.toUpperCase()} (${rows.length})</div>
+      <div class="list-export-rows">
+        ${rows.map((p, i) => `<div class="list-export-row"><span class="list-export-idx">${i + 1}.</span><span class="list-export-name">${escapeHtml(p.fullName)}</span>${p.mobile ? `<span class="list-export-mobile">${escapeHtml(p.mobile)}</span>` : ''}</div>`).join('')}
+      </div>
+    </div>
+  `;
+
+  const safeName = groupName.replace(/[^a-z0-9]+/gi, '_');
+  const fileName = `anand_apl_2026_${statusFilter}_${safeName}.png`;
+  const caption = `ANAND APL 2026 - ${statusLabel} list for ${groupName} (${label})\nTotal: ${rows.length}`;
+  await captureAndShareCard(sandbox, fileName, `${groupName} - ${statusLabel}`, caption);
+}
+
+// ---------------- Per-followup (or per-category) consolidated share: Registered + Not Registered together ----------------
+
+function shareGroupConsolidatedText(groupKey, groupName) {
+  const regRows = getGroupRows(groupKey, groupName, 'registered');
+  const pendRows = getGroupRows(groupKey, groupName, 'pending');
+  const total = regRows.length + pendRows.length;
+  if (total === 0) {
+    alert('Nothing to share - this list is empty.');
+    return;
+  }
+  const label = groupKey === 'followup' ? 'Followup' : 'Category';
+  const lines = [
+    `ANAND APL 2026 - ${groupName} (${label})`,
+    `Total: ${total} | Registered: ${regRows.length} | Pending: ${pendRows.length}`,
+    '',
+    `*REGISTERED* (${regRows.length})`,
+    ''
+  ];
+  lines.push(...buildGroupedLines(regRows, null));
+  lines.push('', `*NOT REGISTERED* (${pendRows.length})`, '');
+  lines.push(...buildGroupedLines(pendRows, null));
+  shareText(lines.join('\n'));
+}
+
+async function shareGroupConsolidatedImage(groupKey, groupName) {
+  const regRows = getGroupRows(groupKey, groupName, 'registered');
+  const pendRows = getGroupRows(groupKey, groupName, 'pending');
+  const total = regRows.length + pendRows.length;
+  if (total === 0) {
+    alert('Nothing to share - this list is empty.');
+    return;
+  }
+  const label = groupKey === 'followup' ? 'Followup' : 'Category';
+  const sandbox = document.createElement('div');
+  sandbox.innerHTML = `
+    <div class="list-export-card">
+      <div class="list-export-header">
+        <div class="list-export-title">ANAND APL 2026</div>
+        <div class="list-export-sub">${escapeHtml(groupName)} (${label})</div>
+      </div>
+      <div class="list-export-status registered">REGISTERED (${regRows.length})</div>
+      <div class="list-export-rows">${buildGroupedRowsHtml(regRows, null) || '<div class="list-export-empty">None</div>'}</div>
+      <div class="list-export-status pending" style="margin-top:16px;">NOT REGISTERED (${pendRows.length})</div>
+      <div class="list-export-rows">${buildGroupedRowsHtml(pendRows, null) || '<div class="list-export-empty">None</div>'}</div>
+    </div>
+  `;
+  const safeName = groupName.replace(/[^a-z0-9]+/gi, '_');
+  const fileName = `anand_apl_2026_consolidated_${safeName}.png`;
+  const caption = `ANAND APL 2026 - ${groupName} (${label})\nTotal: ${total} | Registered: ${regRows.length} | Pending: ${pendRows.length}`;
+  await captureAndShareCard(sandbox, fileName, `${groupName} - Consolidated`, caption);
 }
 
 function openGroupShareModal(groupKey, groupName) {
@@ -2021,6 +2194,11 @@ function openGroupShareModal(groupKey, groupName) {
   const pendingCount = getGroupRows(groupKey, groupName, 'pending').length;
   openModal(`
     <h3>Share — ${escapeHtml(groupName)}</h3>
+    <label>Consolidated - both (${registeredCount + pendingCount})</label>
+    <div class="btn-row">
+      <button class="btn small" id="shareConsolidatedText">Share as Text</button>
+      <button class="btn small whatsapp" id="shareConsolidatedImage">Share as Image</button>
+    </div>
     <label>Registered (${registeredCount})</label>
     <div class="btn-row">
       <button class="btn small" id="shareRegText">Share as Text</button>
@@ -2035,6 +2213,8 @@ function openGroupShareModal(groupKey, groupName) {
       <button class="btn" id="shareModalClose" style="width:100%;">Close</button>
     </div>
   `);
+  document.getElementById('shareConsolidatedText').addEventListener('click', () => { closeModal(); shareGroupConsolidatedText(groupKey, groupName); });
+  document.getElementById('shareConsolidatedImage').addEventListener('click', () => { closeModal(); shareGroupConsolidatedImage(groupKey, groupName); });
   document.getElementById('shareRegText').addEventListener('click', () => { closeModal(); shareGroupListText(groupKey, groupName, 'registered'); });
   document.getElementById('shareRegImage').addEventListener('click', () => { closeModal(); shareGroupListImage(groupKey, groupName, 'registered'); });
   document.getElementById('sharePendText').addEventListener('click', () => { closeModal(); shareGroupListText(groupKey, groupName, 'pending'); });
@@ -2045,16 +2225,18 @@ function openGroupShareModal(groupKey, groupName) {
 function setupShareButtons() {
   document.getElementById('btnShareRegistered').addEventListener('click', () => {
     const rows = participants.filter(p => p.status === REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
-    shareParticipantRows(rows, 'ANAND APL 2026 - Registered participants', 'anand_apl_2026_registered.csv');
+    shareParticipantRows(rows, 'ANAND APL 2026 - Registered participants', 'anand_apl_2026_registered.csv', 'followup');
   });
   document.getElementById('btnSharePending').addEventListener('click', () => {
     const rows = participants.filter(p => p.status !== REGISTERED).slice().sort((a, b) => {
       const f = a.followup.localeCompare(b.followup);
       return f !== 0 ? f : a.fullName.localeCompare(b.fullName);
     });
-    shareParticipantRows(rows, 'ANAND APL 2026 - Pending participants', 'anand_apl_2026_pending.csv');
+    shareParticipantRows(rows, 'ANAND APL 2026 - Pending participants', 'anand_apl_2026_pending.csv', 'followup');
   });
   document.getElementById('btnShareFollowupTable').addEventListener('click', shareFollowupImage);
+  document.getElementById('btnShareConsolidatedText').addEventListener('click', shareConsolidatedText);
+  document.getElementById('btnShareConsolidatedImage').addEventListener('click', shareConsolidatedImage);
 }
 
 async function init() {
