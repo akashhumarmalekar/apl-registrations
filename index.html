@@ -683,6 +683,9 @@
       <label for="searchInput">Type name to register for Anand APL 2026</label>
       <input type="text" id="searchInput" autocomplete="off" placeholder="Start typing a name...">
       <div id="suggestions"></div>
+      <label for="categoryInput" style="margin-top:12px;">Category</label>
+      <input type="text" id="categoryInput" autocomplete="off" list="categoryList" placeholder="Enter or select category">
+      <datalist id="categoryList"></datalist>
       <div class="status-msg" id="statusMsg"></div>
       <div class="btn-row">
         <button class="btn primary" id="btnRegister">Register (Enter)</button>
@@ -1245,6 +1248,14 @@ function renderAll() {
   renderCategoryReport();
   renderOverallSummary();
   renderLog();
+  populateCategoryDatalist();
+}
+
+function populateCategoryDatalist() {
+  const list = document.getElementById('categoryList');
+  if (!list) return;
+  const cats = Array.from(new Set(participants.map(p => (p.category || '').trim()).filter(Boolean))).sort();
+  list.innerHTML = cats.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
 }
 
 function formatTimestamp(d) {
@@ -1520,6 +1531,8 @@ function renderSuggestions(query) {
     highlightedIndex = exactIdx;
   }
 
+  syncCategoryFieldToHighlighted();
+
   box.innerHTML = matches.slice(0, 50).map((p, i) =>
     `<div class="suggestion-item${i === highlightedIndex ? ' highlighted' : ''}" data-index="${i}">
       <span>${escapeHtml(p.fullName)}</span>
@@ -1548,6 +1561,20 @@ function updateHighlight() {
     const idx = parseInt(el.getAttribute('data-index'), 10);
     el.classList.toggle('highlighted', idx === highlightedIndex);
   });
+  syncCategoryFieldToHighlighted();
+}
+
+// Keeps the Category box showing the highlighted participant's existing
+// category (if any) so the user can see it and optionally overwrite it.
+// Only auto-fills when the user hasn't already typed a custom value for
+// this particular name lookup.
+let categoryFieldTouched = false;
+function syncCategoryFieldToHighlighted() {
+  const catInput = document.getElementById('categoryInput');
+  if (!catInput || categoryFieldTouched) return;
+  if (highlightedIndex >= 0 && currentSuggestions[highlightedIndex]) {
+    catInput.value = currentSuggestions[highlightedIndex].category || '';
+  }
 }
 
 function attemptRegister() {
@@ -1568,8 +1595,16 @@ function attemptRegister() {
     return;
   }
 
+  const catInput = document.getElementById('categoryInput');
+  const enteredCategory = catInput ? catInput.value.trim() : '';
+  if (enteredCategory) {
+    chosen.category = enteredCategory;
+  }
+
   registerParticipant(chosen);
   input.value = '';
+  if (catInput) catInput.value = '';
+  categoryFieldTouched = false;
   document.getElementById('suggestions').innerHTML = '';
   document.getElementById('suggestions').classList.remove('show');
   currentSuggestions = [];
@@ -1579,7 +1614,14 @@ function attemptRegister() {
 
 function setupSearch() {
   const input = document.getElementById('searchInput');
-  input.addEventListener('input', () => renderSuggestions(input.value));
+  input.addEventListener('input', () => {
+    categoryFieldTouched = false;
+    renderSuggestions(input.value);
+  });
+  const catInput = document.getElementById('categoryInput');
+  if (catInput) {
+    catInput.addEventListener('input', () => { categoryFieldTouched = true; });
+  }
   input.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -1596,6 +1638,8 @@ function setupSearch() {
       attemptRegister();
     } else if (e.key === 'Escape') {
       input.value = '';
+      if (catInput) catInput.value = '';
+      categoryFieldTouched = false;
       document.getElementById('suggestions').innerHTML = '';
       document.getElementById('suggestions').classList.remove('show');
       currentSuggestions = [];
