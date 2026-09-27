@@ -1808,12 +1808,23 @@ function completeRegistration() {
     showStatus('Pick a name from the list first.', 'err');
     return;
   }
+  // Always mutate the live object from the participants array (looked up
+  // fresh by id) rather than the possibly-detached object captured when
+  // the name was picked — keeps every count/table (stats, Overall summary,
+  // Category report, Followup summary, Registered/Pending lists, Log) in
+  // sync with a single source of truth instead of drifting out of step.
+  const participant = participants.find(p => p.id === pendingParticipant.id);
+  if (!participant) {
+    showStatus('That participant is no longer in the list — refresh and try again.', 'err');
+    resetRegisterForm();
+    return;
+  }
   const catInput = document.getElementById('categoryInput');
   const enteredCategory = catInput ? catInput.value.trim() : '';
   if (enteredCategory) {
-    pendingParticipant.category = enteredCategory;
+    participant.category = enteredCategory;
   }
-  registerParticipant(pendingParticipant);
+  registerParticipant(participant);
   resetRegisterForm();
 }
 
