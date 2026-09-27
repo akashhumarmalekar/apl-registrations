@@ -200,6 +200,16 @@
     background: #fff;
   }
   #suggestions.show { display: block; }
+  #categorySuggestions {
+    margin-top: 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+    background: #fff;
+  }
+  #categorySuggestions.show { display: block; }
   .suggestion-item {
     padding: 10px 14px;
     cursor: pointer;
@@ -687,7 +697,8 @@
         <label for="categoryInput" style="margin:0; flex:1;">Category</label>
         <button type="button" class="btn small" id="btnManageCategories" style="margin-left:auto;">Add/edit categories</button>
       </div>
-      <input type="text" id="categoryInput" autocomplete="off" list="categoryDatalist" placeholder="Enter or select category">
+      <input type="text" id="categoryInput" autocomplete="off" placeholder="Click to see all categories, or type to filter">
+      <div id="categorySuggestions"></div>
       <datalist id="categoryDatalist"></datalist>
       <div class="status-msg" id="statusMsg"></div>
       <div class="btn-row">
@@ -695,7 +706,7 @@
         <button class="btn danger" id="btnUndo">Undo last registration</button>
         <button class="btn" id="btnRefresh">Refresh</button>
       </div>
-      <div class="hint">Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> to move between matches, <kbd>Enter</kbd> to register the highlighted one. Only participants who are not yet registered appear here.</div>
+      <div class="hint">Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> to move between name matches. <kbd>Enter</kbd> first picks the highlighted name and moves you to Category; press <kbd>Enter</kbd> again (or click Register) to confirm. Only participants who are not yet registered appear here.</div>
     </div>
 
     <div class="toolbar" style="margin-top:24px;">
@@ -985,6 +996,7 @@ async function loadState() {
     if (snap.metadata.hasPendingWrites) return; // this is the echo of our own write, ignore
     if (!snap.exists) return;
     applyRemoteState(snap.data());
+    pendingParticipant = null;
     renderAll();
     refreshSuggestions();
     clearConnectionBanner();
@@ -1658,8 +1670,6 @@ function renderSuggestions(query) {
     highlightedIndex = exactIdx;
   }
 
-  syncCategoryFieldToHighlighted();
-
   box.innerHTML = matches.slice(0, 50).map((p, i) =>
     `<div class="suggestion-item${i === highlightedIndex ? ' highlighted' : ''}" data-index="${i}">
       <span>${escapeHtml(p.fullName)}</span>
@@ -1681,22 +1691,37 @@ function renderSuggestions(query) {
   });
 }
 
-// Clicking/tapping a suggestion picks that participant and fills the
-// Category box with their existing category, but does NOT register them
-// yet — that gives the user a chance to set/change the category first.
-// Press Enter or the Register button to actually complete registration.
+// The participant currently picked from the name box but not yet
+// registered — set once a name is chosen, cleared once registration
+// completes (or the search is reset). Registering always goes through
+// this "selected, not yet confirmed" state so there's always a chance
+// to set the category first.
+let pendingParticipant = null;
+
+// Picking a name (via click, or Enter while the name suggestions are
+// open) fills the Category box with that participant's existing
+// category, but does NOT register them yet — that gives the user a
+// chance to set/change the category first. Press Enter again or the
+// Register button to actually complete registration.
 function selectSuggestion(idx) {
   const input = document.getElementById('searchInput');
   const chosen = currentSuggestions[idx];
   if (!chosen) return;
+  pendingParticipant = chosen;
   input.value = chosen.fullName;
   highlightedIndex = idx;
   categoryFieldTouched = false;
-  syncCategoryFieldToHighlighted();
   document.getElementById('suggestions').innerHTML = '';
   document.getElementById('suggestions').classList.remove('show');
   const catInput = document.getElementById('categoryInput');
-  if (catInput) catInput.focus(); else input.focus();
+  if (catInput) {
+    catInput.value = chosen.category || '';
+    catInput.focus();
+    renderCategorySuggestions(catInput.value, { full: true });
+  } else {
+    input.focus();
+  }
+  showStatus(chosen.fullName + ' selected — pick a category, then press Enter or Register to confirm.', 'info');
 }
 
 function updateHighlight() {
@@ -1705,70 +1730,181 @@ function updateHighlight() {
     const idx = parseInt(el.getAttribute('data-index'), 10);
     el.classList.toggle('highlighted', idx === highlightedIndex);
   });
-  syncCategoryFieldToHighlighted();
 }
 
-// Keeps the Category box showing the highlighted participant's existing
-// category (if any) so the user can see it and optionally overwrite it.
-// Only auto-fills when the user hasn't already typed a custom value for
-// this particular name lookup.
 let categoryFieldTouched = false;
-function syncCategoryFieldToHighlighted() {
-  const catInput = document.getElementById('categoryInput');
-  if (!catInput || categoryFieldTouched) return;
-  if (highlightedIndex >= 0 && currentSuggestions[highlightedIndex]) {
-    catInput.value = currentSuggestions[highlightedIndex].category || '';
+
+// ---- Category box: custom dropdown (shows every category, not just
+// ones that happen to contain whatever text is currently typed — that
+// substring-only filtering is a limitation of native <input list>). ----
+let currentCategorySuggestions = [];
+let categoryHighlightedIndex = -1;
+
+function renderCategorySuggestions(query, opts) {
+  const box = document.getElementById('categorySuggestions');
+  if (!box) return;
+  const all = getAllCategoryNames();
+  const q = (query || '').trim().toLowerCase();
+  const showFull = (opts && opts.full) || !q;
+  const matches = showFull ? all : all.filter(c => c.toLowerCase().includes(q));
+  currentCategorySuggestions = matches;
+  categoryHighlightedIndex = matches.findIndex(c => c.toLowerCase() === q);
+
+  if (matches.length === 0) {
+    box.innerHTML = '';
+    box.classList.remove('show');
+    return;
   }
+
+  box.innerHTML = matches.map((c, i) =>
+    `<div class="suggestion-item${i === categoryHighlightedIndex ? ' highlighted' : ''}" data-index="${i}">
+      <span>${escapeHtml(c)}</span>
+    </div>`
+  ).join('');
+  box.classList.add('show');
+
+  box.querySelectorAll('.suggestion-item').forEach(el => {
+    el.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const idx = parseInt(el.getAttribute('data-index'), 10);
+      pickCategorySuggestion(idx);
+    });
+    el.addEventListener('mouseenter', () => {
+      categoryHighlightedIndex = parseInt(el.getAttribute('data-index'), 10);
+      updateCategoryHighlight();
+    });
+  });
 }
 
-function attemptRegister() {
-  const input = document.getElementById('searchInput');
-  const typed = input.value.trim();
-  if (!typed) return;
+function updateCategoryHighlight() {
+  const box = document.getElementById('categorySuggestions');
+  box.querySelectorAll('.suggestion-item').forEach(el => {
+    const idx = parseInt(el.getAttribute('data-index'), 10);
+    el.classList.toggle('highlighted', idx === categoryHighlightedIndex);
+  });
+}
 
-  let chosen = null;
-  if (highlightedIndex >= 0 && currentSuggestions[highlightedIndex]) {
-    chosen = currentSuggestions[highlightedIndex];
-  } else if (currentSuggestions.length === 1) {
-    chosen = currentSuggestions[0];
-  } else if (currentSuggestions.length === 0) {
-    showStatus('No matching pending participant found.', 'err');
-    return;
-  } else {
-    showStatus('Multiple matches - use \u2191/\u2193 and Enter to pick one.', 'warn');
+function pickCategorySuggestion(idx) {
+  const catInput = document.getElementById('categoryInput');
+  const chosen = currentCategorySuggestions[idx];
+  if (!catInput || chosen == null) return;
+  catInput.value = chosen;
+  categoryFieldTouched = true;
+  closeCategorySuggestions();
+  catInput.focus();
+}
+
+function closeCategorySuggestions() {
+  const box = document.getElementById('categorySuggestions');
+  if (!box) return;
+  box.innerHTML = '';
+  box.classList.remove('show');
+  currentCategorySuggestions = [];
+  categoryHighlightedIndex = -1;
+}
+
+function completeRegistration() {
+  if (!pendingParticipant) {
+    showStatus('Pick a name from the list first.', 'err');
     return;
   }
-
   const catInput = document.getElementById('categoryInput');
   const enteredCategory = catInput ? catInput.value.trim() : '';
   if (enteredCategory) {
-    chosen.category = enteredCategory;
+    pendingParticipant.category = enteredCategory;
   }
+  registerParticipant(pendingParticipant);
+  resetRegisterForm();
+}
 
-  registerParticipant(chosen);
+function resetRegisterForm() {
+  const input = document.getElementById('searchInput');
+  const catInput = document.getElementById('categoryInput');
   input.value = '';
   if (catInput) catInput.value = '';
   categoryFieldTouched = false;
+  pendingParticipant = null;
   document.getElementById('suggestions').innerHTML = '';
   document.getElementById('suggestions').classList.remove('show');
   currentSuggestions = [];
   highlightedIndex = -1;
+  closeCategorySuggestions();
   input.focus();
+}
+
+// Enter in the name box: if suggestions are still open, this just picks
+// the highlighted name (moving focus to Category) — it never registers
+// directly. Once a name is picked (suggestions closed), Enter here
+// completes the registration.
+function handleEnterOnSearch() {
+  const box = document.getElementById('suggestions');
+  const isOpen = box.classList.contains('show');
+  if (!isOpen) {
+    completeRegistration();
+    return;
+  }
+  if (highlightedIndex >= 0 && currentSuggestions[highlightedIndex]) {
+    selectSuggestion(highlightedIndex);
+  } else if (currentSuggestions.length === 1) {
+    selectSuggestion(0);
+  } else if (currentSuggestions.length === 0) {
+    showStatus('No matching pending participant found.', 'err');
+  } else {
+    showStatus('Multiple matches - use \u2191/\u2193 and Enter to pick one.', 'warn');
+  }
+}
+
+// The Register button follows the same rule: it picks a still-open name
+// match first, and only actually registers once a name has been picked.
+function handleRegisterButtonClick() {
+  if (pendingParticipant) {
+    completeRegistration();
+    return;
+  }
+  handleEnterOnSearch();
 }
 
 function setupSearch() {
   const input = document.getElementById('searchInput');
   input.addEventListener('input', () => {
     categoryFieldTouched = false;
+    pendingParticipant = null;
     renderSuggestions(input.value);
   });
   const catInput = document.getElementById('categoryInput');
   if (catInput) {
-    catInput.addEventListener('input', () => { categoryFieldTouched = true; });
+    catInput.addEventListener('focus', () => {
+      renderCategorySuggestions(catInput.value, { full: true });
+    });
+    catInput.addEventListener('input', () => {
+      categoryFieldTouched = true;
+      renderCategorySuggestions(catInput.value);
+    });
+    catInput.addEventListener('blur', () => {
+      // Small delay so a click on a suggestion registers before we close it.
+      setTimeout(closeCategorySuggestions, 150);
+    });
     catInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
+      const box = document.getElementById('categorySuggestions');
+      const isOpen = box.classList.contains('show');
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
-        attemptRegister();
+        if (!isOpen || currentCategorySuggestions.length === 0) return;
+        categoryHighlightedIndex = (categoryHighlightedIndex + 1) % currentCategorySuggestions.length;
+        updateCategoryHighlight();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!isOpen || currentCategorySuggestions.length === 0) return;
+        categoryHighlightedIndex = (categoryHighlightedIndex - 1 + currentCategorySuggestions.length) % currentCategorySuggestions.length;
+        updateCategoryHighlight();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (isOpen && categoryHighlightedIndex >= 0 && currentCategorySuggestions[categoryHighlightedIndex] != null) {
+          pickCategorySuggestion(categoryHighlightedIndex);
+        }
+        completeRegistration();
+      } else if (e.key === 'Escape') {
+        closeCategorySuggestions();
       }
     });
   }
@@ -1785,18 +1921,12 @@ function setupSearch() {
       updateHighlight();
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      attemptRegister();
+      handleEnterOnSearch();
     } else if (e.key === 'Escape') {
-      input.value = '';
-      if (catInput) catInput.value = '';
-      categoryFieldTouched = false;
-      document.getElementById('suggestions').innerHTML = '';
-      document.getElementById('suggestions').classList.remove('show');
-      currentSuggestions = [];
-      highlightedIndex = -1;
+      resetRegisterForm();
     }
   });
-  document.getElementById('btnRegister').addEventListener('click', attemptRegister);
+  document.getElementById('btnRegister').addEventListener('click', handleRegisterButtonClick);
   document.getElementById('btnUndo').addEventListener('click', undoLastRegistration);
   document.getElementById('btnRefresh').addEventListener('click', () => {
     renderAll();
