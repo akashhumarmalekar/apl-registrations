@@ -1545,14 +1545,31 @@ function renderSuggestions(query) {
     el.addEventListener('mousedown', (e) => {
       e.preventDefault();
       const idx = parseInt(el.getAttribute('data-index'), 10);
-      highlightedIndex = idx;
-      attemptRegister();
+      selectSuggestion(idx);
     });
     el.addEventListener('mouseenter', () => {
       highlightedIndex = parseInt(el.getAttribute('data-index'), 10);
       updateHighlight();
     });
   });
+}
+
+// Clicking/tapping a suggestion picks that participant and fills the
+// Category box with their existing category, but does NOT register them
+// yet — that gives the user a chance to set/change the category first.
+// Press Enter or the Register button to actually complete registration.
+function selectSuggestion(idx) {
+  const input = document.getElementById('searchInput');
+  const chosen = currentSuggestions[idx];
+  if (!chosen) return;
+  input.value = chosen.fullName;
+  highlightedIndex = idx;
+  categoryFieldTouched = false;
+  syncCategoryFieldToHighlighted();
+  document.getElementById('suggestions').innerHTML = '';
+  document.getElementById('suggestions').classList.remove('show');
+  const catInput = document.getElementById('categoryInput');
+  if (catInput) catInput.focus(); else input.focus();
 }
 
 function updateHighlight() {
@@ -1621,6 +1638,12 @@ function setupSearch() {
   const catInput = document.getElementById('categoryInput');
   if (catInput) {
     catInput.addEventListener('input', () => { categoryFieldTouched = true; });
+    catInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        attemptRegister();
+      }
+    });
   }
   input.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown') {
