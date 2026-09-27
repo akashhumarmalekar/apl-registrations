@@ -683,9 +683,12 @@
       <label for="searchInput">Type name to register for Anand APL 2026</label>
       <input type="text" id="searchInput" autocomplete="off" placeholder="Start typing a name...">
       <div id="suggestions"></div>
-      <label for="categoryInput" style="margin-top:12px;">Category</label>
-      <input type="text" id="categoryInput" autocomplete="off" list="categoryList" placeholder="Enter or select category">
-      <datalist id="categoryList"></datalist>
+      <div class="btn-row" style="margin-top:12px; margin-bottom:0;">
+        <label for="categoryInput" style="margin:0; flex:1;">Category</label>
+        <button type="button" class="btn small" id="btnManageCategories" style="margin-left:auto;">Add/edit categories</button>
+      </div>
+      <input type="text" id="categoryInput" autocomplete="off" list="categoryDatalist" placeholder="Enter or select category">
+      <datalist id="categoryDatalist"></datalist>
       <div class="status-msg" id="statusMsg"></div>
       <div class="btn-row">
         <button class="btn primary" id="btnRegister">Register (Enter)</button>
@@ -866,6 +869,7 @@ const NOT_REGISTERED = "Not Registered";
 
 let participants = [];
 let log = [];
+let categoryMaster = [];
 let lastRegisteredId = null;
 let highlightedIndex = -1;
 let currentSuggestions = [];
@@ -913,6 +917,11 @@ function applyRemoteState(data) {
   log = Array.isArray(data.log) ? data.log : [];
   lastRegisteredId = data.lastRegisteredId != null ? data.lastRegisteredId : null;
   if (typeof data.targetCount === 'number' && data.targetCount >= 0) targetCount = data.targetCount;
+  categoryMaster = Array.isArray(data.categoryMaster) ? data.categoryMaster : deriveCategoriesFromParticipants();
+}
+
+function deriveCategoriesFromParticipants() {
+  return Array.from(new Set(participants.map(p => (p.category || '').trim()).filter(Boolean))).sort();
 }
 
 async function loadState() {
@@ -935,6 +944,7 @@ async function loadState() {
     showConnectionBanner('Firebase is not configured yet — running in local-only demo mode. Edit FIREBASE_CONFIG in the HTML file to enable multi-device sync.', 'warn');
     participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
     log = [];
+    categoryMaster = deriveCategoriesFromParticipants();
     return;
   }
 
@@ -948,6 +958,7 @@ async function loadState() {
     showConnectionBanner('Could not connect to Firebase — check FIREBASE_CONFIG. Running in local-only demo mode for now.', 'err');
     participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
     log = [];
+    categoryMaster = deriveCategoriesFromParticipants();
     return;
   }
 
@@ -959,13 +970,15 @@ async function loadState() {
     } else {
       participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
       log = [];
-      await docRef.set({ participants, log, lastRegisteredId: null, targetCount, updatedAt: Date.now() });
+      categoryMaster = deriveCategoriesFromParticipants();
+      await docRef.set({ participants, log, lastRegisteredId: null, targetCount, categoryMaster, updatedAt: Date.now() });
     }
   } catch (e) {
     console.error('Initial Firestore load failed', e);
     showConnectionBanner('Could not reach Firestore — check your connection. Showing sample data for now.', 'err');
     participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
     log = [];
+    categoryMaster = deriveCategoriesFromParticipants();
   }
 
   firestoreUnsubscribe = docRef.onSnapshot(snap => {
@@ -991,7 +1004,7 @@ async function saveState() {
   if (!firebaseReady || !db) { flashSaveIndicator(); return; }
   try {
     const docRef = db.collection(FIRESTORE_COLLECTION).doc(FIRESTORE_DOC);
-    await docRef.set({ participants, log, lastRegisteredId, targetCount, updatedAt: Date.now() });
+    await docRef.set({ participants, log, lastRegisteredId, targetCount, categoryMaster, updatedAt: Date.now() });
     clearConnectionBanner();
     flashSaveIndicator();
   } catch (e) {
@@ -1251,10 +1264,17 @@ function renderAll() {
   populateCategoryDatalist();
 }
 
+function getAllCategoryNames() {
+  const fromMaster = Array.isArray(categoryMaster) ? categoryMaster : [];
+  const fromParticipants = participants.map(p => (p.category || '').trim()).filter(Boolean);
+  return Array.from(new Set([...fromMaster, ...fromParticipants].map(c => c.trim()).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b));
+}
+
 function populateCategoryDatalist() {
-  const list = document.getElementById('categoryList');
+  const list = document.getElementById('categoryDatalist');
   if (!list) return;
-  const cats = Array.from(new Set(participants.map(p => (p.category || '').trim()).filter(Boolean))).sort();
+  const cats = getAllCategoryNames();
   list.innerHTML = cats.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
 }
 
@@ -1356,6 +1376,113 @@ function setupModal() {
   });
 }
 
+// ---------------- Manage categories ----------------
+
+function openManageCategoriesModal() {
+  renderManageCategoriesModal();
+}
+
+function renderManageCategoriesModal() {
+  const cats = getAllCategoryNames();
+  const rowsHtml = cats.length
+    ? cats.map(c => {
+        const count = participants.filter(p => (p.category || '').trim() === c).length;
+        const safe = escapeHtml(c);
+        return `
+          <div class="cat-row" data-cat="${safe}" style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+            <input type="text" class="cat-rename-input" value="${safe}" style="flex:1; margin:0;">
+            <span style="font-size:12px; color:var(--muted); white-space:nowrap;">${count} used</span>
+            <button type="button" class="btn small danger cat-delete-btn" data-cat="${safe}">Delete</button>
+          </div>`;
+      }).join('')
+    : `<p class="desc" style="margin:0 0 12px;">No categories yet — add one below.</p>`;
+
+  openModal(`
+    <h3>Add / edit categories</h3>
+    <p class="desc" style="margin-top:0;">Rename a category (updates every participant using it) or delete one. Deleting clears that category from any participant who has it.</p>
+    <div id="catRowsWrap">${rowsHtml}</div>
+    <label for="newCategoryInput">Add new category</label>
+    <div class="btn-row" style="margin-top:4px;">
+      <input type="text" id="newCategoryInput" placeholder="e.g. Yuvak" style="flex:1; margin:0;">
+      <button type="button" class="btn primary" id="catAddBtn">Add</button>
+    </div>
+    <div class="modal-warning" id="catWarning"></div>
+    <div class="btn-row">
+      <button class="btn" id="catCloseBtn">Close</button>
+    </div>
+  `);
+
+  document.getElementById('catCloseBtn').addEventListener('click', closeModal);
+
+  document.getElementById('catAddBtn').addEventListener('click', () => {
+    const input = document.getElementById('newCategoryInput');
+    const name = input.value.trim();
+    const warnEl = document.getElementById('catWarning');
+    if (!name) { warnEl.textContent = 'Enter a category name.'; return; }
+    if (getAllCategoryNames().some(c => c.toLowerCase() === name.toLowerCase())) {
+      warnEl.textContent = 'That category already exists.';
+      return;
+    }
+    categoryMaster = Array.from(new Set([...(categoryMaster || []), name]));
+    scheduleSave();
+    populateCategoryDatalist();
+    renderManageCategoriesModal();
+  });
+
+  document.getElementById('newCategoryInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('catAddBtn').click(); }
+  });
+
+  document.querySelectorAll('.cat-rename-input').forEach(input => {
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    });
+    input.addEventListener('blur', () => {
+      const oldName = input.closest('.cat-row').getAttribute('data-cat');
+      const newName = input.value.trim();
+      const warnEl = document.getElementById('catWarning');
+      if (!newName || newName === oldName) { input.value = oldName; return; }
+      if (getAllCategoryNames().some(c => c.toLowerCase() === newName.toLowerCase() && c !== oldName)) {
+        warnEl.textContent = `"${newName}" already exists — pick a different name or delete the duplicate first.`;
+        input.value = oldName;
+        return;
+      }
+      renameCategory(oldName, newName);
+      renderManageCategoriesModal();
+    });
+  });
+
+  document.querySelectorAll('.cat-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.getAttribute('data-cat');
+      const count = participants.filter(p => (p.category || '').trim() === name).length;
+      const msg = count > 0
+        ? `"${name}" is used by ${count} participant(s). Deleting it will clear their category. Continue?`
+        : `Delete "${name}"?`;
+      if (!confirm(msg)) return;
+      deleteCategory(name);
+      renderManageCategoriesModal();
+    });
+  });
+}
+
+function renameCategory(oldName, newName) {
+  categoryMaster = (categoryMaster || []).map(c => (c === oldName ? newName : c));
+  if (!categoryMaster.includes(newName)) categoryMaster.push(newName);
+  participants.forEach(p => { if ((p.category || '').trim() === oldName) p.category = newName; });
+  renderAll();
+  refreshSuggestions();
+  scheduleSave();
+}
+
+function deleteCategory(name) {
+  categoryMaster = (categoryMaster || []).filter(c => c !== name);
+  participants.forEach(p => { if ((p.category || '').trim() === name) p.category = ''; });
+  renderAll();
+  refreshSuggestions();
+  scheduleSave();
+}
+
 function findDuplicateMobile(mobile, excludeId) {
   const m = (mobile || '').trim();
   if (!m) return null;
@@ -1374,7 +1501,7 @@ function openEditModal(id) {
     <label for="editMobile">Mobile</label>
     <input id="editMobile" value="${escapeHtml(p.mobile)}">
     <label for="editCategory">Category</label>
-    <input id="editCategory" value="${escapeHtml(p.category)}">
+    <input id="editCategory" value="${escapeHtml(p.category)}" list="categoryDatalist">
     <label for="editStatus">Status</label>
     <select id="editStatus">
       <option value="${REGISTERED}" ${p.status === REGISTERED ? 'selected' : ''}>Registered</option>
@@ -1676,6 +1803,8 @@ function setupSearch() {
     refreshSuggestions();
     input.focus();
   });
+  const manageBtn = document.getElementById('btnManageCategories');
+  if (manageBtn) manageBtn.addEventListener('click', openManageCategoriesModal);
 }
 
 function setupTargetEditor() {
@@ -1830,6 +1959,7 @@ function setupDataTab() {
       participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
       log = [];
       lastRegisteredId = null;
+      categoryMaster = deriveCategoriesFromParticipants();
       renderAll();
       refreshSuggestions();
       scheduleSave();
