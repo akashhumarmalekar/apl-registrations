@@ -1304,7 +1304,7 @@ function renderPendingList() {
 function buildGroupReport(groupKey) {
   const map = new Map();
   participants.forEach(p => {
-    const key = (p[groupKey] || '(blank)').trim() || '(blank)';
+    const key = (p[groupKey] || '').trim() || (groupKey === 'category' ? 'Not Registered' : '(blank)');
     if (!map.has(key)) map.set(key, { total: 0, registered: 0 });
     const entry = map.get(key);
     entry.total += 1;
@@ -1331,7 +1331,7 @@ function buildStatusCategorySummaryForRows(rows) {
   const notRegistered = total - registered;
   const catMap = new Map();
   rows.forEach(p => {
-    const key = (p.category || '(blank)').trim() || '(blank)';
+    const key = (p.category || '').trim() || 'Not Registered';
     catMap.set(key, (catMap.get(key) || 0) + 1);
   });
   const categoryRows = Array.from(catMap.entries())
