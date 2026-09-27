@@ -892,6 +892,23 @@ let db = null;
 let firestoreUnsubscribe = null;
 let firebaseReady = false;
 
+// ---------------- Dirty-change tracking (see saveState/applyRemoteState) ----------------
+// We never blindly overwrite the whole Firestore document with our local copy any more.
+// Instead we track exactly what this tab changed, and at save time we re-fetch the latest
+// remote data and patch only those changed pieces on top of it. This prevents one tab with
+// a stale local copy (e.g. it missed someone else's edit) from silently reverting that
+// other edit just because it happened to save something unrelated afterwards.
+let dirtyParticipantIds = new Set();
+let participantsFullReplace = false; // true only for explicit "replace all" / "reset" actions
+let categoryMasterDirty = false;
+let targetCountDirty = false;
+let lastRegisteredIdDirty = false;
+let pendingLogOps = []; // {type:'push', entry} | {type:'pop'} | {type:'replace', value:[...]}
+
+function markParticipantDirty(id) {
+  if (id != null) dirtyParticipantIds.add(id);
+}
+
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -924,11 +941,39 @@ function clearConnectionBanner() {
 }
 
 function applyRemoteState(data) {
-  participants = Array.isArray(data.participants) ? data.participants : [];
-  log = Array.isArray(data.log) ? data.log : [];
-  lastRegisteredId = data.lastRegisteredId != null ? data.lastRegisteredId : null;
-  if (typeof data.targetCount === 'number' && data.targetCount >= 0) targetCount = data.targetCount;
-  categoryMaster = Array.isArray(data.categoryMaster) ? data.categoryMaster : deriveCategoriesFromParticipants();
+  const remoteParticipants = Array.isArray(data.participants) ? data.participants : [];
+  if (participantsFullReplace || dirtyParticipantIds.size === 0) {
+    participants = remoteParticipants;
+  } else {
+    // Keep this tab's not-yet-saved edits on top of the incoming remote data instead of
+    // letting a remote update wipe out local changes we haven't persisted yet.
+    const map = new Map(remoteParticipants.map(p => [p.id, p]));
+    dirtyParticipantIds.forEach(id => {
+      const local = participants.find(p => p.id === id);
+      if (local) map.set(id, local);
+    });
+    participants = Array.from(map.values());
+  }
+
+  let newLog = Array.isArray(data.log) ? data.log.slice() : [];
+  pendingLogOps.forEach(op => {
+    if (op.type === 'push') newLog.push(op.entry);
+    else if (op.type === 'pop') newLog.pop();
+    else if (op.type === 'replace') newLog = op.value.slice();
+  });
+  log = newLog;
+
+  lastRegisteredId = lastRegisteredIdDirty
+    ? lastRegisteredId
+    : (data.lastRegisteredId != null ? data.lastRegisteredId : null);
+
+  if (!targetCountDirty && typeof data.targetCount === 'number' && data.targetCount >= 0) {
+    targetCount = data.targetCount;
+  }
+
+  categoryMaster = categoryMasterDirty
+    ? categoryMaster
+    : (Array.isArray(data.categoryMaster) ? data.categoryMaster : deriveCategoriesFromParticipants());
 }
 
 function deriveCategoriesFromParticipants() {
@@ -1008,20 +1053,94 @@ async function loadState() {
 
 
 let saveTimer = null;
+let saveInFlight = false;
+let saveQueued = false;
 function scheduleSave() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveState, 150);
+  saveTimer = setTimeout(runScheduledSave, 150);
 }
+function runScheduledSave() {
+  if (saveInFlight) { saveQueued = true; return; }
+  saveInFlight = true;
+  saveState().finally(() => {
+    saveInFlight = false;
+    if (saveQueued) { saveQueued = false; scheduleSave(); }
+  });
+}
+
+// Saves only what THIS tab actually changed, merged on top of the latest remote data,
+// instead of overwriting the whole document with this tab's (possibly stale) local copy.
+// This is what prevents a delete/rename/edit made on one device from being silently
+// resurrected by an unrelated save from another tab that still had the old data in memory.
 async function saveState() {
   if (!firebaseReady || !db) { flashSaveIndicator(); return; }
+
+  const idsToWrite = new Set(dirtyParticipantIds);
+  const doFullReplace = participantsFullReplace;
+  const localParticipantsSnapshot = participants.map(p => ({ ...p }));
+  const writeCategoryMaster = categoryMasterDirty ? (categoryMaster || []).slice() : null;
+  const writeTargetCount = targetCountDirty ? targetCount : null;
+  const writeLastRegisteredId = lastRegisteredIdDirty ? lastRegisteredId : undefined;
+  const logOps = pendingLogOps.slice();
+
+  if (idsToWrite.size === 0 && !doFullReplace && !writeCategoryMaster && writeTargetCount === null
+      && writeLastRegisteredId === undefined && logOps.length === 0) {
+    return; // nothing dirty, nothing to do
+  }
+
+  // Optimistically clear the flags for what we're about to write, so anything changed
+  // during the network round trip below gets picked up by the *next* save instead of
+  // being lost or re-sent twice.
+  idsToWrite.forEach(id => dirtyParticipantIds.delete(id));
+  if (doFullReplace) participantsFullReplace = false;
+  if (writeCategoryMaster) categoryMasterDirty = false;
+  if (writeTargetCount !== null) targetCountDirty = false;
+  if (writeLastRegisteredId !== undefined) lastRegisteredIdDirty = false;
+  pendingLogOps = pendingLogOps.slice(logOps.length);
+
   try {
     const docRef = db.collection(FIRESTORE_COLLECTION).doc(FIRESTORE_DOC);
-    await docRef.set({ participants, log, lastRegisteredId, targetCount, categoryMaster, updatedAt: Date.now() });
+    const snap = await docRef.get();
+    const remote = snap.exists ? (snap.data() || {}) : {};
+    const remoteParticipants = Array.isArray(remote.participants) ? remote.participants : [];
+
+    let finalParticipants;
+    if (doFullReplace) {
+      finalParticipants = localParticipantsSnapshot;
+    } else {
+      const map = new Map(remoteParticipants.map(p => [p.id, p]));
+      idsToWrite.forEach(id => {
+        const local = localParticipantsSnapshot.find(p => p.id === id);
+        if (local) map.set(id, local);
+      });
+      finalParticipants = Array.from(map.values());
+    }
+
+    let finalLog = Array.isArray(remote.log) ? remote.log.slice() : [];
+    logOps.forEach(op => {
+      if (op.type === 'push') finalLog.push(op.entry);
+      else if (op.type === 'pop') finalLog.pop();
+      else if (op.type === 'replace') finalLog = op.value.slice();
+    });
+
+    const update = { participants: finalParticipants, log: finalLog, updatedAt: Date.now() };
+    if (writeCategoryMaster) update.categoryMaster = writeCategoryMaster;
+    if (writeTargetCount !== null) update.targetCount = writeTargetCount;
+    if (writeLastRegisteredId !== undefined) update.lastRegisteredId = writeLastRegisteredId;
+
+    await docRef.set(update, { merge: true });
     clearConnectionBanner();
     flashSaveIndicator();
   } catch (e) {
     console.error('Save failed', e);
     showConnectionBanner('Could not save — check your connection. Your last change is kept locally and will retry.', 'err');
+    // Put the flags back so the next save retries exactly what we failed to write.
+    idsToWrite.forEach(id => dirtyParticipantIds.add(id));
+    if (doFullReplace) participantsFullReplace = true;
+    if (writeCategoryMaster) categoryMasterDirty = true;
+    if (writeTargetCount !== null) targetCountDirty = true;
+    if (writeLastRegisteredId !== undefined) lastRegisteredIdDirty = true;
+    pendingLogOps = [...logOps, ...pendingLogOps];
   }
 }
 function flashSaveIndicator() {
@@ -1075,6 +1194,7 @@ function renderTargetProgress() {
 function setTarget(newTarget) {
   const n = Math.max(0, Math.round(newTarget));
   targetCount = n;
+  targetCountDirty = true;
   try { localStorage.setItem('anandAplTarget', String(n)); } catch (e) { /* ignore */ }
   renderTargetProgress();
   scheduleSave();
@@ -1322,7 +1442,10 @@ function registerParticipant(participant) {
     newStatus: REGISTERED
   };
   log.push(entry);
+  pendingLogOps.push({ type: 'push', entry });
   lastRegisteredId = participant.id;
+  lastRegisteredIdDirty = true;
+  markParticipantDirty(participant.id);
 
   showStatus(participant.fullName + ' - Registered Successfully', 'ok');
   renderAll();
@@ -1341,9 +1464,11 @@ function undoLastRegistration() {
     return;
   }
   participant.status = NOT_REGISTERED;
-  if (log.length > 0) log.pop();
+  if (log.length > 0) { log.pop(); pendingLogOps.push({ type: 'pop' }); }
   showStatus(participant.fullName + ' - registration undone', 'info');
   lastRegisteredId = null;
+  lastRegisteredIdDirty = true;
+  markParticipantDirty(participant.id);
   renderAll();
   refreshSuggestions();
   scheduleSave();
@@ -1355,7 +1480,7 @@ function cancelRegistration(id) {
   if (!confirm(`Cancel registration for ${participant.fullName}? They will move back to Pending.`)) return;
   const prevStatus = participant.status;
   participant.status = NOT_REGISTERED;
-  log.push({
+  const cancelEntry = {
     timestamp: formatTimestamp(new Date()),
     fullName: participant.fullName,
     mobile: participant.mobile,
@@ -1363,8 +1488,11 @@ function cancelRegistration(id) {
     category: participant.category,
     prevStatus: prevStatus,
     newStatus: NOT_REGISTERED
-  });
-  if (lastRegisteredId === id) lastRegisteredId = null;
+  };
+  log.push(cancelEntry);
+  pendingLogOps.push({ type: 'push', entry: cancelEntry });
+  markParticipantDirty(participant.id);
+  if (lastRegisteredId === id) { lastRegisteredId = null; lastRegisteredIdDirty = true; }
   renderAll();
   refreshSuggestions();
   scheduleSave();
@@ -1447,6 +1575,7 @@ function renderManageCategoriesModal() {
       return;
     }
     categoryMaster = Array.from(new Set([...(categoryMaster || []), name]));
+    categoryMasterDirty = true;
     scheduleSave();
     populateCategoryDatalist();
     renderManageCategoriesModal();
@@ -1497,7 +1626,10 @@ function renderManageCategoriesModal() {
 function renameCategory(oldName, newName) {
   categoryMaster = (categoryMaster || []).map(c => (c === oldName ? newName : c));
   if (!categoryMaster.includes(newName)) categoryMaster.push(newName);
-  participants.forEach(p => { if ((p.category || '').trim() === oldName) p.category = newName; });
+  categoryMasterDirty = true;
+  participants.forEach(p => {
+    if ((p.category || '').trim() === oldName) { p.category = newName; markParticipantDirty(p.id); }
+  });
   renderAll();
   refreshSuggestions();
   scheduleSave();
@@ -1505,7 +1637,10 @@ function renameCategory(oldName, newName) {
 
 function deleteCategory(name) {
   categoryMaster = (categoryMaster || []).filter(c => c !== name);
-  participants.forEach(p => { if ((p.category || '').trim() === name) p.category = ''; });
+  categoryMasterDirty = true;
+  participants.forEach(p => {
+    if ((p.category || '').trim() === name) { p.category = ''; markParticipantDirty(p.id); }
+  });
   renderAll();
   refreshSuggestions();
   scheduleSave();
@@ -1578,9 +1713,10 @@ function saveEdit(id) {
   p.mobile = mobile;
   p.category = category;
   p.status = newStatus;
+  markParticipantDirty(p.id);
 
   if (prevStatus !== newStatus) {
-    log.push({
+    const editEntry = {
       timestamp: formatTimestamp(new Date()),
       fullName: p.fullName,
       mobile: p.mobile,
@@ -1588,8 +1724,10 @@ function saveEdit(id) {
       category: p.category,
       prevStatus: prevStatus,
       newStatus: newStatus
-    });
-    if (newStatus !== REGISTERED && lastRegisteredId === id) lastRegisteredId = null;
+    };
+    log.push(editEntry);
+    pendingLogOps.push({ type: 'push', entry: editEntry });
+    if (newStatus !== REGISTERED && lastRegisteredId === id) { lastRegisteredId = null; lastRegisteredIdDirty = true; }
   }
 
   closeModal();
@@ -2063,6 +2201,8 @@ function setupDataTab() {
       }
       participants = rows.map(r => ({ id: genId(), ...r }));
       lastRegisteredId = null;
+      participantsFullReplace = true;
+      lastRegisteredIdDirty = true;
       renderAll();
       refreshSuggestions();
       scheduleSave();
@@ -2085,7 +2225,9 @@ function setupDataTab() {
     rows.forEach(r => {
       const key = r.fullName.trim().toLowerCase();
       if (existingNames.has(key)) { skipped++; return; }
-      participants.push({ id: genId(), ...r });
+      const newP = { id: genId(), ...r };
+      participants.push(newP);
+      markParticipantDirty(newP.id);
       existingNames.add(key);
       added++;
     });
@@ -2117,6 +2259,10 @@ function setupDataTab() {
       log = [];
       lastRegisteredId = null;
       categoryMaster = deriveCategoriesFromParticipants();
+      participantsFullReplace = true;
+      categoryMasterDirty = true;
+      lastRegisteredIdDirty = true;
+      pendingLogOps.push({ type: 'replace', value: [] });
       renderAll();
       refreshSuggestions();
       scheduleSave();
