@@ -1394,24 +1394,31 @@ function openManageCategoriesModal() {
   renderManageCategoriesModal();
 }
 
+function isStatusLikeCategoryName(name) {
+  const n = (name || '').trim().toLowerCase();
+  return n === 'registered' || n === 'not registered';
+}
+
 function renderManageCategoriesModal() {
   const cats = getAllCategoryNames();
   const rowsHtml = cats.length
     ? cats.map(c => {
         const count = participants.filter(p => (p.category || '').trim() === c).length;
         const safe = escapeHtml(c);
+        const flagged = isStatusLikeCategoryName(c);
         return `
           <div class="cat-row" data-cat="${safe}" style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
             <input type="text" class="cat-rename-input" value="${safe}" style="flex:1; margin:0;">
             <span style="font-size:12px; color:var(--muted); white-space:nowrap;">${count} used</span>
             <button type="button" class="btn small danger cat-delete-btn" data-cat="${safe}">Delete</button>
-          </div>`;
+          </div>
+          ${flagged ? `<p class="desc" style="margin:-4px 0 10px; color:#b45309;">"${safe}" reads just like a registration status, not a category — it's easy to mistake this count for the status count above it. Consider renaming it (e.g. to "Uncategorized").</p>` : ''}`;
       }).join('')
     : `<p class="desc" style="margin:0 0 12px;">No categories yet — add one below.</p>`;
 
   openModal(`
     <h3>Add / edit categories</h3>
-    <p class="desc" style="margin-top:0;">Rename a category (updates every participant using it) or delete one. Deleting clears that category from any participant who has it.</p>
+    <p class="desc" style="margin-top:0;">Rename a category (updates every participant using it) or delete one. Deleting clears that category from any participant who has it. Category counts are independent of registration status — a participant's category doesn't change when they register or get undone.</p>
     <div id="catRowsWrap">${rowsHtml}</div>
     <label for="newCategoryInput">Add new category</label>
     <div class="btn-row" style="margin-top:4px;">
@@ -1431,6 +1438,10 @@ function renderManageCategoriesModal() {
     const name = input.value.trim();
     const warnEl = document.getElementById('catWarning');
     if (!name) { warnEl.textContent = 'Enter a category name.'; return; }
+    if (isStatusLikeCategoryName(name)) {
+      warnEl.textContent = '"Registered" / "Not registered" are registration statuses, not categories — pick a different name to avoid confusing the two.';
+      return;
+    }
     if (getAllCategoryNames().some(c => c.toLowerCase() === name.toLowerCase())) {
       warnEl.textContent = 'That category already exists.';
       return;
@@ -1454,6 +1465,11 @@ function renderManageCategoriesModal() {
       const newName = input.value.trim();
       const warnEl = document.getElementById('catWarning');
       if (!newName || newName === oldName) { input.value = oldName; return; }
+      if (isStatusLikeCategoryName(newName) && !isStatusLikeCategoryName(oldName)) {
+        warnEl.textContent = '"Registered" / "Not registered" are registration statuses, not categories — pick a different name to avoid confusing the two.';
+        input.value = oldName;
+        return;
+      }
       if (getAllCategoryNames().some(c => c.toLowerCase() === newName.toLowerCase() && c !== oldName)) {
         warnEl.textContent = `"${newName}" already exists — pick a different name or delete the duplicate first.`;
         input.value = oldName;
