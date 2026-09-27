@@ -694,10 +694,10 @@
       <input type="text" id="searchInput" autocomplete="off" placeholder="Start typing a name...">
       <div id="suggestions"></div>
       <div class="btn-row" style="margin-top:12px; margin-bottom:0;">
-        <label for="categoryInput" style="margin:0; flex:1;">Category</label>
+        <label for="categoryInput" style="margin:0; flex:1;">Category (required)</label>
         <button type="button" class="btn small" id="btnManageCategories" style="margin-left:auto;">Add/edit categories</button>
       </div>
-      <input type="text" id="categoryInput" autocomplete="off" placeholder="Click to see all categories, or type to filter">
+      <input type="text" id="categoryInput" autocomplete="off" placeholder="Required — click to see all categories, or type to filter">
       <div id="categorySuggestions"></div>
       <datalist id="categoryDatalist"></datalist>
       <div class="status-msg" id="statusMsg"></div>
@@ -980,6 +980,30 @@ function deriveCategoriesFromParticipants() {
   return Array.from(new Set(participants.map(p => (p.category || '').trim()).filter(Boolean))).sort();
 }
 
+// ---------------- Category/Status invariant ----------------
+// Business rule: a category only exists while someone is Registered, and being
+// Registered requires a category. This keeps the "Not registered" status count and
+// the "Not registered"/blank category count permanently in sync — enforced both at
+// every point of entry (registration, edit, import) and as a passive self-heal for
+// any legacy/imported data that predates the rule.
+function enforceCategoryStatusRule(p) {
+  if (p.status === REGISTERED) {
+    if (!(p.category || '').trim()) { p.status = NOT_REGISTERED; return 'downgraded'; }
+    return null;
+  }
+  if ((p.category || '').trim()) { p.category = ''; return 'cleared'; }
+  return null;
+}
+
+function enforceCategoryStatusInvariant() {
+  let changed = false;
+  participants.forEach(p => {
+    if (enforceCategoryStatusRule(p)) { markParticipantDirty(p.id); changed = true; }
+  });
+  if (changed) scheduleSave();
+  return changed;
+}
+
 async function loadState() {
   // PIN is a per-device setting, kept locally (not synced across devices).
   try {
@@ -1041,6 +1065,7 @@ async function loadState() {
     if (snap.metadata.hasPendingWrites) return; // this is the echo of our own write, ignore
     if (!snap.exists) return;
     applyRemoteState(snap.data());
+    enforceCategoryStatusInvariant();
     pendingParticipant = null;
     renderAll();
     refreshSuggestions();
@@ -1429,6 +1454,10 @@ function registerParticipant(participant) {
     showStatus('Already Registered', 'warn');
     return;
   }
+  if (!(participant.category || '').trim()) {
+    showStatus('Pick a category before registering.', 'err');
+    return;
+  }
   const prevStatus = participant.status;
   participant.status = REGISTERED;
 
@@ -1464,6 +1493,7 @@ function undoLastRegistration() {
     return;
   }
   participant.status = NOT_REGISTERED;
+  participant.category = '';
   if (log.length > 0) { log.pop(); pendingLogOps.push({ type: 'pop' }); }
   showStatus(participant.fullName + ' - registration undone', 'info');
   lastRegisteredId = null;
@@ -1479,16 +1509,18 @@ function cancelRegistration(id) {
   if (!participant || participant.status !== REGISTERED) return;
   if (!confirm(`Cancel registration for ${participant.fullName}? They will move back to Pending.`)) return;
   const prevStatus = participant.status;
-  participant.status = NOT_REGISTERED;
+  const prevCategory = participant.category;
   const cancelEntry = {
     timestamp: formatTimestamp(new Date()),
     fullName: participant.fullName,
     mobile: participant.mobile,
     followup: participant.followup,
-    category: participant.category,
+    category: prevCategory,
     prevStatus: prevStatus,
     newStatus: NOT_REGISTERED
   };
+  participant.status = NOT_REGISTERED;
+  participant.category = '';
   log.push(cancelEntry);
   pendingLogOps.push({ type: 'push', entry: cancelEntry });
   markParticipantDirty(participant.id);
@@ -1546,7 +1578,7 @@ function renderManageCategoriesModal() {
 
   openModal(`
     <h3>Add / edit categories</h3>
-    <p class="desc" style="margin-top:0;">Rename a category (updates every participant using it) or delete one. Deleting clears that category from any participant who has it. Category counts are independent of registration status — a participant's category doesn't change when they register or get undone.</p>
+    <p class="desc" style="margin-top:0;">Rename a category (updates every participant using it) or delete one. A category only exists while someone is Registered — deleting a category also moves anyone using it back to Not Registered, and clears their category.</p>
     <div id="catRowsWrap">${rowsHtml}</div>
     <label for="newCategoryInput">Add new category</label>
     <div class="btn-row" style="margin-top:4px;">
@@ -1612,10 +1644,15 @@ function renderManageCategoriesModal() {
   document.querySelectorAll('.cat-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const name = btn.getAttribute('data-cat');
-      const count = participants.filter(p => (p.category || '').trim() === name).length;
-      const msg = count > 0
-        ? `"${name}" is used by ${count} participant(s). Deleting it will clear their category. Continue?`
+      const affected = participants.filter(p => (p.category || '').trim() === name);
+      const registeredCount = affected.filter(p => p.status === REGISTERED).length;
+      let msg = affected.length > 0
+        ? `"${name}" is used by ${affected.length} participant(s). Deleting it will clear their category.`
         : `Delete "${name}"?`;
+      if (registeredCount > 0) {
+        msg += ` ${registeredCount} of them are Registered — since a category is required to stay Registered, they'll be moved back to Not Registered too.`;
+      }
+      msg += ' Continue?';
       if (!confirm(msg)) return;
       deleteCategory(name);
       renderManageCategoriesModal();
@@ -1639,7 +1676,25 @@ function deleteCategory(name) {
   categoryMaster = (categoryMaster || []).filter(c => c !== name);
   categoryMasterDirty = true;
   participants.forEach(p => {
-    if ((p.category || '').trim() === name) { p.category = ''; markParticipantDirty(p.id); }
+    if ((p.category || '').trim() !== name) return;
+    if (p.status === REGISTERED) {
+      // A category is required to stay Registered — removing it also un-registers them.
+      const entry = {
+        timestamp: formatTimestamp(new Date()),
+        fullName: p.fullName,
+        mobile: p.mobile,
+        followup: p.followup,
+        category: p.category,
+        prevStatus: REGISTERED,
+        newStatus: NOT_REGISTERED
+      };
+      log.push(entry);
+      pendingLogOps.push({ type: 'push', entry });
+      if (lastRegisteredId === p.id) { lastRegisteredId = null; lastRegisteredIdDirty = true; }
+      p.status = NOT_REGISTERED;
+    }
+    p.category = '';
+    markParticipantDirty(p.id);
   });
   renderAll();
   refreshSuggestions();
@@ -1655,6 +1710,7 @@ function findDuplicateMobile(mobile, excludeId) {
 function openEditModal(id) {
   const p = participants.find(x => x.id === id);
   if (!p) return;
+  const isReg = p.status === REGISTERED;
   openModal(`
     <h3>Edit participant</h3>
     <label for="editFullName">Full Name</label>
@@ -1663,8 +1719,8 @@ function openEditModal(id) {
     <input id="editFollowup" value="${escapeHtml(p.followup)}">
     <label for="editMobile">Mobile</label>
     <input id="editMobile" value="${escapeHtml(p.mobile)}">
-    <label for="editCategory">Category</label>
-    <input id="editCategory" value="${escapeHtml(p.category)}" list="categoryDatalist">
+    <label for="editCategory">Category ${isReg ? '(required while Registered)' : '(only while Registered)'}</label>
+    <input id="editCategory" value="${escapeHtml(p.category)}" list="categoryDatalist" ${isReg ? '' : 'disabled'}>
     <label for="editStatus">Status</label>
     <select id="editStatus">
       <option value="${REGISTERED}" ${p.status === REGISTERED ? 'selected' : ''}>Registered</option>
@@ -1678,6 +1734,18 @@ function openEditModal(id) {
   `);
   document.getElementById('editCancelBtn').addEventListener('click', closeModal);
   document.getElementById('editSaveBtn').addEventListener('click', () => saveEdit(id));
+  document.getElementById('editStatus').addEventListener('change', e => {
+    const catInput = document.getElementById('editCategory');
+    const catLabel = document.querySelector('label[for="editCategory"]');
+    if (e.target.value === REGISTERED) {
+      catInput.disabled = false;
+      catLabel.textContent = 'Category (required while Registered)';
+    } else {
+      catInput.value = '';
+      catInput.disabled = true;
+      catLabel.textContent = 'Category (only while Registered)';
+    }
+  });
   document.getElementById('editFullName').focus();
 }
 
@@ -1698,6 +1766,12 @@ function saveEdit(id) {
     return;
   }
 
+  if (newStatus === REGISTERED && !category) {
+    warnEl.textContent = 'A category is required to mark someone Registered.';
+    warnEl.style.display = 'block';
+    return;
+  }
+
   const dup = findDuplicateMobile(mobile, id);
   if (dup && saveBtn.dataset.confirmed !== '1') {
     warnEl.textContent = `This mobile number is already used by ${dup.fullName}. Click Save again to confirm.`;
@@ -1711,7 +1785,7 @@ function saveEdit(id) {
   p.fullName = fullName;
   p.followup = followup;
   p.mobile = mobile;
-  p.category = category;
+  p.category = newStatus === REGISTERED ? category : '';
   p.status = newStatus;
   markParticipantDirty(p.id);
 
@@ -1975,9 +2049,12 @@ function completeRegistration() {
   }
   const catInput = document.getElementById('categoryInput');
   const enteredCategory = catInput ? catInput.value.trim() : '';
-  if (enteredCategory) {
-    participant.category = enteredCategory;
+  if (!enteredCategory) {
+    showStatus('Pick a category before registering.', 'err');
+    if (catInput) catInput.focus();
+    return;
   }
+  participant.category = enteredCategory;
   registerParticipant(participant);
   resetRegisterForm();
 }
@@ -2200,6 +2277,12 @@ function setupDataTab() {
         return;
       }
       participants = rows.map(r => ({ id: genId(), ...r }));
+      let ruleDowngraded = 0, ruleCleared = 0;
+      participants.forEach(p => {
+        const outcome = enforceCategoryStatusRule(p);
+        if (outcome === 'downgraded') ruleDowngraded++;
+        else if (outcome === 'cleared') ruleCleared++;
+      });
       lastRegisteredId = null;
       participantsFullReplace = true;
       lastRegisteredIdDirty = true;
@@ -2208,6 +2291,8 @@ function setupDataTab() {
       scheduleSave();
       const { conflictCount, affected } = findMobileConflicts();
       let msg = `Replaced master data with ${rows.length} participant(s).`;
+      if (ruleDowngraded > 0) msg += ` ${ruleDowngraded} row(s) marked Registered with no category were set to Not Registered.`;
+      if (ruleCleared > 0) msg += ` ${ruleCleared} row(s) marked Not Registered had a leftover category cleared.`;
       if (conflictCount > 0) msg += ` Warning: ${affected} participant(s) share ${conflictCount} duplicate mobile number(s) — check Registered/Pending.`;
       showImportSummary(msg, conflictCount > 0 ? 'warn' : 'ok');
     });
@@ -2221,11 +2306,14 @@ function setupDataTab() {
       return;
     }
     const existingNames = new Set(participants.map(p => p.fullName.trim().toLowerCase()));
-    let added = 0, skipped = 0;
+    let added = 0, skipped = 0, ruleDowngraded = 0, ruleCleared = 0;
     rows.forEach(r => {
       const key = r.fullName.trim().toLowerCase();
       if (existingNames.has(key)) { skipped++; return; }
       const newP = { id: genId(), ...r };
+      const outcome = enforceCategoryStatusRule(newP);
+      if (outcome === 'downgraded') ruleDowngraded++;
+      else if (outcome === 'cleared') ruleCleared++;
       participants.push(newP);
       markParticipantDirty(newP.id);
       existingNames.add(key);
@@ -2236,6 +2324,8 @@ function setupDataTab() {
     scheduleSave();
     const { conflictCount, affected } = findMobileConflicts();
     let msg = `Added ${added} new participant(s). Skipped ${skipped} duplicate name(s) already in the table.`;
+    if (ruleDowngraded > 0) msg += ` ${ruleDowngraded} row(s) marked Registered with no category were set to Not Registered.`;
+    if (ruleCleared > 0) msg += ` ${ruleCleared} row(s) marked Not Registered had a leftover category cleared.`;
     if (conflictCount > 0) msg += ` Warning: ${affected} participant(s) share ${conflictCount} duplicate mobile number(s) — check Registered/Pending.`;
     showImportSummary(msg, conflictCount > 0 ? 'warn' : 'ok');
   });
@@ -2256,6 +2346,7 @@ function setupDataTab() {
     requirePin(() => {
       if (!confirm('This will erase all current participants and the registration log, and restore the 4 sample rows. Continue?')) return;
       participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
+      participants.forEach(p => enforceCategoryStatusRule(p));
       log = [];
       lastRegisteredId = null;
       categoryMaster = deriveCategoriesFromParticipants();
@@ -2925,6 +3016,7 @@ function setupShareButtons() {
 
 async function init() {
   await loadState();
+  enforceCategoryStatusInvariant();
   setupTabs();
   setupSearch();
   setupDataTab();
