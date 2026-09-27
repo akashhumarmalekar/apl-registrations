@@ -821,6 +821,15 @@
     </div>
 
     <div class="card">
+      <h3>Players list PDF (category-wise)</h3>
+      <p class="desc">Download a printable PDF with players grouped under each category — handy to hand to the auctioneer.</p>
+      <div class="btn-row">
+        <button class="btn primary" id="btnPdfCategoryRegistered">Download PDF — Registered players</button>
+        <button class="btn" id="btnPdfCategoryAll">Download PDF — All players (incl. pending)</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h3>Security PIN</h3>
       <p class="desc">Set a 4-6 digit PIN to protect "Replace all participants" and "Reset to sample data" from accidental taps on a shared device. Leave the field blank and save to remove protection.</p>
       <div class="btn-row" style="align-items:center;">
@@ -851,6 +860,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 // ============================================================
 // FIREBASE SETUP — fill this in with your own project's config
@@ -2480,6 +2491,100 @@ function setupExcelButtons() {
   });
 }
 
+// ---------------- PDF export: players list, grouped by category ----------------
+
+function buildCategoryWisePlayerGroups(rows) {
+  // rows: participants to include. Groups them by category (master order first,
+  // then any stray category names only found on participants), each group's
+  // players sorted alphabetically. Players with no category land in "(No category)".
+  const master = Array.isArray(categoryMaster) ? categoryMaster.filter(c => (c || '').trim()) : [];
+  const extra = Array.from(new Set(rows.map(p => (p.category || '').trim()).filter(Boolean)))
+    .filter(c => !master.includes(c))
+    .sort((a, b) => a.localeCompare(b));
+  const orderedCategories = [...master, ...extra];
+
+  const groups = orderedCategories.map(name => ({
+    name,
+    players: rows.filter(p => (p.category || '').trim() === name)
+      .slice()
+      .sort((a, b) => a.fullName.localeCompare(b.fullName))
+  })).filter(g => g.players.length > 0);
+
+  const uncategorized = rows.filter(p => !(p.category || '').trim())
+    .slice()
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  if (uncategorized.length > 0) groups.push({ name: '(No category)', players: uncategorized });
+
+  return groups;
+}
+
+function downloadCategoryWisePlayersPdf(rows, title, filename) {
+  if (rows.length === 0) {
+    alert('Nothing to export - this list is empty.');
+    return;
+  }
+  const groups = buildCategoryWisePlayerGroups(rows);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const marginX = 40;
+  let cursorY = 50;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('ANAND APL 2026', marginX, cursorY);
+  cursorY += 20;
+  doc.setFontSize(12);
+  doc.setTextColor(120, 100, 40);
+  doc.text(title, marginX, cursorY);
+  doc.setTextColor(0, 0, 0);
+  cursorY += 10;
+
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  groups.forEach((group) => {
+    // Start a fresh page if there isn't room for the heading + a couple of rows.
+    if (cursorY > pageHeight - 120) {
+      doc.addPage();
+      cursorY = 50;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(22, 35, 63);
+    doc.text(`${group.name}  (${group.players.length})`, marginX, cursorY + 14);
+    doc.setTextColor(0, 0, 0);
+
+    const head = [['#', 'Full Name', 'Mobile', 'Followup']];
+    const body = group.players.map((p, i) => [String(i + 1), p.fullName, p.mobile || '', p.followup || '']);
+
+    doc.autoTable({
+      head,
+      body,
+      startY: cursorY + 22,
+      margin: { left: marginX, right: marginX },
+      theme: 'grid',
+      headStyles: { fillColor: [22, 35, 63], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 10, cellPadding: 5 },
+      columnStyles: { 0: { cellWidth: 30 } }
+    });
+
+    cursorY = doc.lastAutoTable.finalY + 30;
+  });
+
+  doc.save(filename);
+}
+
+function setupPdfButtons() {
+  document.getElementById('btnPdfCategoryRegistered').addEventListener('click', () => {
+    const rows = participants.filter(p => p.status === REGISTERED);
+    downloadCategoryWisePlayersPdf(rows, `Registered players by category (${rows.length})`, 'anand_apl_2026_players_by_category_registered.pdf');
+  });
+  document.getElementById('btnPdfCategoryAll').addEventListener('click', () => {
+    downloadCategoryWisePlayersPdf(participants, `All players by category (${participants.length})`, 'anand_apl_2026_players_by_category_all.pdf');
+  });
+}
+
 // ---------------- WhatsApp sharing ----------------
 
 const WHATSAPP_FULL_LIST_LIMIT = 80; // beyond this, send a summary + CSV instead of naming everyone
@@ -3022,6 +3127,7 @@ async function init() {
   setupDataTab();
   setupShareButtons();
   setupExcelButtons();
+  setupPdfButtons();
   setupModal();
   setupSecurity();
   setupFilters();
