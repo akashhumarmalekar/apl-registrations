@@ -824,8 +824,13 @@
       <h3>Players list PDF (category-wise)</h3>
       <p class="desc">Download a printable PDF with players grouped under each category — handy to hand to the auctioneer.</p>
       <div class="btn-row">
-        <button class="btn primary" id="btnPdfCategoryRegistered">Download PDF — Registered players</button>
+        <button class="btn primary" id="btnPdfCategoryRegistered">Download PDF — Registered players (name, mobile, followup)</button>
         <button class="btn" id="btnPdfCategoryAll">Download PDF — All players (incl. pending)</button>
+      </div>
+      <p class="desc" style="margin-top:10px;">Just need names and categories — nothing else? Use the simple list below.</p>
+      <div class="btn-row">
+        <button class="btn primary" id="btnPdfNamesRegistered">Download PDF — Names only (Registered)</button>
+        <button class="btn" id="btnPdfNamesAll">Download PDF — Names only (All players)</button>
       </div>
     </div>
 
@@ -2583,6 +2588,68 @@ function setupPdfButtons() {
   document.getElementById('btnPdfCategoryAll').addEventListener('click', () => {
     downloadCategoryWisePlayersPdf(participants, `All players by category (${participants.length})`, 'anand_apl_2026_players_by_category_all.pdf');
   });
+  document.getElementById('btnPdfNamesRegistered').addEventListener('click', () => {
+    const rows = participants.filter(p => p.status === REGISTERED);
+    downloadCategoryWiseNamesPdf(rows, `Registered players — names by category (${rows.length})`, 'anand_apl_2026_names_by_category_registered.pdf');
+  });
+  document.getElementById('btnPdfNamesAll').addEventListener('click', () => {
+    downloadCategoryWiseNamesPdf(participants, `All players — names by category (${participants.length})`, 'anand_apl_2026_names_by_category_all.pdf');
+  });
+}
+
+function downloadCategoryWiseNamesPdf(rows, title, filename) {
+  if (rows.length === 0) {
+    alert('Nothing to export - this list is empty.');
+    return;
+  }
+  const groups = buildCategoryWisePlayerGroups(rows);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const marginX = 40;
+  let cursorY = 50;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('ANAND APL 2026', marginX, cursorY);
+  cursorY += 20;
+  doc.setFontSize(12);
+  doc.setTextColor(120, 100, 40);
+  doc.text(title, marginX, cursorY);
+  doc.setTextColor(0, 0, 0);
+  cursorY += 10;
+
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  groups.forEach((group) => {
+    if (cursorY > pageHeight - 120) {
+      doc.addPage();
+      cursorY = 50;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(22, 35, 63);
+    doc.text(`${group.name}  (${group.players.length})`, marginX, cursorY + 14);
+    doc.setTextColor(0, 0, 0);
+
+    const head = [['#', 'Full Name']];
+    const body = group.players.map((p, i) => [String(i + 1), p.fullName]);
+
+    doc.autoTable({
+      head,
+      body,
+      startY: cursorY + 22,
+      margin: { left: marginX, right: marginX },
+      theme: 'grid',
+      headStyles: { fillColor: [22, 35, 63], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 10, cellPadding: 5 },
+      columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 350 } }
+    });
+
+    cursorY = doc.lastAutoTable.finalY + 30;
+  });
+
+  doc.save(filename);
 }
 
 // ---------------- WhatsApp sharing ----------------
