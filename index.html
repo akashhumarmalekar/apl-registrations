@@ -3132,7 +3132,7 @@ async function shareConsolidatedImage() {
 
 function getGroupRows(groupKey, groupName, statusFilter) {
   return participants
-    .filter(p => (p[groupKey] || '').trim() === groupName && (statusFilter === 'registered' ? p.status === REGISTERED : p.status !== REGISTERED))
+    .filter(p => ((p[groupKey] || '').trim() || (groupKey === 'category' ? 'Not Registered' : '(blank)')) === groupName && (statusFilter === 'registered' ? p.status === REGISTERED : p.status !== REGISTERED))
     .slice()
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
 }
