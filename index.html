@@ -780,6 +780,18 @@
   table.records tr.is-reg select.cell-input { color:var(--green); font-weight:600; }
   table.records td { padding-top:6px; padding-bottom:6px; }
   @media (max-width:640px) { table.records td .cell-input { flex:1; text-align:right; border-color:var(--border); background:#fff; } }
+  #recordsTableWrap { overflow-x:auto; border-radius:var(--radius); }
+  #recordsTableWrap.editing { box-shadow:0 0 0 3px rgba(207,230,46,.75); }
+  .st-pill { display:inline-block; padding:3px 11px; border-radius:999px; font-size:12.5px; font-weight:700; background:#E9EDE5; color:var(--muted); white-space:nowrap; }
+  .st-pill.reg { background:var(--green-bg); color:var(--green); }
+  .muted-dash { color:var(--muted); }
+  .btn.editing-on { background:var(--gold); border-color:var(--gold-dark); color:var(--navy); font-weight:700; }
+  .btn.editing-on:hover { background:#DDF04E; }
+  @media (min-width:641px) {
+    table.records td:nth-child(1), table.records td:nth-child(2) { min-width:230px; }
+    table.records td:nth-child(3) { min-width:130px; }
+    table.records td:nth-child(4), table.records td:nth-child(5) { min-width:165px; }
+  }
   .dd-edit { margin-left:10px; flex-shrink:0; }
   .drilldown-list .dd-meta { margin-left:auto; }
   .drilldown-list li { align-items:center; }
@@ -961,7 +973,7 @@
           <div class="fg"><label for="addFollowup">Followup <b>*</b></label><input id="addFollowup" type="text" list="followupDatalist" autocomplete="off" placeholder="Followup person"></div>
           <div class="fg"><label for="addMobile">Contact (mobile) <b>*</b></label><input id="addMobile" type="tel" inputmode="tel" autocomplete="off" placeholder="10-digit number"></div>
           <div class="fg"><label for="addStatus">Status <b>*</b></label><select id="addStatus"><option value="" selected disabled>Select status…</option><option value="Not Registered">Not Registered</option><option value="Registered">Registered</option></select></div>
-          <div class="fg"><label for="addCategory">Category <b id="addCatStar" style="visibility:hidden">*</b></label><input id="addCategory" type="text" list="categoryDatalist" autocomplete="off"></div>
+          <div class="fg"><label for="addCategory">Category <b>*</b></label><input id="addCategory" type="text" list="categoryDatalist" autocomplete="off"></div>
         </div>
         <div class="btn-row">
           <button type="submit" class="btn primary" id="addSubmit">Add participant</button>
@@ -971,14 +983,14 @@
       </form>
     </div>
     <datalist id="followupDatalist"></datalist>
-    <div class="toolbar"><h2>All data <span class="count-pill" id="recordsCount">0</span></h2></div>
+    <div class="toolbar"><h2>All data <span class="count-pill" id="recordsCount">0</span></h2><button class="btn primary" id="recordsEditBtn">Edit table</button></div>
     <div class="btn-row" style="margin-bottom:12px;">
       <input class="filter-input" id="recordsFilter" type="search" placeholder="Filter by name, mobile, followup or category" style="flex:1 1 260px;">
       <select class="filter-input" id="recordsStatusFilter" style="flex:0 0 auto;width:auto;"><option value="all">All statuses</option><option value="reg">Registered</option><option value="pend">Not Registered</option></select>
     </div>
     <div class="add-msg" id="recordsMsg" role="status"></div>
     <div id="recordsTableWrap"></div>
-    <p class="hint">Click any cell to edit. Changes save automatically when you leave the cell. Registered people need a category.</p>
+    <p class="hint" id="recordsHint">The table is locked. Click <b>Edit table</b> to change details or delete people.</p>
   </section>
 
   <section class="panel" id="panel-data">
@@ -1193,7 +1205,6 @@ function enforceCategoryStatusRule(p) {
     if (!(p.category || '').trim()) { p.status = NOT_REGISTERED; return 'downgraded'; }
     return null;
   }
-  if ((p.category || '').trim()) { p.category = ''; return 'cleared'; }
   return null;
 }
 
@@ -1499,7 +1510,7 @@ function renderPendingList() {
 function buildGroupReport(groupKey) {
   const map = new Map();
   participants.forEach(p => {
-    const key = (p[groupKey] || '').trim() || (groupKey === 'category' ? 'Not Registered' : '(blank)');
+    const key = groupKey === 'category' ? ((p.status === REGISTERED && (p.category || '').trim()) || 'Not Registered') : ((p[groupKey] || '').trim() || '(blank)');
     if (!map.has(key)) map.set(key, { total: 0, registered: 0 });
     const entry = map.get(key);
     entry.total += 1;
@@ -1526,7 +1537,7 @@ function buildStatusCategorySummaryForRows(rows) {
   const notRegistered = total - registered;
   const catMap = new Map();
   rows.forEach(p => {
-    const key = (p.category || '').trim() || 'Not Registered';
+    const key = (p.status === REGISTERED && (p.category || '').trim()) || 'Not Registered';
     catMap.set(key, (catMap.get(key) || 0) + 1);
   });
   const categoryRows = Array.from(catMap.entries())
@@ -1700,7 +1711,6 @@ function undoLastRegistration() {
     return;
   }
   participant.status = NOT_REGISTERED;
-  participant.category = '';
   if (log.length > 0) { log.pop(); pendingLogOps.push({ type: 'pop' }); }
   showStatus(participant.fullName + ' - registration undone', 'info');
   lastRegisteredId = null;
@@ -1727,7 +1737,6 @@ function cancelRegistration(id) {
     newStatus: NOT_REGISTERED
   };
   participant.status = NOT_REGISTERED;
-  participant.category = '';
   log.push(cancelEntry);
   pendingLogOps.push({ type: 'push', entry: cancelEntry });
   markParticipantDirty(participant.id);
@@ -1926,8 +1935,8 @@ function openEditModal(id) {
     <input id="editFollowup" value="${escapeHtml(p.followup)}">
     <label for="editMobile">Mobile</label>
     <input id="editMobile" value="${escapeHtml(p.mobile)}">
-    <label for="editCategory">Category ${isReg ? '(required while Registered)' : '(only while Registered)'}</label>
-    <input id="editCategory" value="${escapeHtml(p.category)}" list="categoryDatalist" ${isReg ? '' : 'disabled'}>
+    <label for="editCategory">Category ${isReg ? '(required while Registered)' : ''}</label>
+    <input id="editCategory" value="${escapeHtml(p.category)}" list="categoryDatalist">
     <label for="editStatus">Status</label>
     <select id="editStatus">
       <option value="${REGISTERED}" ${p.status === REGISTERED ? 'selected' : ''}>Registered</option>
@@ -1946,14 +1955,7 @@ function openEditModal(id) {
   document.getElementById('editStatus').addEventListener('change', e => {
     const catInput = document.getElementById('editCategory');
     const catLabel = document.querySelector('label[for="editCategory"]');
-    if (e.target.value === REGISTERED) {
-      catInput.disabled = false;
-      catLabel.textContent = 'Category (required while Registered)';
-    } else {
-      catInput.value = '';
-      catInput.disabled = true;
-      catLabel.textContent = 'Category (only while Registered)';
-    }
+    catLabel.textContent = e.target.value === REGISTERED ? 'Category (required while Registered)' : 'Category';
   });
   document.getElementById('editFullName').focus();
 }
@@ -2007,7 +2009,7 @@ function saveEdit(id) {
   p.fullName = fullName;
   p.followup = followup;
   p.mobile = mobile;
-  p.category = newStatus === REGISTERED ? category : '';
+  p.category = category;
   p.status = newStatus;
   markParticipantDirty(p.id);
 
@@ -3224,7 +3226,7 @@ async function shareConsolidatedImage() {
 
 function getGroupRows(groupKey, groupName, statusFilter) {
   return participants
-    .filter(p => ((p[groupKey] || '').trim() || (groupKey === 'category' ? 'Not Registered' : '(blank)')) === groupName && (statusFilter === 'registered' ? p.status === REGISTERED : p.status !== REGISTERED))
+    .filter(p => (groupKey === 'category' ? ((p.status === REGISTERED && (p.category || '').trim()) || 'Not Registered') : ((p[groupKey] || '').trim() || '(blank)')) === groupName && (statusFilter === 'registered' ? p.status === REGISTERED : p.status !== REGISTERED))
     .slice()
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
 }
@@ -3415,6 +3417,7 @@ function setupShareButtons() {
 let recordsFilterText = '';
 let recordsStatusFilter = 'all';
 let recordsEditing = false;
+let recordsEditMode = false; // table is read-only until the Edit table button is pressed
 const $id = x => document.getElementById(x);
 
 // Returns a clean 10-digit mobile number, or '' if the input isn't valid.
@@ -3445,6 +3448,8 @@ function renderRecords() {
   if (fl) fl.innerHTML = Array.from(new Set(participants.map(p => (p.followup || '').trim()).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b)).map(f => `<option value="${escapeHtml(f)}"></option>`).join('');
   if (recordsEditing || wrap.contains(document.activeElement)) return; // don't yank focus mid-edit
+  const ed = recordsEditMode;
+  wrap.classList.toggle('editing', ed);
   const q = recordsFilterText.trim().toLowerCase();
   const rows = participants
     .filter(p => matchesFilter(p, q) && (recordsStatusFilter === 'all' || (recordsStatusFilter === 'reg' ? p.status === REGISTERED : p.status !== REGISTERED)))
@@ -3452,16 +3457,40 @@ function renderRecords() {
   $id('recordsCount').textContent = rows.length === participants.length ? participants.length : `${rows.length} of ${participants.length}`;
   if (!participants.length) { wrap.innerHTML = '<div class="empty-state">No participants yet. Add one above.</div>'; return; }
   if (!rows.length) { wrap.innerHTML = '<div class="empty-state">No matches for that filter.</div>'; return; }
-  const cell = (p, f, label, attrs) => `<td data-label="${label}"><input class="cell-input" data-id="${p.id}" data-field="${f}" value="${escapeHtml(p[f])}" ${attrs || ''}></td>`;
-  wrap.innerHTML = `<table class="data records"><thead><tr><th>Full name</th><th>Followup</th><th>Mobile</th><th>Status</th><th>Category</th><th></th></tr></thead><tbody>
-    ${rows.map(p => { const reg = p.status === REGISTERED; return `<tr data-row="${p.id}" class="${reg ? 'is-reg' : ''}">`
-      + cell(p, 'fullName', 'Full name') + cell(p, 'followup', 'Followup', 'list="followupDatalist"') + cell(p, 'mobile', 'Mobile', 'inputmode="tel"')
+  const txt = v => (v ? escapeHtml(v) : '<span class="muted-dash">\u2014</span>');
+  const view = (p, f, label) => `<td data-label="${label}">${txt(p[f])}</td>`;
+  const input = (p, f, label, attrs) => `<td data-label="${label}"><input class="cell-input" data-id="${p.id}" data-field="${f}" value="${escapeHtml(p[f])}" ${attrs || ''}></td>`;
+  const body = rows.map(p => {
+    const reg = p.status === REGISTERED;
+    if (!ed) {
+      return `<tr>${view(p, 'fullName', 'Full name')}${view(p, 'followup', 'Followup')}${view(p, 'mobile', 'Mobile')}`
+        + `<td data-label="Status"><span class="st-pill ${reg ? 'reg' : ''}">${reg ? 'Registered' : 'Not Registered'}</span></td>${view(p, 'category', 'Category')}</tr>`;
+    }
+    return `<tr data-row="${p.id}" class="${reg ? 'is-reg' : ''}">`
+      + input(p, 'fullName', 'Full name') + input(p, 'followup', 'Followup', 'list="followupDatalist"') + input(p, 'mobile', 'Mobile', 'inputmode="tel"')
       + `<td data-label="Status"><select class="cell-input" data-id="${p.id}" data-field="status"><option value="${REGISTERED}" ${reg ? 'selected' : ''}>Registered</option><option value="${NOT_REGISTERED}" ${reg ? '' : 'selected'}>Not Registered</option></select></td>`
-      + cell(p, 'category', 'Category', `list="categoryDatalist" placeholder="${reg ? 'Required' : '-'}" ${reg ? '' : 'disabled'}`)
-      + `<td class="actions-cell" data-label="Actions"><button class="btn small danger rec-del" data-id="${p.id}">Delete</button></td></tr>`; }).join('')}
-  </tbody></table>`;
-  wrap.querySelectorAll('.cell-input').forEach(el => el.addEventListener('change', () => applyRecordEdit(el)));
-  wrap.querySelectorAll('.rec-del').forEach(b => b.addEventListener('click', () => { b.blur(); deleteParticipant(b.dataset.id); }));
+      + input(p, 'category', 'Category', `list="categoryDatalist" placeholder="${reg ? 'Required' : 'Category'}"`)
+      + `<td class="actions-cell" data-label="Actions"><button class="btn small danger rec-del" data-id="${p.id}">Delete</button></td></tr>`;
+  }).join('');
+  wrap.innerHTML = `<table class="data records"><thead><tr><th>Full name</th><th>Followup</th><th>Mobile</th><th>Status</th><th>Category</th>${ed ? '<th></th>' : ''}</tr></thead><tbody>${body}</tbody></table>`;
+  if (ed) {
+    wrap.querySelectorAll('.cell-input').forEach(el => el.addEventListener('change', () => applyRecordEdit(el)));
+    wrap.querySelectorAll('.rec-del').forEach(b => b.addEventListener('click', () => { b.blur(); deleteParticipant(b.dataset.id); }));
+  }
+}
+
+function setRecordsEditMode(on) {
+  recordsEditMode = on;
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  const btn = $id('recordsEditBtn');
+  btn.textContent = on ? 'Done editing' : 'Edit table';
+  btn.classList.toggle('primary', !on);
+  btn.classList.toggle('editing-on', on);
+  $id('recordsHint').innerHTML = on
+    ? '<b>Editing is on.</b> Click any cell to change it; changes save automatically when you leave the cell. Press <b>Done editing</b> when finished.'
+    : 'The table is locked. Click <b>Edit table</b> to change details or delete people.';
+  recordsSay('');
+  renderRecords();
 }
 
 function applyRecordEdit(el) {
@@ -3486,30 +3515,21 @@ function applyRecordEdit(el) {
     const dup = findDuplicateMobile(m, p.id);
     if (dup) recordsSay(`Heads up: this number is also used by ${dup.fullName}.`, 'warn');
   } else if (f === 'status') {
-    if (val === REGISTERED) {
-      if (!(p.category || '').trim()) {
-        sel.value = NOT_REGISTERED; row.dataset.wantsReg = '1';
-        cat.disabled = false; cat.placeholder = 'Required'; cat.focus();
-        return recordsSay('Type a category to complete the registration.', 'warn');
-      }
-      p.status = REGISTERED;
-    } else {
-      p.status = NOT_REGISTERED; p.category = ''; row.dataset.wantsReg = '';
+    if (val === REGISTERED && !(p.category || '').trim()) {
+      sel.value = NOT_REGISTERED; cat.classList.add('cell-err'); cat.focus();
+      return recordsSay('Enter a category first, then set the status to Registered.', 'warn');
     }
+    p.status = val === REGISTERED ? REGISTERED : NOT_REGISTERED;
   } else if (f === 'category') {
-    if (p.status === REGISTERED) {
-      if (!val) { el.value = p.category; return fail('Category is required while Registered.'); }
-      p.category = val;
-    } else if (row.dataset.wantsReg === '1' && val) {
-      p.category = val; p.status = REGISTERED; row.dataset.wantsReg = '';
-    } else { el.value = ''; return; }
+    if (!val && p.status === REGISTERED) { el.value = p.category; return fail('Category is required while Registered.'); }
+    p.category = val;
     if (val) { categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : []; if (!categoryMaster.includes(val)) { categoryMaster.push(val); categoryMasterDirty = true; } }
   }
 
   if (prev !== p.status) logStatusChange(p, prev);
   const reg = p.status === REGISTERED;
   row.classList.toggle('is-reg', reg); sel.value = p.status;
-  cat.value = p.category; cat.disabled = !reg && row.dataset.wantsReg !== '1'; cat.placeholder = reg ? 'Required' : '-';
+  cat.value = p.category; cat.disabled = false; cat.classList.remove('cell-err'); cat.placeholder = reg ? 'Required' : 'Category';
   markParticipantDirty(p.id);
   recordsEditing = true; renderAll(); recordsEditing = false;
   refreshSuggestions(); scheduleSave();
@@ -3519,7 +3539,7 @@ function applyRecordEdit(el) {
 function setupRecordsTab() {
   const form = $id('addParticipantForm'), st = $id('addStatus'), cat = $id('addCategory'), name = $id('addName');
   const say = (t, k) => { const m = $id('addMsg'); m.textContent = t; m.className = 'add-msg ' + (k || ''); };
-  const sync = () => { const reg = st.value === REGISTERED; cat.disabled = !reg; if (!reg) cat.value = ''; cat.placeholder = reg ? 'Required for Registered' : 'Only when Registered'; $id('addCatStar').style.visibility = reg ? 'visible' : 'hidden'; };
+  const sync = () => { cat.placeholder = 'e.g. Batsman'; };
   form.addEventListener('input', e => e.target.classList.remove('cell-err'));
   st.addEventListener('change', () => st.classList.remove('cell-err'));
   st.addEventListener('change', sync); sync();
@@ -3528,13 +3548,13 @@ function setupRecordsTab() {
     const fu = $id('addFollowup'), mo = $id('addMobile');
     [name, fu, mo, st, cat].forEach(x => x.classList.remove('cell-err'));
     const fullName = name.value.trim(), followup = fu.value.trim(), mobile = normalizeMobile(mo.value);
-    const status = st.value === REGISTERED ? REGISTERED : NOT_REGISTERED, category = status === REGISTERED ? cat.value.trim() : '';
+    const status = st.value === REGISTERED ? REGISTERED : NOT_REGISTERED, category = cat.value.trim();
     const problems = [];
     if (!fullName) problems.push([name, 'Full name']);
     if (!followup) problems.push([fu, 'Followup']);
     if (!mo.value.trim()) problems.push([mo, 'Contact']); else if (!mobile) problems.push([mo, 'Contact (needs a valid 10-digit number)']);
     if (!st.value) problems.push([st, 'Status']);
-    if (st.value === REGISTERED && !category) problems.push([cat, 'Category']);
+    if (!category) problems.push([cat, 'Category']);
     if (problems.length) {
       problems.forEach(x => x[0].classList.add('cell-err'));
       say('Please fill in: ' + problems.map(x => x[1]).join(', ') + '.', 'err');
@@ -3545,15 +3565,14 @@ function setupRecordsTab() {
     form.dataset.confirmDup = '';
     const p = { id: genId(), fullName, followup, mobile, status, category };
     participants.push(p); markParticipantDirty(p.id);
-    if (status === REGISTERED) {
-      categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : [];
-      if (!categoryMaster.includes(category)) { categoryMaster.push(category); categoryMasterDirty = true; }
-      logStatusChange(p, NOT_REGISTERED);
-    }
+    categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : [];
+    if (!categoryMaster.includes(category)) { categoryMaster.push(category); categoryMasterDirty = true; }
+    if (status === REGISTERED) logStatusChange(p, NOT_REGISTERED);
     form.reset(); sync(); renderAll(); refreshSuggestions(); scheduleSave();
     say(`Added ${fullName} as ${status}.`, 'ok'); name.focus();
   });
   $id('addClear').addEventListener('click', () => { form.querySelectorAll('.cell-err').forEach(x => x.classList.remove('cell-err')); form.reset(); form.dataset.confirmDup = ''; sync(); say(''); });
+  $id('recordsEditBtn').addEventListener('click', () => { if (recordsEditMode) setRecordsEditMode(false); else requirePin(() => setRecordsEditMode(true)); });
   $id('recordsFilter').addEventListener('input', e => { recordsFilterText = e.target.value; renderRecords(); });
   $id('recordsStatusFilter').addEventListener('change', e => { recordsStatusFilter = e.target.value; renderRecords(); });
 }
