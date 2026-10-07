@@ -768,6 +768,7 @@
   .fg label b { color:var(--red); }
   .fg input, .fg select { width:100%; font-family:inherit; font-size:16px; padding:11px 13px; border:2px solid var(--border); border-radius:12px; background:#FAFCF8; outline:none; transition:border-color .12s, box-shadow .12s; }
   .fg input:focus, .fg select:focus { border-color:var(--green); box-shadow:var(--ring); background:#fff; }
+  .fg input.cell-err, .fg select.cell-err { border-color:var(--red); background:var(--red-bg); }
   .fg input:disabled { background:#EEF1EB; color:var(--muted); }
   .add-msg { min-height:20px; margin:10px 0 0; font-size:14.5px; font-weight:600; }
   .add-msg.ok { color:var(--green); } .add-msg.err { color:var(--red); } .add-msg.warn { color:var(--amber); }
@@ -957,10 +958,10 @@
       <form id="addParticipantForm" novalidate>
         <div class="form-grid">
           <div class="fg"><label for="addName">Full name <b>*</b></label><input id="addName" type="text" autocomplete="off" placeholder="e.g. Abhay Ramesh Kotadiya"></div>
-          <div class="fg"><label for="addFollowup">Followup</label><input id="addFollowup" type="text" list="followupDatalist" autocomplete="off" placeholder="Followup person"></div>
-          <div class="fg"><label for="addMobile">Contact (mobile)</label><input id="addMobile" type="tel" inputmode="tel" autocomplete="off" placeholder="10-digit number"></div>
-          <div class="fg"><label for="addStatus">Status</label><select id="addStatus"><option value="Not Registered">Not Registered</option><option value="Registered">Registered</option></select></div>
-          <div class="fg"><label for="addCategory">Category</label><input id="addCategory" type="text" list="categoryDatalist" autocomplete="off"></div>
+          <div class="fg"><label for="addFollowup">Followup <b>*</b></label><input id="addFollowup" type="text" list="followupDatalist" autocomplete="off" placeholder="Followup person"></div>
+          <div class="fg"><label for="addMobile">Contact (mobile) <b>*</b></label><input id="addMobile" type="tel" inputmode="tel" autocomplete="off" placeholder="10-digit number"></div>
+          <div class="fg"><label for="addStatus">Status <b>*</b></label><select id="addStatus"><option value="" selected disabled>Select status…</option><option value="Not Registered">Not Registered</option><option value="Registered">Registered</option></select></div>
+          <div class="fg"><label for="addCategory">Category <b id="addCatStar" style="visibility:hidden">*</b></label><input id="addCategory" type="text" list="categoryDatalist" autocomplete="off"></div>
         </div>
         <div class="btn-row">
           <button type="submit" class="btn primary" id="addSubmit">Add participant</button>
@@ -1964,12 +1965,25 @@ function saveEdit(id) {
   const warnEl = document.getElementById('editWarning');
   const fullName = document.getElementById('editFullName').value.trim();
   const followup = document.getElementById('editFollowup').value.trim();
-  const mobile = document.getElementById('editMobile').value.trim();
+  const mobileRaw = document.getElementById('editMobile').value.trim();
+  const mobile = normalizeMobile(mobileRaw);
   const category = document.getElementById('editCategory').value.trim();
   const newStatus = document.getElementById('editStatus').value === REGISTERED ? REGISTERED : NOT_REGISTERED;
 
   if (!fullName) {
     warnEl.textContent = 'Full name is required.';
+    warnEl.style.display = 'block';
+    return;
+  }
+
+  if (!followup) {
+    warnEl.textContent = 'Followup is required.';
+    warnEl.style.display = 'block';
+    return;
+  }
+
+  if (!mobile) {
+    warnEl.textContent = 'Enter a valid 10-digit contact number.';
     warnEl.style.display = 'block';
     return;
   }
@@ -3403,6 +3417,13 @@ let recordsStatusFilter = 'all';
 let recordsEditing = false;
 const $id = x => document.getElementById(x);
 
+// Returns a clean 10-digit mobile number, or '' if the input isn't valid.
+function normalizeMobile(raw) {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('91')) d = d.slice(2);
+  return d.length === 10 ? d : '';
+}
+
 function logStatusChange(p, prev) {
   const e = { timestamp: formatTimestamp(new Date()), fullName: p.fullName, mobile: p.mobile, followup: p.followup, category: p.category, prevStatus: prev, newStatus: p.status };
   log.push(e);
@@ -3456,10 +3477,13 @@ function applyRecordEdit(el) {
     if (!val) { el.value = p.fullName; return fail('Full name is required.'); }
     p.fullName = val;
   } else if (f === 'followup') {
+    if (!val) { el.value = p.followup; return fail('Followup is required.'); }
     p.followup = val;
   } else if (f === 'mobile') {
-    p.mobile = val;
-    const dup = findDuplicateMobile(val, p.id);
+    const m = normalizeMobile(val);
+    if (!m) { el.value = p.mobile; return fail('Enter a valid 10-digit contact number.'); }
+    el.value = m; p.mobile = m;
+    const dup = findDuplicateMobile(m, p.id);
     if (dup) recordsSay(`Heads up: this number is also used by ${dup.fullName}.`, 'warn');
   } else if (f === 'status') {
     if (val === REGISTERED) {
@@ -3495,14 +3519,27 @@ function applyRecordEdit(el) {
 function setupRecordsTab() {
   const form = $id('addParticipantForm'), st = $id('addStatus'), cat = $id('addCategory'), name = $id('addName');
   const say = (t, k) => { const m = $id('addMsg'); m.textContent = t; m.className = 'add-msg ' + (k || ''); };
-  const sync = () => { const reg = st.value === REGISTERED; cat.disabled = !reg; if (!reg) cat.value = ''; cat.placeholder = reg ? 'Required for Registered' : 'Only when Registered'; };
+  const sync = () => { const reg = st.value === REGISTERED; cat.disabled = !reg; if (!reg) cat.value = ''; cat.placeholder = reg ? 'Required for Registered' : 'Only when Registered'; $id('addCatStar').style.visibility = reg ? 'visible' : 'hidden'; };
+  form.addEventListener('input', e => e.target.classList.remove('cell-err'));
+  st.addEventListener('change', () => st.classList.remove('cell-err'));
   st.addEventListener('change', sync); sync();
   form.addEventListener('submit', e => {
     e.preventDefault();
-    const fullName = name.value.trim(), followup = $id('addFollowup').value.trim(), mobile = $id('addMobile').value.trim();
+    const fu = $id('addFollowup'), mo = $id('addMobile');
+    [name, fu, mo, st, cat].forEach(x => x.classList.remove('cell-err'));
+    const fullName = name.value.trim(), followup = fu.value.trim(), mobile = normalizeMobile(mo.value);
     const status = st.value === REGISTERED ? REGISTERED : NOT_REGISTERED, category = status === REGISTERED ? cat.value.trim() : '';
-    if (!fullName) { say('Full name is required.', 'err'); name.focus(); return; }
-    if (status === REGISTERED && !category) { say('Category is required when status is Registered.', 'err'); cat.focus(); return; }
+    const problems = [];
+    if (!fullName) problems.push([name, 'Full name']);
+    if (!followup) problems.push([fu, 'Followup']);
+    if (!mo.value.trim()) problems.push([mo, 'Contact']); else if (!mobile) problems.push([mo, 'Contact (needs a valid 10-digit number)']);
+    if (!st.value) problems.push([st, 'Status']);
+    if (st.value === REGISTERED && !category) problems.push([cat, 'Category']);
+    if (problems.length) {
+      problems.forEach(x => x[0].classList.add('cell-err'));
+      say('Please fill in: ' + problems.map(x => x[1]).join(', ') + '.', 'err');
+      problems[0][0].focus(); return;
+    }
     const dup = findDuplicateMobile(mobile, null);
     if (dup && form.dataset.confirmDup !== mobile) { form.dataset.confirmDup = mobile; say(`This number already belongs to ${dup.fullName}. Press Add again to add anyway.`, 'warn'); return; }
     form.dataset.confirmDup = '';
@@ -3516,7 +3553,7 @@ function setupRecordsTab() {
     form.reset(); sync(); renderAll(); refreshSuggestions(); scheduleSave();
     say(`Added ${fullName} as ${status}.`, 'ok'); name.focus();
   });
-  $id('addClear').addEventListener('click', () => { form.reset(); form.dataset.confirmDup = ''; sync(); say(''); });
+  $id('addClear').addEventListener('click', () => { form.querySelectorAll('.cell-err').forEach(x => x.classList.remove('cell-err')); form.reset(); form.dataset.confirmDup = ''; sync(); say(''); });
   $id('recordsFilter').addEventListener('input', e => { recordsFilterText = e.target.value; renderRecords(); });
   $id('recordsStatusFilter').addEventListener('change', e => { recordsStatusFilter = e.target.value; renderRecords(); });
 }
