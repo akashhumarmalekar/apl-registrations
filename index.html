@@ -762,6 +762,23 @@
   .save-indicator::before { content:"\2713  "; }
   .save-indicator.show { transform:translate(-50%,0); }
 
+
+  .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px 16px; margin-bottom:16px; }
+  .fg label { display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:6px; }
+  .fg label b { color:var(--red); }
+  .fg input, .fg select { width:100%; font-family:inherit; font-size:16px; padding:11px 13px; border:2px solid var(--border); border-radius:12px; background:#FAFCF8; outline:none; transition:border-color .12s, box-shadow .12s; }
+  .fg input:focus, .fg select:focus { border-color:var(--green); box-shadow:var(--ring); background:#fff; }
+  .fg input:disabled { background:#EEF1EB; color:var(--muted); }
+  .add-msg { min-height:20px; margin:10px 0 0; font-size:14.5px; font-weight:600; }
+  .add-msg.ok { color:var(--green); } .add-msg.err { color:var(--red); } .add-msg.warn { color:var(--amber); }
+  .cell-input { width:100%; min-width:0; font-family:inherit; font-size:14px; color:var(--text); padding:7px 9px; border:1px solid transparent; border-radius:8px; background:transparent; outline:none; transition:border-color .12s, background .12s, box-shadow .12s; }
+  .cell-input:hover { border-color:var(--border); background:#fff; }
+  .cell-input:focus { border-color:var(--green); background:#fff; box-shadow:var(--ring); }
+  .cell-input:disabled { color:var(--muted); background:transparent; border-color:transparent; }
+  .cell-input.cell-err { border-color:var(--red); background:var(--red-bg); }
+  table.records tr.is-reg select.cell-input { color:var(--green); font-weight:600; }
+  table.records td { padding-top:6px; padding-bottom:6px; }
+  @media (max-width:640px) { table.records td .cell-input { flex:1; text-align:right; border-color:var(--border); background:#fff; } }
   .dd-edit { margin-left:10px; flex-shrink:0; }
   .drilldown-list .dd-meta { margin-left:auto; }
   .drilldown-list li { align-items:center; }
@@ -802,6 +819,7 @@
     <button class="tab-btn" data-tab="pending">Pending</button>
     <button class="tab-btn" data-tab="followup">Followup</button>
     <button class="tab-btn" data-tab="category">Category</button>
+    <button class="tab-btn" data-tab="records">Data</button>
     <button class="tab-btn" data-tab="log">Log</button>
     <button class="tab-btn" data-tab="data">Import / Export</button>
   </div>
@@ -933,10 +951,39 @@
     <div id="logTableWrap"></div>
   </section>
 
+  <section class="panel" id="panel-records">
+    <div class="card">
+      <h3>Add participant</h3>
+      <form id="addParticipantForm" novalidate>
+        <div class="form-grid">
+          <div class="fg"><label for="addName">Full name <b>*</b></label><input id="addName" type="text" autocomplete="off" placeholder="e.g. Abhay Ramesh Kotadiya"></div>
+          <div class="fg"><label for="addFollowup">Followup</label><input id="addFollowup" type="text" list="followupDatalist" autocomplete="off" placeholder="Followup person"></div>
+          <div class="fg"><label for="addMobile">Contact (mobile)</label><input id="addMobile" type="tel" inputmode="tel" autocomplete="off" placeholder="10-digit number"></div>
+          <div class="fg"><label for="addStatus">Status</label><select id="addStatus"><option value="Not Registered">Not Registered</option><option value="Registered">Registered</option></select></div>
+          <div class="fg"><label for="addCategory">Category</label><input id="addCategory" type="text" list="categoryDatalist" autocomplete="off"></div>
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn primary" id="addSubmit">Add participant</button>
+          <button type="button" class="btn" id="addClear">Clear</button>
+        </div>
+        <div class="add-msg" id="addMsg" role="status"></div>
+      </form>
+    </div>
+    <datalist id="followupDatalist"></datalist>
+    <div class="toolbar"><h2>All data <span class="count-pill" id="recordsCount">0</span></h2></div>
+    <div class="btn-row" style="margin-bottom:12px;">
+      <input class="filter-input" id="recordsFilter" type="search" placeholder="Filter by name, mobile, followup or category" style="flex:1 1 260px;">
+      <select class="filter-input" id="recordsStatusFilter" style="flex:0 0 auto;width:auto;"><option value="all">All statuses</option><option value="reg">Registered</option><option value="pend">Not Registered</option></select>
+    </div>
+    <div class="add-msg" id="recordsMsg" role="status"></div>
+    <div id="recordsTableWrap"></div>
+    <p class="hint">Click any cell to edit. Changes save automatically when you leave the cell. Registered people need a category.</p>
+  </section>
+
   <section class="panel" id="panel-data">
     <div class="card">
-      <h3>Import participants</h3>
-      <p class="desc">Paste rows copied straight from Excel (columns in this order: Full Name, Followup, Mobile, Status, Category — tab or comma separated, header row optional).</p>
+      <h3>Bulk import</h3>
+      <p class="desc">To add one person, use the form in the Data tab. To load many at once, paste rows copied straight from Excel (columns in this order: Full Name, Followup, Mobile, Status, Category — tab or comma separated, header row optional).</p>
       <textarea class="data-input" id="importArea" placeholder="Abhay Ramesh Kotadiya	Yash Jayanti Kaila	8928478896	Registered	Yuvak"></textarea>
       <div class="btn-row">
         <button class="btn primary" id="btnImportReplace">Replace all participants</button>
@@ -1577,6 +1624,7 @@ function renderAll() {
   renderOverallSummary();
   renderLog();
   populateCategoryDatalist();
+  renderRecords();
 }
 
 function getAllCategoryNames() {
@@ -3349,10 +3397,135 @@ function setupShareButtons() {
   document.getElementById('btnShareSummaryImage').addEventListener('click', shareSummaryImage);
 }
 
+// ---------------- Data tab (all records, inline editing, add form) ----------------
+let recordsFilterText = '';
+let recordsStatusFilter = 'all';
+let recordsEditing = false;
+const $id = x => document.getElementById(x);
+
+function logStatusChange(p, prev) {
+  const e = { timestamp: formatTimestamp(new Date()), fullName: p.fullName, mobile: p.mobile, followup: p.followup, category: p.category, prevStatus: prev, newStatus: p.status };
+  log.push(e);
+  pendingLogOps.push({ type: 'push', entry: e });
+  if (p.status !== REGISTERED && lastRegisteredId === p.id) { lastRegisteredId = null; lastRegisteredIdDirty = true; }
+}
+
+function recordsSay(text, kind) {
+  const el = $id('recordsMsg');
+  el.textContent = text; el.className = 'add-msg ' + (kind || '');
+  clearTimeout(recordsSay._t);
+  if (text) recordsSay._t = setTimeout(() => { el.textContent = ''; }, 5000);
+}
+
+function renderRecords() {
+  const wrap = $id('recordsTableWrap');
+  if (!wrap) return;
+  const fl = $id('followupDatalist');
+  if (fl) fl.innerHTML = Array.from(new Set(participants.map(p => (p.followup || '').trim()).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b)).map(f => `<option value="${escapeHtml(f)}"></option>`).join('');
+  if (recordsEditing || wrap.contains(document.activeElement)) return; // don't yank focus mid-edit
+  const q = recordsFilterText.trim().toLowerCase();
+  const rows = participants
+    .filter(p => matchesFilter(p, q) && (recordsStatusFilter === 'all' || (recordsStatusFilter === 'reg' ? p.status === REGISTERED : p.status !== REGISTERED)))
+    .slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
+  $id('recordsCount').textContent = rows.length === participants.length ? participants.length : `${rows.length} of ${participants.length}`;
+  if (!participants.length) { wrap.innerHTML = '<div class="empty-state">No participants yet. Add one above.</div>'; return; }
+  if (!rows.length) { wrap.innerHTML = '<div class="empty-state">No matches for that filter.</div>'; return; }
+  const cell = (p, f, label, attrs) => `<td data-label="${label}"><input class="cell-input" data-id="${p.id}" data-field="${f}" value="${escapeHtml(p[f])}" ${attrs || ''}></td>`;
+  wrap.innerHTML = `<table class="data records"><thead><tr><th>Full name</th><th>Followup</th><th>Mobile</th><th>Status</th><th>Category</th><th></th></tr></thead><tbody>
+    ${rows.map(p => { const reg = p.status === REGISTERED; return `<tr data-row="${p.id}" class="${reg ? 'is-reg' : ''}">`
+      + cell(p, 'fullName', 'Full name') + cell(p, 'followup', 'Followup', 'list="followupDatalist"') + cell(p, 'mobile', 'Mobile', 'inputmode="tel"')
+      + `<td data-label="Status"><select class="cell-input" data-id="${p.id}" data-field="status"><option value="${REGISTERED}" ${reg ? 'selected' : ''}>Registered</option><option value="${NOT_REGISTERED}" ${reg ? '' : 'selected'}>Not Registered</option></select></td>`
+      + cell(p, 'category', 'Category', `list="categoryDatalist" placeholder="${reg ? 'Required' : '-'}" ${reg ? '' : 'disabled'}`)
+      + `<td class="actions-cell" data-label="Actions"><button class="btn small danger rec-del" data-id="${p.id}">Delete</button></td></tr>`; }).join('')}
+  </tbody></table>`;
+  wrap.querySelectorAll('.cell-input').forEach(el => el.addEventListener('change', () => applyRecordEdit(el)));
+  wrap.querySelectorAll('.rec-del').forEach(b => b.addEventListener('click', () => { b.blur(); deleteParticipant(b.dataset.id); }));
+}
+
+function applyRecordEdit(el) {
+  const p = participants.find(x => x.id === el.dataset.id);
+  if (!p) return;
+  const f = el.dataset.field, val = el.value.trim(), row = el.closest('tr');
+  const sel = row.querySelector('[data-field="status"]'), cat = row.querySelector('[data-field="category"]');
+  el.classList.remove('cell-err');
+  const fail = msg => { el.classList.add('cell-err'); recordsSay(msg, 'err'); };
+  const prev = p.status;
+
+  if (f === 'fullName') {
+    if (!val) { el.value = p.fullName; return fail('Full name is required.'); }
+    p.fullName = val;
+  } else if (f === 'followup') {
+    p.followup = val;
+  } else if (f === 'mobile') {
+    p.mobile = val;
+    const dup = findDuplicateMobile(val, p.id);
+    if (dup) recordsSay(`Heads up: this number is also used by ${dup.fullName}.`, 'warn');
+  } else if (f === 'status') {
+    if (val === REGISTERED) {
+      if (!(p.category || '').trim()) {
+        sel.value = NOT_REGISTERED; row.dataset.wantsReg = '1';
+        cat.disabled = false; cat.placeholder = 'Required'; cat.focus();
+        return recordsSay('Type a category to complete the registration.', 'warn');
+      }
+      p.status = REGISTERED;
+    } else {
+      p.status = NOT_REGISTERED; p.category = ''; row.dataset.wantsReg = '';
+    }
+  } else if (f === 'category') {
+    if (p.status === REGISTERED) {
+      if (!val) { el.value = p.category; return fail('Category is required while Registered.'); }
+      p.category = val;
+    } else if (row.dataset.wantsReg === '1' && val) {
+      p.category = val; p.status = REGISTERED; row.dataset.wantsReg = '';
+    } else { el.value = ''; return; }
+    if (val) { categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : []; if (!categoryMaster.includes(val)) { categoryMaster.push(val); categoryMasterDirty = true; } }
+  }
+
+  if (prev !== p.status) logStatusChange(p, prev);
+  const reg = p.status === REGISTERED;
+  row.classList.toggle('is-reg', reg); sel.value = p.status;
+  cat.value = p.category; cat.disabled = !reg && row.dataset.wantsReg !== '1'; cat.placeholder = reg ? 'Required' : '-';
+  markParticipantDirty(p.id);
+  recordsEditing = true; renderAll(); recordsEditing = false;
+  refreshSuggestions(); scheduleSave();
+  recordsSay('Saved.', 'ok');
+}
+
+function setupRecordsTab() {
+  const form = $id('addParticipantForm'), st = $id('addStatus'), cat = $id('addCategory'), name = $id('addName');
+  const say = (t, k) => { const m = $id('addMsg'); m.textContent = t; m.className = 'add-msg ' + (k || ''); };
+  const sync = () => { const reg = st.value === REGISTERED; cat.disabled = !reg; if (!reg) cat.value = ''; cat.placeholder = reg ? 'Required for Registered' : 'Only when Registered'; };
+  st.addEventListener('change', sync); sync();
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const fullName = name.value.trim(), followup = $id('addFollowup').value.trim(), mobile = $id('addMobile').value.trim();
+    const status = st.value === REGISTERED ? REGISTERED : NOT_REGISTERED, category = status === REGISTERED ? cat.value.trim() : '';
+    if (!fullName) { say('Full name is required.', 'err'); name.focus(); return; }
+    if (status === REGISTERED && !category) { say('Category is required when status is Registered.', 'err'); cat.focus(); return; }
+    const dup = findDuplicateMobile(mobile, null);
+    if (dup && form.dataset.confirmDup !== mobile) { form.dataset.confirmDup = mobile; say(`This number already belongs to ${dup.fullName}. Press Add again to add anyway.`, 'warn'); return; }
+    form.dataset.confirmDup = '';
+    const p = { id: genId(), fullName, followup, mobile, status, category };
+    participants.push(p); markParticipantDirty(p.id);
+    if (status === REGISTERED) {
+      categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : [];
+      if (!categoryMaster.includes(category)) { categoryMaster.push(category); categoryMasterDirty = true; }
+      logStatusChange(p, NOT_REGISTERED);
+    }
+    form.reset(); sync(); renderAll(); refreshSuggestions(); scheduleSave();
+    say(`Added ${fullName} as ${status}.`, 'ok'); name.focus();
+  });
+  $id('addClear').addEventListener('click', () => { form.reset(); form.dataset.confirmDup = ''; sync(); say(''); });
+  $id('recordsFilter').addEventListener('input', e => { recordsFilterText = e.target.value; renderRecords(); });
+  $id('recordsStatusFilter').addEventListener('change', e => { recordsStatusFilter = e.target.value; renderRecords(); });
+}
+
 async function init() {
   await loadState();
   enforceCategoryStatusInvariant();
   setupTabs();
+  setupRecordsTab();
   setupSearch();
   setupDataTab();
   setupShareButtons();
