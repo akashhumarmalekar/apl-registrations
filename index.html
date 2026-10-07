@@ -762,6 +762,11 @@
   .save-indicator::before { content:"\2713  "; }
   .save-indicator.show { transform:translate(-50%,0); }
 
+  .dd-edit { margin-left:10px; flex-shrink:0; }
+  .drilldown-list .dd-meta { margin-left:auto; }
+  .drilldown-list li { align-items:center; }
+  #modalBox .btn-row { align-items:center; }
+
   @media (max-width:640px) {
     header.top { padding:18px 14px 10px; }
     header.top h1 { font-size:25px; }
@@ -1047,6 +1052,7 @@ let firebaseReady = false;
 // a stale local copy (e.g. it missed someone else's edit) from silently reverting that
 // other edit just because it happened to save something unrelated afterwards.
 let dirtyParticipantIds = new Set();
+let deletedParticipantIds = new Set(); // participants removed on this tab, to be removed remotely on next save
 let participantsFullReplace = false; // true only for explicit "replace all" / "reset" actions
 let categoryMasterDirty = false;
 let targetCountDirty = false;
@@ -1249,6 +1255,7 @@ async function saveState() {
   if (!firebaseReady || !db) { flashSaveIndicator(); return; }
 
   const idsToWrite = new Set(dirtyParticipantIds);
+  const idsToDelete = new Set(deletedParticipantIds);
   const doFullReplace = participantsFullReplace;
   const localParticipantsSnapshot = participants.map(p => ({ ...p }));
   const writeCategoryMaster = categoryMasterDirty ? (categoryMaster || []).slice() : null;
@@ -1256,7 +1263,7 @@ async function saveState() {
   const writeLastRegisteredId = lastRegisteredIdDirty ? lastRegisteredId : undefined;
   const logOps = pendingLogOps.slice();
 
-  if (idsToWrite.size === 0 && !doFullReplace && !writeCategoryMaster && writeTargetCount === null
+  if (idsToWrite.size === 0 && idsToDelete.size === 0 && !doFullReplace && !writeCategoryMaster && writeTargetCount === null
       && writeLastRegisteredId === undefined && logOps.length === 0) {
     return; // nothing dirty, nothing to do
   }
@@ -1265,6 +1272,7 @@ async function saveState() {
   // during the network round trip below gets picked up by the *next* save instead of
   // being lost or re-sent twice.
   idsToWrite.forEach(id => dirtyParticipantIds.delete(id));
+  idsToDelete.forEach(id => deletedParticipantIds.delete(id));
   if (doFullReplace) participantsFullReplace = false;
   if (writeCategoryMaster) categoryMasterDirty = false;
   if (writeTargetCount !== null) targetCountDirty = false;
@@ -1286,6 +1294,7 @@ async function saveState() {
         const local = localParticipantsSnapshot.find(p => p.id === id);
         if (local) map.set(id, local);
       });
+      idsToDelete.forEach(id => map.delete(id));
       finalParticipants = Array.from(map.values());
     }
 
@@ -1309,6 +1318,7 @@ async function saveState() {
     showConnectionBanner('Could not save — check your connection. Your last change is kept locally and will retry.', 'err');
     // Put the flags back so the next save retries exactly what we failed to write.
     idsToWrite.forEach(id => dirtyParticipantIds.add(id));
+    idsToDelete.forEach(id => deletedParticipantIds.add(id));
     if (doFullReplace) participantsFullReplace = true;
     if (writeCategoryMaster) categoryMasterDirty = true;
     if (writeTargetCount !== null) targetCountDirty = true;
@@ -1878,9 +1888,11 @@ function openEditModal(id) {
     <div class="btn-row">
       <button class="btn primary" id="editSaveBtn">Save</button>
       <button class="btn" id="editCancelBtn">Cancel</button>
+      <button class="btn danger" id="editDeleteBtn" style="margin-left:auto;">Delete</button>
     </div>
   `);
   document.getElementById('editCancelBtn').addEventListener('click', closeModal);
+  document.getElementById('editDeleteBtn').addEventListener('click', () => deleteParticipant(id));
   document.getElementById('editSaveBtn').addEventListener('click', () => saveEdit(id));
   document.getElementById('editStatus').addEventListener('change', e => {
     const catInput = document.getElementById('editCategory');
@@ -1956,6 +1968,24 @@ function saveEdit(id) {
   renderAll();
   refreshSuggestions();
   scheduleSave();
+}
+
+function deleteParticipant(id) {
+  const p = participants.find(x => x.id === id);
+  if (!p) return;
+  requirePin(() => {
+    const extra = p.status === REGISTERED ? ' They are currently Registered; this also removes them from the registered count.' : '';
+    if (!confirm(`Permanently delete ${p.fullName}?${extra} This cannot be undone.`)) return;
+    participants = participants.filter(x => x.id !== id);
+    deletedParticipantIds.add(id);
+    dirtyParticipantIds.delete(id);
+    if (lastRegisteredId === id) { lastRegisteredId = null; lastRegisteredIdDirty = true; }
+    if (pendingParticipant && pendingParticipant.id === id) pendingParticipant = null;
+    closeModal();
+    renderAll();
+    refreshSuggestions();
+    scheduleSave();
+  });
 }
 
 function requirePin(callback) {
@@ -3247,7 +3277,7 @@ function openGroupDrilldownModal(groupKey, groupName) {
   const showCategory = groupKey !== 'category';
 
   const renderList = (rows, emptyText) => rows.length
-    ? `<ul class="drilldown-list">${rows.map(p => `<li><span class="dd-name">${escapeHtml(p.fullName)}</span><span class="dd-meta">${escapeHtml(p.mobile)}${showCategory ? ' · ' + escapeHtml(p.category) : ''}</span></li>`).join('')}</ul>`
+    ? `<ul class="drilldown-list">${rows.map(p => `<li><span class="dd-name">${escapeHtml(p.fullName)}</span><span class="dd-meta">${escapeHtml(p.mobile)}${showCategory ? ' · ' + escapeHtml(p.category) : ''}</span><button class="btn small dd-edit" data-id="${p.id}">Edit</button></li>`).join('')}</ul>`
     : `<div class="empty-state" style="padding:10px 0;">${escapeHtml(emptyText)}</div>`;
 
   openModal(`
@@ -3264,6 +3294,7 @@ function openGroupDrilldownModal(groupKey, groupName) {
   `);
   document.getElementById('drilldownShareBtn').addEventListener('click', () => { closeModal(); openGroupShareModal(groupKey, groupName); });
   document.getElementById('drilldownCloseBtn').addEventListener('click', closeModal);
+  document.querySelectorAll('#modalBox .dd-edit').forEach(b => b.addEventListener('click', () => openEditModal(b.dataset.id)));
 }
 
 function openGroupShareModal(groupKey, groupName) {
