@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Anand APL 2026 - Tournament Registration</title>
+<meta name="theme-color" content="#0B3B2C">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --navy: #16233F;
@@ -647,14 +651,142 @@
     .stat-card .value { font-size: 19px; }
     header.top h1 { font-size: 19px; }
   }
+
+  /* ===== UI/UX upgrade: "Floodlit pitch" theme (overrides above; export cards untouched) ===== */
+  :root {
+    --navy:#0B3B2C; --navy-light:#145040; --gold:#CFE62E; --gold-dark:#8FA818;
+    --bg:#EFF3EC; --border:#DCE4D7; --text:#14211B; --muted:#62705F;
+    --green:#14833F; --green-bg:#E4F4E9; --red:#B6362B; --red-bg:#FCE9E6;
+    --amber:#8A6410; --amber-bg:#FBF1D6; --blue:#1F5F8B; --blue-bg:#E5EFF6;
+    --radius:14px; --ring:0 0 0 3px rgba(20,131,63,.28);
+    --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  }
+  html { scroll-padding-top: 72px; }
+  body { font-family:"Figtree",-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-tap-highlight-color:transparent; }
+
+  header.top {
+    padding: 28px 20px 18px;
+    background:
+      linear-gradient(to bottom, transparent 30%, var(--navy) 100%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 56px, transparent 56px 112px),
+      var(--navy);
+  }
+  header.top h1 { font-family:var(--display); font-size:32px; font-weight:800; letter-spacing:-.01em; }
+  header.top p { color:var(--gold); font-size:15px; font-weight:600; letter-spacing:0; margin-top:2px; }
+
+  nav.tabs {
+    position:sticky; top:0; z-index:60; background:var(--navy);
+    padding:0 20px 14px; scrollbar-width:none; box-shadow:0 10px 18px -14px rgba(0,0,0,.6);
+  }
+  nav.tabs::-webkit-scrollbar { display:none; }
+  nav.tabs .inner { gap:6px; }
+  nav.tabs button {
+    border:0; border-radius:999px; padding:9px 16px; min-height:40px; font-family:inherit;
+    color:rgba(255,255,255,.78); background:rgba(255,255,255,.08); transition:background .15s,color .15s;
+  }
+  nav.tabs button:hover { background:rgba(255,255,255,.16); color:#fff; }
+  nav.tabs button.active { background:var(--gold); color:var(--navy); }
+  nav.tabs button:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+
+  /* Register tab: search first, stats above it */
+  #panel-register.active { display:flex; flex-direction:column; }
+  #panel-register .stats-row { order:-2; }
+  #panel-register .search-card { order:-1; margin-bottom:8px; }
+
+  .stat-card { padding:16px 18px; border-left:4px solid var(--border); }
+  .stat-card .label { text-transform:none; letter-spacing:0; font-size:13px; }
+  .stat-card .value { font-family:var(--display); font-weight:800; font-size:32px; line-height:1.1; letter-spacing:-.02em; }
+  .stat-card:nth-child(2) { border-left-color:var(--green); } .stat-card:nth-child(2) .value { color:var(--green); }
+  .stat-card:nth-child(3) { border-left-color:#D9A21B; } .stat-card:nth-child(3) .value { color:var(--amber); }
+  .stat-card:nth-child(4) { background:var(--navy); border-color:var(--navy); }
+  .stat-card:nth-child(4) .label { color:rgba(255,255,255,.72); }
+  .stat-card:nth-child(4) .value { color:var(--gold); }
+
+  .search-card { border-radius:18px; padding:22px; border-top:4px solid var(--gold); box-shadow:0 14px 32px -18px rgba(11,59,44,.45); }
+  .search-card label { font-size:15px; font-weight:700; color:var(--text); }
+  #searchInput, #categoryInput {
+    width:100%; font-family:inherit; font-size:20px; padding:14px 16px; border:2px solid var(--border);
+    border-radius:12px; outline:none; background:#FAFCF8; transition:border-color .12s, box-shadow .12s;
+  }
+  #categoryInput { font-size:17px; padding:12px 16px; }
+  #searchInput:focus, #categoryInput:focus, .filter-input:focus, .modal-box input:focus, .modal-box select:focus, textarea.data-input:focus {
+    border-color:var(--green); box-shadow:var(--ring); outline:none; background:#fff;
+  }
+  #suggestions, #categorySuggestions { border-radius:12px; margin-top:6px; box-shadow:0 14px 28px -14px rgba(11,59,44,.4); }
+  .suggestion-item { padding:12px 16px; min-height:48px; align-items:center; gap:12px; font-size:16px; }
+  .suggestion-item:hover { background:#F4F8EE; }
+  .suggestion-item.highlighted { background:#EAF5C9; box-shadow:inset 4px 0 0 var(--green); font-weight:600; }
+  .status-msg { border-radius:12px; border-left:5px solid currentColor; padding:12px 16px; font-size:15.5px; }
+
+  button.btn { font-family:inherit; border-radius:10px; border-color:#C9D5C3; transition:background .12s, transform .06s; }
+  button.btn:hover { background:#EEF3EA; }
+  button.btn:active, .edit-target-btn:active { transform:translateY(1px); }
+  button.btn:focus-visible, .edit-target-btn:focus-visible { outline:none; box-shadow:var(--ring); }
+  button.btn.danger { border-color:#EBC3BD; background:#FFF7F5; }
+  button.btn.danger:hover { background:var(--red-bg); }
+  #btnRegister { flex:1 1 220px; min-height:52px; font-family:var(--display); font-size:17px; font-weight:700; }
+  kbd { background:#fff; border-bottom-width:2px; }
+
+  .tracker-card { border-radius:var(--radius); padding:16px 18px; }
+  .tracker-card .label { font-size:13px; color:var(--muted); font-weight:600; }
+  .tracker-top .value { font-family:var(--display); font-weight:800; }
+  .tracker-top .edit-target-btn { border-radius:10px; color:var(--green); font-family:inherit; }
+  .progress-top .label { text-transform:none; letter-spacing:0; font-size:13px; }
+  .progress-track { height:14px; background:#E3EADF; }
+  .progress-fill { background:linear-gradient(90deg, var(--green), var(--gold)); }
+  .progress-fill.reached { background:var(--green); }
+
+  .toolbar { margin-bottom:14px; }
+  .toolbar h2 { font-family:var(--display); font-size:21px; font-weight:700; letter-spacing:-.01em; }
+  .count-pill { background:var(--navy); color:var(--gold); font-variant-numeric:tabular-nums; padding:3px 11px; }
+  .filter-input { font-family:inherit; border-radius:12px; background:#fff; outline:none; }
+  .empty-state { background:#F7FAF4; border-radius:var(--radius); }
+  .card { border-radius:var(--radius); padding:22px; }
+  .card h3 { font-family:var(--display); font-size:18px; font-weight:700; }
+
+  table.data { box-shadow:0 1px 2px rgba(20,33,27,.06); }
+  table.data th { background:#E9EFE4; color:#41503F; text-transform:none; letter-spacing:0; font-size:12.5px; }
+  table.data tr:hover td { background:#F4F8EE; }
+  table.data tr.total-row td, table.data tr.total-row:hover td { background:#E9EFE4; font-weight:700; }
+
+  .modal-overlay { background:rgba(8,28,21,.55); backdrop-filter:blur(3px); }
+  .modal-box { border-radius:18px; padding:24px; box-shadow:0 24px 60px -12px rgba(8,28,21,.5); }
+  .modal-overlay.show .modal-box { animation:sheetIn .18s ease-out; }
+  .modal-box h3 { font-family:var(--display); font-size:20px; font-weight:700; }
+  @keyframes sheetIn { from { opacity:0; transform:translateY(12px) scale(.98); } to { opacity:1; transform:none; } }
+
+  .save-indicator {
+    left:50%; right:auto; bottom:calc(18px + env(safe-area-inset-bottom,0px)); color:var(--gold);
+    transform:translate(-50%,8px); transition:opacity .25s, transform .25s; box-shadow:0 8px 20px -8px rgba(0,0,0,.5);
+  }
+  .save-indicator::before { content:"\2713  "; }
+  .save-indicator.show { transform:translate(-50%,0); }
+
+  @media (max-width:640px) {
+    header.top { padding:18px 14px 10px; }
+    header.top h1 { font-size:25px; }
+    header.top p { font-size:13.5px; letter-spacing:0; }
+    nav.tabs { padding:0 12px 12px; }
+    nav.tabs button { padding:9px 14px; font-size:13.5px; }
+    .stat-card .value { font-size:27px; }
+    .search-card { padding:16px; }
+    #searchInput { font-size:18px; padding:14px; }
+    table.data tr { border-radius:14px; box-shadow:0 1px 2px rgba(20,33,27,.06); }
+    table.data td::before { text-transform:none; letter-spacing:0; font-size:12px; font-weight:600; }
+    table.data tr td:first-child { font-weight:700; }
+    .modal-overlay { align-items:flex-end; padding:0; }
+    .modal-box { max-width:none; border-radius:20px 20px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px)); }
+  }
+  @media (max-width:380px) { .stat-card .value { font-size:22px; } header.top h1 { font-size:22px; } }
+  @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
 </style>
 </head>
 <body>
 
 <header class="top">
   <div class="inner">
-    <h1>ANAND APL 2026</h1>
-    <p>TOURNAMENT REGISTRATION</p>
+    <h1>Anand APL 2026</h1>
+    <p>Tournament registration</p>
   </div>
 </header>
 
