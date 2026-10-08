@@ -802,6 +802,10 @@
   }
   #recordsTableWrap { overflow-x:auto; border-radius:var(--radius); }
   #recordsTableWrap.editing { box-shadow:0 0 0 3px rgba(207,230,46,.75); }
+  .title-row h1 { display:inline; }
+  .name-edit { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; margin-left:10px; width:34px; height:34px; border:0; border-radius:50%; background:rgba(255,255,255,.12); color:var(--gold); font-size:16px; cursor:pointer; transition:background .15s; }
+  .name-edit:hover { background:rgba(255,255,255,.24); }
+  .name-edit:focus-visible { outline:2px solid #fff; outline-offset:2px; }
   th.sortable { cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s; }
   th.sortable:hover { background:#DDE6D7; }
   th.sortable:focus-visible { outline:2px solid var(--green); outline-offset:-2px; }
@@ -845,7 +849,7 @@
 
 <header class="top">
   <div class="inner">
-    <h1>Anand APL 2026</h1>
+    <div class="title-row"><h1 class="js-tname">Anand APL 2026</h1><button type="button" class="name-edit" id="editNameBtn" title="Edit tournament name" aria-label="Edit tournament name">&#9998;</button></div>
     <p>Tournament registration</p>
   </div>
 </header>
@@ -884,7 +888,7 @@
     </div>
 
     <div class="search-card">
-      <label for="searchInput">Type name to register for Anand APL 2026</label>
+      <label for="searchInput">Type name to register for <span class="js-tname">Anand APL 2026</span></label>
       <input type="text" id="searchInput" autocomplete="off" placeholder="Start typing a name...">
       <div id="suggestions"></div>
       <div class="btn-row" style="margin-top:12px; margin-bottom:0;">
@@ -1038,7 +1042,7 @@
       </div>
       <div class="add-msg" id="qrMsg" role="status"></div>
       <div class="qr-poster" id="qrPoster" hidden>
-        <div class="qr-title">Anand APL 2026</div>
+        <div class="qr-title js-tname">Anand APL 2026</div>
         <div class="qr-sub">Scan to register</div>
         <div id="qrCanvas"></div>
         <div class="qr-url" id="qrUrlText"></div>
@@ -1179,6 +1183,8 @@ let deletedParticipantIds = new Set(); // participants removed on this tab, to b
 let participantsFullReplace = false; // true only for explicit "replace all" / "reset" actions
 let categoryMasterDirty = false;
 let targetCountDirty = false;
+let tournamentName = tName() + '';
+let tournamentNameDirty = false;
 let lastRegisteredIdDirty = false;
 let pendingLogOps = []; // {type:'push', entry} | {type:'pop'} | {type:'replace', value:[...]}
 
@@ -1246,6 +1252,9 @@ function applyRemoteState(data) {
 
   if (!targetCountDirty && typeof data.targetCount === 'number' && data.targetCount >= 0) {
     targetCount = data.targetCount;
+  }
+  if (!tournamentNameDirty && typeof data.tournamentName === 'string' && data.tournamentName.trim()) {
+    tournamentName = data.tournamentName.trim();
   }
 
   categoryMaster = categoryMasterDirty
@@ -1384,10 +1393,11 @@ async function saveState() {
   const localParticipantsSnapshot = participants.map(p => ({ ...p }));
   const writeCategoryMaster = categoryMasterDirty ? (categoryMaster || []).slice() : null;
   const writeTargetCount = targetCountDirty ? targetCount : null;
+  const writeTournamentName = tournamentNameDirty ? tournamentName : null;
   const writeLastRegisteredId = lastRegisteredIdDirty ? lastRegisteredId : undefined;
   const logOps = pendingLogOps.slice();
 
-  if (idsToWrite.size === 0 && idsToDelete.size === 0 && !doFullReplace && !writeCategoryMaster && writeTargetCount === null
+  if (idsToWrite.size === 0 && idsToDelete.size === 0 && !doFullReplace && !writeCategoryMaster && writeTargetCount === null && writeTournamentName === null
       && writeLastRegisteredId === undefined && logOps.length === 0) {
     return; // nothing dirty, nothing to do
   }
@@ -1400,6 +1410,7 @@ async function saveState() {
   if (doFullReplace) participantsFullReplace = false;
   if (writeCategoryMaster) categoryMasterDirty = false;
   if (writeTargetCount !== null) targetCountDirty = false;
+  if (writeTournamentName !== null) tournamentNameDirty = false;
   if (writeLastRegisteredId !== undefined) lastRegisteredIdDirty = false;
   pendingLogOps = pendingLogOps.slice(logOps.length);
 
@@ -1432,6 +1443,7 @@ async function saveState() {
     const update = { participants: finalParticipants, log: finalLog, updatedAt: Date.now() };
     if (writeCategoryMaster) update.categoryMaster = writeCategoryMaster;
     if (writeTargetCount !== null) update.targetCount = writeTargetCount;
+    if (writeTournamentName !== null) update.tournamentName = writeTournamentName;
     if (writeLastRegisteredId !== undefined) update.lastRegisteredId = writeLastRegisteredId;
 
     await docRef.set(update, { merge: true });
@@ -1446,6 +1458,7 @@ async function saveState() {
     if (doFullReplace) participantsFullReplace = true;
     if (writeCategoryMaster) categoryMasterDirty = true;
     if (writeTargetCount !== null) targetCountDirty = true;
+    if (writeTournamentName !== null) tournamentNameDirty = true;
     if (writeLastRegisteredId !== undefined) lastRegisteredIdDirty = true;
     pendingLogOps = [...logOps, ...pendingLogOps];
   }
@@ -1703,6 +1716,7 @@ function renderAll() {
   populateCategoryDatalist();
   renderRecords();
   renderQr();
+  applyTournamentName();
 }
 
 function getAllCategoryNames() {
@@ -2641,13 +2655,13 @@ function setupDataTab() {
   document.getElementById('btnExportParticipants').addEventListener('click', () => {
     const header = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category'];
     const rows = participants.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category]);
-    downloadCsv('anand_apl_2026_participants.csv', header, rows);
+    downloadCsv(tSlug() + '_participants.csv', header, rows);
   });
 
   document.getElementById('btnExportLog').addEventListener('click', () => {
     const header = ['Timestamp', 'Full Name', 'Mobile', 'Followup', 'Category', 'Previous Status', 'New Status'];
     const rows = log.map(l => [l.timestamp, l.fullName, l.mobile, l.followup, l.category, l.prevStatus, l.newStatus]);
-    downloadCsv('anand_apl_2026_registration_log.csv', header, rows);
+    downloadCsv(tSlug() + '_registration_log.csv', header, rows);
   });
 
   document.getElementById('btnReset').addEventListener('click', () => {
@@ -2742,33 +2756,33 @@ function setupExcelButtons() {
   const LOG_HEADER = ['Timestamp', 'Full Name', 'Mobile', 'Followup', 'Category', 'Previous Status', 'New Status'];
 
   document.getElementById('btnExportParticipantsXlsx').addEventListener('click', () => {
-    downloadXlsx('anand_apl_2026_participants.xlsx', 'Participants', PARTICIPANT_HEADER, participantRows(participants));
+    downloadXlsx(tSlug() + '_participants.xlsx', 'Participants', PARTICIPANT_HEADER, participantRows(participants));
   });
   document.getElementById('btnExportLogXlsx').addEventListener('click', () => {
-    downloadXlsx('anand_apl_2026_registration_log.xlsx', 'Registration Log', LOG_HEADER, logRows());
+    downloadXlsx(tSlug() + '_registration_log.xlsx', 'Registration Log', LOG_HEADER, logRows());
   });
   document.getElementById('btnExcelRegistered').addEventListener('click', () => {
     const rows = participants.filter(p => p.status === REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
-    downloadXlsx('anand_apl_2026_registered.xlsx', 'Registered', PARTICIPANT_HEADER, participantRows(rows));
+    downloadXlsx(tSlug() + '_registered.xlsx', 'Registered', PARTICIPANT_HEADER, participantRows(rows));
   });
   document.getElementById('btnExcelPending').addEventListener('click', () => {
     const rows = participants.filter(p => p.status !== REGISTERED).slice().sort((a, b) => {
       const f = a.followup.localeCompare(b.followup);
       return f !== 0 ? f : a.fullName.localeCompare(b.fullName);
     });
-    downloadXlsx('anand_apl_2026_pending.xlsx', 'Pending', PARTICIPANT_HEADER, participantRows(rows));
+    downloadXlsx(tSlug() + '_pending.xlsx', 'Pending', PARTICIPANT_HEADER, participantRows(rows));
   });
   document.getElementById('btnExcelFollowup').addEventListener('click', () => {
-    downloadXlsx('anand_apl_2026_followup_report.xlsx', 'Followup Report', GROUP_HEADER, groupReportRows(buildGroupReport('followup')));
+    downloadXlsx(tSlug() + '_followup_report.xlsx', 'Followup Report', GROUP_HEADER, groupReportRows(buildGroupReport('followup')));
   });
   document.getElementById('btnExcelRegisterFollowup').addEventListener('click', () => {
-    downloadXlsx('anand_apl_2026_followup_summary.xlsx', 'Followup Summary', GROUP_HEADER, groupReportRows(buildGroupReport('followup')));
+    downloadXlsx(tSlug() + '_followup_summary.xlsx', 'Followup Summary', GROUP_HEADER, groupReportRows(buildGroupReport('followup')));
   });
   document.getElementById('btnExcelCategory').addEventListener('click', () => {
-    downloadXlsx('anand_apl_2026_category_report.xlsx', 'Category Report', GROUP_HEADER, groupReportRows(buildGroupReport('category')));
+    downloadXlsx(tSlug() + '_category_report.xlsx', 'Category Report', GROUP_HEADER, groupReportRows(buildGroupReport('category')));
   });
   document.getElementById('btnExcelLog').addEventListener('click', () => {
-    downloadXlsx('anand_apl_2026_registration_log.xlsx', 'Registration Log', LOG_HEADER, logRows());
+    downloadXlsx(tSlug() + '_registration_log.xlsx', 'Registration Log', LOG_HEADER, logRows());
   });
 
   document.getElementById('btnExportAllXlsx').addEventListener('click', () => {
@@ -2784,7 +2798,7 @@ function setupExcelButtons() {
     XLSX.utils.book_append_sheet(wb, sheetFromRows(GROUP_HEADER, groupReportRows(buildGroupReport('followup'))), 'Followup Report');
     XLSX.utils.book_append_sheet(wb, sheetFromRows(GROUP_HEADER, groupReportRows(buildGroupReport('category'))), 'Category Report');
     XLSX.utils.book_append_sheet(wb, sheetFromRows(LOG_HEADER, logRows()), 'Registration Log');
-    XLSX.writeFile(wb, 'anand_apl_2026_full_workbook.xlsx');
+    XLSX.writeFile(wb, tSlug() + '_full_workbook.xlsx');
   });
 }
 
@@ -2829,7 +2843,7 @@ function downloadCategoryWisePlayersPdf(rows, title, filename) {
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('ANAND APL 2026', marginX, cursorY);
+  doc.text(tName().toUpperCase(), marginX, cursorY);
   cursorY += 20;
   doc.setFontSize(12);
   doc.setTextColor(120, 100, 40);
@@ -2875,17 +2889,17 @@ function downloadCategoryWisePlayersPdf(rows, title, filename) {
 function setupPdfButtons() {
   document.getElementById('btnPdfCategoryRegistered').addEventListener('click', () => {
     const rows = participants.filter(p => p.status === REGISTERED);
-    downloadCategoryWisePlayersPdf(rows, `Registered players by category (${rows.length})`, 'anand_apl_2026_players_by_category_registered.pdf');
+    downloadCategoryWisePlayersPdf(rows, `Registered players by category (${rows.length})`, tSlug() + '_players_by_category_registered.pdf');
   });
   document.getElementById('btnPdfCategoryAll').addEventListener('click', () => {
-    downloadCategoryWisePlayersPdf(participants, `All players by category (${participants.length})`, 'anand_apl_2026_players_by_category_all.pdf');
+    downloadCategoryWisePlayersPdf(participants, `All players by category (${participants.length})`, tSlug() + '_players_by_category_all.pdf');
   });
   document.getElementById('btnPdfNamesRegistered').addEventListener('click', () => {
     const rows = participants.filter(p => p.status === REGISTERED);
-    downloadCategoryWiseNamesPdf(rows, `Registered players — names by category (${rows.length})`, 'anand_apl_2026_names_by_category_registered.pdf');
+    downloadCategoryWiseNamesPdf(rows, `Registered players — names by category (${rows.length})`, tSlug() + '_names_by_category_registered.pdf');
   });
   document.getElementById('btnPdfNamesAll').addEventListener('click', () => {
-    downloadCategoryWiseNamesPdf(participants, `All players — names by category (${participants.length})`, 'anand_apl_2026_names_by_category_all.pdf');
+    downloadCategoryWiseNamesPdf(participants, `All players — names by category (${participants.length})`, tSlug() + '_names_by_category_all.pdf');
   });
 }
 
@@ -2902,7 +2916,7 @@ function downloadCategoryWiseNamesPdf(rows, title, filename) {
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('ANAND APL 2026', marginX, cursorY);
+  doc.text(tName().toUpperCase(), marginX, cursorY);
   cursorY += 20;
   doc.setFontSize(12);
   doc.setTextColor(120, 100, 40);
@@ -2966,7 +2980,7 @@ function buildFollowupShareCaption() {
   const s = computeStats();
   const remaining = Math.max(0, targetCount - s.registered);
   const lines = [
-    'ANAND APL 2026 - Followup-wise summary',
+    tName().toUpperCase() + ' - Followup-wise summary',
     `Registered: ${s.registered} / ${targetCount} target`,
     `Pending: ${s.pending}`,
     remaining > 0 ? `${remaining} more to reach target` : 'Target reached!'
@@ -3002,13 +3016,13 @@ async function shareFollowupImage() {
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('toBlob returned null');
 
-    const fileName = 'anand_apl_2026_followup_summary.png';
+    const fileName = tSlug() + '_followup_summary.png';
     const file = new File([blob], fileName, { type: 'image/png' });
     const caption = buildFollowupShareCaption();
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], title: 'Anand APL 2026 Followup Summary', text: caption });
+        await navigator.share({ files: [file], title: tName() + ' Followup Summary', text: caption });
         return;
       } catch (e) {
         if (e && e.name === 'AbortError') return; // user cancelled the native share sheet
@@ -3168,7 +3182,7 @@ function shareSummaryText() {
     alert('Nothing to share - no participants yet.');
     return;
   }
-  shareText(buildSummaryPlainText(summary, 'ANAND APL 2026 - Overall summary'));
+  shareText(buildSummaryPlainText(summary, tName().toUpperCase() + ' - Overall summary'));
 }
 
 async function shareSummaryImage() {
@@ -3186,7 +3200,7 @@ async function shareSummaryImage() {
     sandbox.innerHTML = `
       <div class="list-export-card">
         <div class="list-export-header">
-          <div class="list-export-title">ANAND APL 2026</div>
+          <div class="list-export-title">${escapeHtml(tName().toUpperCase())}</div>
           <div class="list-export-sub">Overall summary</div>
         </div>
         ${renderSummaryTablesHtml(summary)}
@@ -3194,8 +3208,8 @@ async function shareSummaryImage() {
     `;
     const registered = summary.statusRows.find(r => r.label === 'Registered').count;
     const notRegistered = summary.statusRows.find(r => r.label === 'Not registered').count;
-    const caption = `ANAND APL 2026 - Overall summary\nTotal: ${summary.total} | Registered: ${registered} | Not registered: ${notRegistered}`;
-    await captureAndShareCard(sandbox, 'anand_apl_2026_overall_summary.png', 'Anand APL 2026 Summary', caption);
+    const caption = `${tName().toUpperCase()} - Overall summary\nTotal: ${summary.total} | Registered: ${registered} | Not registered: ${notRegistered}`;
+    await captureAndShareCard(sandbox, tSlug() + '_overall_summary.png', tName() + ' Summary', caption);
   } finally {
     btn.disabled = false;
     btn.textContent = originalLabel;
@@ -3210,7 +3224,7 @@ function buildConsolidatedMessage() {
   const regRows = participants.filter(p => p.status === REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
   const pendRows = participants.filter(p => p.status !== REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
   const lines = [
-    'ANAND APL 2026 - Consolidated report',
+    tName().toUpperCase() + ' - Consolidated report',
     `Total: ${s.total} | Registered: ${s.registered} | Pending: ${s.pending}`,
     '',
     '*CATEGORY*'
@@ -3239,11 +3253,11 @@ function shareConsolidatedText() {
     const f = a.followup.localeCompare(b.followup);
     return f !== 0 ? f : a.fullName.localeCompare(b.fullName);
   });
-  const csvFilename = 'anand_apl_2026_consolidated.csv';
+  const csvFilename = tSlug() + '_consolidated.csv';
   downloadCsv(csvFilename, ['Full Name', 'Followup', 'Mobile', 'Status', 'Category'],
     rows.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category]));
   const lines = [
-    'ANAND APL 2026 - Consolidated report',
+    tName().toUpperCase() + ' - Consolidated report',
     `Total: ${s.total} | Registered: ${s.registered} | Pending: ${s.pending}`,
     '',
     `(List is long, so it's been downloaded as a CSV instead - attach "${csvFilename}" manually in WhatsApp.)`,
@@ -3272,7 +3286,7 @@ async function shareConsolidatedImage() {
     sandbox.innerHTML = `
       <div class="list-export-card">
         <div class="list-export-header">
-          <div class="list-export-title">ANAND APL 2026</div>
+          <div class="list-export-title">${escapeHtml(tName().toUpperCase())}</div>
           <div class="list-export-sub">Consolidated report</div>
         </div>
         ${renderSummaryTablesHtml(summary)}
@@ -3282,8 +3296,8 @@ async function shareConsolidatedImage() {
         <div class="list-export-rows">${buildGroupedRowsHtml(pendRows, 'followup') || '<div class="list-export-empty">None</div>'}</div>
       </div>
     `;
-    const caption = `ANAND APL 2026 - Consolidated report\nTotal: ${s.total} | Registered: ${s.registered} | Pending: ${s.pending}`;
-    await captureAndShareCard(sandbox, 'anand_apl_2026_consolidated_summary.png', 'Anand APL 2026 Consolidated', caption);
+    const caption = `${tName().toUpperCase()} - Consolidated report\nTotal: ${s.total} | Registered: ${s.registered} | Pending: ${s.pending}`;
+    await captureAndShareCard(sandbox, tSlug() + '_consolidated_summary.png', tName() + ' Consolidated', caption);
   } finally {
     btn.disabled = false;
     btn.textContent = originalLabel;
@@ -3305,8 +3319,8 @@ function shareGroupListText(groupKey, groupName, statusFilter) {
   const groupField = groupKey !== 'category' ? 'category' : null;
   shareParticipantRows(
     rows,
-    `ANAND APL 2026 - ${statusLabel} list for ${groupName} (${label})`,
-    `anand_apl_2026_${statusFilter}_${groupName.replace(/[^a-z0-9]+/gi, '_')}.csv`,
+    `${tName().toUpperCase()} - ${statusLabel} list for ${groupName} (${label})`,
+    `${tSlug()}_${statusFilter}_${groupName.replace(/[^a-z0-9]+/gi, '_')}.csv`,
     groupField
   );
 }
@@ -3325,7 +3339,7 @@ async function shareGroupListImage(groupKey, groupName, statusFilter) {
   sandbox.innerHTML = `
     <div class="list-export-card">
       <div class="list-export-header">
-        <div class="list-export-title">ANAND APL 2026</div>
+        <div class="list-export-title">${escapeHtml(tName().toUpperCase())}</div>
         <div class="list-export-sub">${escapeHtml(groupName)}</div>
       </div>
       <div class="list-export-status ${statusClass}">${statusLabel.toUpperCase()} (${rows.length})</div>
@@ -3336,8 +3350,8 @@ async function shareGroupListImage(groupKey, groupName, statusFilter) {
   `;
 
   const safeName = groupName.replace(/[^a-z0-9]+/gi, '_');
-  const fileName = `anand_apl_2026_${statusFilter}_${safeName}.png`;
-  const caption = `ANAND APL 2026 - ${statusLabel} list for ${groupName} (${label})\nTotal: ${rows.length}`;
+  const fileName = `${tSlug()}_${statusFilter}_${safeName}.png`;
+  const caption = `${tName().toUpperCase()} - ${statusLabel} list for ${groupName} (${label})\nTotal: ${rows.length}`;
   await captureAndShareCard(sandbox, fileName, `${groupName} - ${statusLabel}`, caption);
 }
 
@@ -3353,7 +3367,7 @@ function shareGroupConsolidatedText(groupKey, groupName) {
   }
   const label = groupKey === 'followup' ? 'Followup' : 'Category';
   const lines = [
-    `ANAND APL 2026 - ${groupName} (${label})`,
+    `${tName().toUpperCase()} - ${groupName} (${label})`,
     `Total: ${total} | Registered: ${regRows.length} | Pending: ${pendRows.length}`
   ];
   if (groupKey === 'followup') {
@@ -3384,7 +3398,7 @@ async function shareGroupConsolidatedImage(groupKey, groupName) {
   sandbox.innerHTML = `
     <div class="list-export-card">
       <div class="list-export-header">
-        <div class="list-export-title">ANAND APL 2026</div>
+        <div class="list-export-title">${escapeHtml(tName().toUpperCase())}</div>
         <div class="list-export-sub">${escapeHtml(groupName)} (${label})</div>
       </div>
       ${summaryHtml}
@@ -3395,8 +3409,8 @@ async function shareGroupConsolidatedImage(groupKey, groupName) {
     </div>
   `;
   const safeName = groupName.replace(/[^a-z0-9]+/gi, '_');
-  const fileName = `anand_apl_2026_consolidated_${safeName}.png`;
-  const caption = `ANAND APL 2026 - ${groupName} (${label})\nTotal: ${total} | Registered: ${regRows.length} | Pending: ${pendRows.length}`;
+  const fileName = `${tSlug()}_consolidated_${safeName}.png`;
+  const caption = `${tName().toUpperCase()} - ${groupName} (${label})\nTotal: ${total} | Registered: ${regRows.length} | Pending: ${pendRows.length}`;
   await captureAndShareCard(sandbox, fileName, `${groupName} - Consolidated`, caption);
 }
 
@@ -3463,14 +3477,14 @@ function openGroupShareModal(groupKey, groupName) {
 function setupShareButtons() {
   document.getElementById('btnShareRegistered').addEventListener('click', () => {
     const rows = participants.filter(p => p.status === REGISTERED).slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
-    shareParticipantRows(rows, 'ANAND APL 2026 - Registered participants', 'anand_apl_2026_registered.csv', 'followup');
+    shareParticipantRows(rows, tName().toUpperCase() + ' - Registered participants', tSlug() + '_registered.csv', 'followup');
   });
   document.getElementById('btnSharePending').addEventListener('click', () => {
     const rows = participants.filter(p => p.status !== REGISTERED).slice().sort((a, b) => {
       const f = a.followup.localeCompare(b.followup);
       return f !== 0 ? f : a.fullName.localeCompare(b.fullName);
     });
-    shareParticipantRows(rows, 'ANAND APL 2026 - Pending participants', 'anand_apl_2026_pending.csv', 'followup');
+    shareParticipantRows(rows, tName().toUpperCase() + ' - Pending participants', tSlug() + '_pending.csv', 'followup');
   });
   document.getElementById('btnShareFollowupTable').addEventListener('click', shareFollowupImage);
   document.getElementById('btnShareConsolidatedText').addEventListener('click', shareConsolidatedText);
@@ -3759,12 +3773,12 @@ function maybePublishSignupConfig() {
   const uniq = arr => Array.from(new Set(arr.map(x => (x || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   const categories = uniq([...(categoryMaster || []), ...participants.map(p => p.category)]);
   const followups = uniq(participants.map(p => p.followup));
-  const sig = JSON.stringify([categories, followups]);
+  const sig = JSON.stringify([categories, followups, tName()]);
   if (sig === lastCfgSig) return;
   lastCfgSig = sig;
   clearTimeout(maybePublishSignupConfig._t);
   maybePublishSignupConfig._t = setTimeout(() => {
-    db.collection(SIGNUPS_COLLECTION).doc('_config').set({ categories, followups, updatedAt: Date.now() })
+    db.collection(SIGNUPS_COLLECTION).doc('_config').set({ categories, followups, tournamentName: tName(), updatedAt: Date.now() })
       .catch(e => { lastCfgSig = ''; cfgFailAt = Date.now(); console.warn('Could not publish form options', e); });
   }, 1500);
 }
@@ -3827,7 +3841,7 @@ function setupQrTab() {
   $id('qrDownload').addEventListener('click', () => {
     const c = $id('qrCanvas').querySelector('canvas');
     if (!c) return;
-    const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = 'Anand_APL_Registration_QR.png'; a.click();
+    const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = tSlug() + '_registration_QR.png'; a.click();
   });
   $id('qrPrint').addEventListener('click', () => window.print());
   $id('autoAddToggle').addEventListener('change', e => {
@@ -3842,12 +3856,52 @@ function setupQrTab() {
   if (saved) draw();
 }
 
+// ---------------- Tournament name ----------------
+function tName() { return (tournamentName || '').trim() || 'Anand APL 2026'; }
+function tSlug() { return tName().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'tournament'; }
+function applyTournamentName() {
+  const n = tName();
+  document.title = `${n} - Tournament Registration`;
+  document.querySelectorAll('.js-tname').forEach(el => { el.textContent = n; });
+}
+function openTournamentNameModal() {
+  openModal(`
+    <h3>Tournament name</h3>
+    <p class="desc" style="margin:0 0 14px;">Used in the header, PDFs, shared images, exports, the QR poster and the public registration form.</p>
+    <div class="fg"><label for="tnInput">Name</label><input id="tnInput" type="text" maxlength="60" autocomplete="off" value="${escapeHtml(tName())}"></div>
+    <div class="add-msg err" id="tnWarn"></div>
+    <div class="btn-row">
+      <button class="btn primary" id="tnSave">Save</button>
+      <button class="btn" id="tnCancel">Cancel</button>
+    </div>
+  `);
+  const input = document.getElementById('tnInput');
+  const save = () => {
+    const v = input.value.trim().replace(/\s+/g, ' ');
+    if (!v) { document.getElementById('tnWarn').textContent = 'Please enter a name.'; input.focus(); return; }
+    tournamentName = v;
+    tournamentNameDirty = true;
+    closeModal();
+    applyTournamentName();
+    scheduleSave();
+  };
+  document.getElementById('tnSave').addEventListener('click', save);
+  document.getElementById('tnCancel').addEventListener('click', closeModal);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+  input.focus(); input.select();
+}
+function setupTournamentName() {
+  document.getElementById('editNameBtn').addEventListener('click', () => requirePin(openTournamentNameModal));
+  applyTournamentName();
+}
+
 async function init() {
   await loadState();
   enforceCategoryStatusInvariant();
   setupTabs();
   setupRecordsTab();
   setupQrTab();
+  setupTournamentName();
   setupSearch();
   setupDataTab();
   setupShareButtons();
