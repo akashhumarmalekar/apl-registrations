@@ -780,6 +780,26 @@
   table.records tr.is-reg select.cell-input { color:var(--green); font-weight:600; }
   table.records td { padding-top:6px; padding-bottom:6px; }
   @media (max-width:640px) { table.records td .cell-input { flex:1; text-align:right; border-color:var(--border); background:#fff; } }
+  .tab-badge { display:inline-block; min-width:20px; padding:1px 7px; margin-left:6px; border-radius:999px; background:#E5484D; color:#fff; font-size:12px; font-weight:700; text-align:center; }
+  .tab-badge[hidden] { display:none; }
+  .auto-toggle { display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; }
+  .auto-toggle input { width:18px; height:18px; accent-color:var(--green); }
+  .qr-poster { text-align:center; padding:28px 24px; border:2px solid var(--navy); border-radius:20px; background:#fff; max-width:400px; margin:18px auto 0; }
+  .qr-title { font-family:var(--display); font-size:28px; font-weight:800; color:var(--navy); }
+  .qr-sub { font-size:19px; font-weight:600; margin:2px 0 16px; }
+  #qrCanvas { display:flex; justify-content:center; }
+  #qrCanvas img, #qrCanvas canvas { max-width:100%; height:auto; }
+  .qr-url { margin-top:14px; font-size:12px; color:var(--muted); word-break:break-all; }
+  .warn-txt { color:var(--amber); font-weight:700; font-size:13px; }
+  .sg-time { color:var(--muted); font-size:12px; margin-top:3px; }
+  table.signups .cell-input { border-color:var(--border); background:#fff; }
+  #signupsWrap { overflow-x:auto; }
+  @media print {
+    body * { visibility:hidden; }
+    #qrPoster, #qrPoster * { visibility:visible; }
+    #qrPoster { position:fixed; left:50%; top:6%; transform:translateX(-50%); border-width:3px; max-width:none; width:560px; }
+    html, body { height:100%; overflow:hidden; }
+  }
   #recordsTableWrap { overflow-x:auto; border-radius:var(--radius); }
   #recordsTableWrap.editing { box-shadow:0 0 0 3px rgba(207,230,46,.75); }
   .st-pill { display:inline-block; padding:3px 11px; border-radius:999px; font-size:12.5px; font-weight:700; background:#E9EDE5; color:var(--muted); white-space:nowrap; }
@@ -833,6 +853,7 @@
     <button class="tab-btn" data-tab="followup">Followup</button>
     <button class="tab-btn" data-tab="category">Category</button>
     <button class="tab-btn" data-tab="records">Data</button>
+    <button class="tab-btn" data-tab="qr">QR Sign-ups <span class="tab-badge" id="qrBadge" hidden>0</span></button>
     <button class="tab-btn" data-tab="log">Log</button>
     <button class="tab-btn" data-tab="data">Import / Export</button>
   </div>
@@ -993,6 +1014,35 @@
     <p class="hint" id="recordsHint">The table is locked. Click <b>Edit table</b> to change details or delete people.</p>
   </section>
 
+  <section class="panel" id="panel-qr">
+    <div class="card" id="qrCard">
+      <h3>Registration QR code</h3>
+      <p class="desc">Upload <b>register.html</b> to any web host, paste its public address here, then print or display the QR code. People scan it, fill in their details and submit; they appear in the queue below instantly.</p>
+      <div class="fg"><label for="qrUrl">Registration form address (URL)</label><input id="qrUrl" type="url" placeholder="https://your-site.com/register.html"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="qrGen">Generate QR code</button>
+        <button class="btn" id="qrDownload" style="display:none">Download PNG</button>
+        <button class="btn" id="qrPrint" style="display:none">Print poster</button>
+      </div>
+      <div class="add-msg" id="qrMsg" role="status"></div>
+      <div class="qr-poster" id="qrPoster" hidden>
+        <div class="qr-title">Anand APL 2026</div>
+        <div class="qr-sub">Scan to register</div>
+        <div id="qrCanvas"></div>
+        <div class="qr-url" id="qrUrlText"></div>
+      </div>
+    </div>
+    <div class="toolbar"><h2>Incoming sign-ups <span class="count-pill" id="signupsCount">0</span></h2>
+      <div class="btn-row" style="margin:0;">
+        <label class="auto-toggle"><input type="checkbox" id="autoAddToggle"> Auto-add on this device</label>
+        <button class="btn primary" id="addAllSignups" style="display:none">Add all</button>
+      </div>
+    </div>
+    <div class="add-msg err" id="signupsErr"></div>
+    <div id="signupsWrap"></div>
+    <p class="hint">Check or fix the details, then press <b>Add</b>. New people are added as <b>Registered</b>. If the name already exists in your list, that person is marked Registered instead of being duplicated. Auto-add skips anything that needs a decision (shared phone number, already registered).</p>
+  </section>
+
   <section class="panel" id="panel-data">
     <div class="card">
       <h3>Bulk import</h3>
@@ -1064,6 +1114,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ============================================================
 // FIREBASE SETUP — fill this in with your own project's config
@@ -1287,6 +1338,8 @@ async function loadState() {
     console.error('Firestore listener error', err);
     showConnectionBanner('Live sync interrupted — changes will retry automatically.', 'warn');
   });
+
+  startSignupsListener();
 }
 
 
@@ -1637,6 +1690,7 @@ function renderAll() {
   renderLog();
   populateCategoryDatalist();
   renderRecords();
+  renderQr();
 }
 
 function getAllCategoryNames() {
@@ -3577,11 +3631,187 @@ function setupRecordsTab() {
   $id('recordsStatusFilter').addEventListener('change', e => { recordsStatusFilter = e.target.value; renderRecords(); });
 }
 
+// ---------------- QR sign-ups ----------------
+const SIGNUPS_COLLECTION = 'anand_apl_2026_signups';
+let signups = [];
+let signupsError = '';
+let signupsUnsub = null;
+const handledSignups = new Set();
+let autoAddSignups = false;
+try { autoAddSignups = localStorage.getItem('anandAutoAdd') === '1'; } catch (e) {}
+const normName = x => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+function startSignupsListener() {
+  if (!db || signupsUnsub) return;
+  signupsUnsub = db.collection(SIGNUPS_COLLECTION).onSnapshot(snap => {
+    signups = snap.docs.filter(d => d.id !== '_config').map(d => ({ docId: d.id, ...d.data() }))
+      .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    signupsError = '';
+    processSignups();
+  }, err => {
+    console.error('Sign-ups listener error', err);
+    signupsError = 'Could not read QR sign-ups. Check your Firestore rules (see the setup notes).';
+    renderQr();
+  });
+}
+
+function signupMatch(s) {
+  const nm = normName(s.fullName), mob = normalizeMobile(s.mobile);
+  const byName = participants.find(p => normName(p.fullName) === nm) || null;
+  const sameNumber = mob ? (participants.find(p => p !== byName && normalizeMobile(p.mobile) === mob) || null) : null;
+  return { byName, sameNumber };
+}
+function autoOk(s) { const m = signupMatch(s); return !m.sameNumber && !(m.byName && m.byName.status === REGISTERED); }
+function pendingSignups() { return signups.filter(s => !handledSignups.has(s.docId) && !participants.some(p => p.id === 'qr_' + s.docId)); }
+
+function deleteSignupDoc(docId) {
+  if (!db) return;
+  db.collection(SIGNUPS_COLLECTION).doc(docId).delete().catch(e => console.warn('Could not delete sign-up', e));
+}
+// Wait until this participant is safely saved to Firestore, then run fn (used to remove the queue entry).
+function afterSaved(id, fn) {
+  let n = 0;
+  const t = setInterval(() => {
+    n++;
+    if (!dirtyParticipantIds.has(id) && !saveInFlight) { clearInterval(t); fn(); }
+    else if (n > 75) clearInterval(t);
+  }, 400);
+}
+
+function processSignups() {
+  signups.filter(s => participants.some(p => p.id === 'qr_' + s.docId)).forEach(s => deleteSignupDoc(s.docId));
+  if (autoAddSignups) pendingSignups().filter(autoOk).forEach(s => approveSignup(s.docId, true));
+  renderQr();
+}
+
+function approveSignup(docId, auto) {
+  const s = signups.find(x => x.docId === docId);
+  if (!s || handledSignups.has(docId)) return;
+  const row = document.querySelector(`#signupsWrap tr[data-sid="${docId}"]`);
+  const val = f => { const el = row && row.querySelector(`[data-sf="${f}"]`); return (el ? el.value : (s[f] || '')).toString().trim(); };
+  const fullName = val('fullName'), followup = val('followup'), category = val('category'), mobile = normalizeMobile(val('mobile'));
+  if (!fullName || !followup || !category || !mobile) {
+    if (!auto) alert('Full name, followup, a valid 10-digit mobile and category are all required.');
+    return;
+  }
+  const m = signupMatch({ fullName, mobile });
+  let p;
+  if (m.byName) {
+    p = m.byName;
+    const prev = p.status;
+    p.status = REGISTERED; p.category = category;
+    if (!(p.followup || '').trim()) p.followup = followup;
+    if (!normalizeMobile(p.mobile)) p.mobile = mobile;
+    if (prev !== REGISTERED) logStatusChange(p, prev);
+  } else {
+    p = { id: 'qr_' + docId, fullName, followup, mobile, status: REGISTERED, category };
+    participants.push(p);
+    logStatusChange(p, NOT_REGISTERED);
+  }
+  categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : [];
+  if (!categoryMaster.includes(category)) { categoryMaster.push(category); categoryMasterDirty = true; }
+  markParticipantDirty(p.id);
+  handledSignups.add(docId);
+  renderAll(); refreshSuggestions(); scheduleSave();
+  afterSaved(p.id, () => deleteSignupDoc(docId));
+}
+
+// Publish category + followup names so the public form can show them as dropdowns.
+let lastCfgSig = '', cfgFailAt = 0;
+function maybePublishSignupConfig() {
+  if (!db || !firebaseReady || !participants.length || Date.now() - cfgFailAt < 60000) return;
+  const uniq = arr => Array.from(new Set(arr.map(x => (x || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const categories = uniq([...(categoryMaster || []), ...participants.map(p => p.category)]);
+  const followups = uniq(participants.map(p => p.followup));
+  const sig = JSON.stringify([categories, followups]);
+  if (sig === lastCfgSig) return;
+  lastCfgSig = sig;
+  clearTimeout(maybePublishSignupConfig._t);
+  maybePublishSignupConfig._t = setTimeout(() => {
+    db.collection(SIGNUPS_COLLECTION).doc('_config').set({ categories, followups, updatedAt: Date.now() })
+      .catch(e => { lastCfgSig = ''; cfgFailAt = Date.now(); console.warn('Could not publish form options', e); });
+  }, 1500);
+}
+
+function renderQr() {
+  const pend = pendingSignups();
+  const badge = $id('qrBadge');
+  if (badge) { badge.textContent = pend.length; badge.hidden = pend.length === 0; }
+  maybePublishSignupConfig();
+  const wrap = $id('signupsWrap');
+  if (!wrap) return;
+  $id('signupsErr').textContent = signupsError;
+  $id('signupsCount').textContent = pend.length;
+  $id('addAllSignups').style.display = pend.filter(autoOk).length > 1 ? '' : 'none';
+  $id('autoAddToggle').checked = autoAddSignups;
+  if (wrap.contains(document.activeElement)) return;
+  if (!pend.length) { wrap.innerHTML = '<div class="empty-state">No pending sign-ups. New QR registrations appear here instantly.</div>'; return; }
+  const inp = (s, f, label, attrs) => `<td data-label="${label}"><input class="cell-input" data-sf="${f}" value="${escapeHtml(s[f] || '')}" ${attrs || ''}></td>`;
+  const rows = pend.map(s => {
+    const m = signupMatch(s);
+    let info, canAdd = true;
+    if (m.byName && m.byName.status === REGISTERED) { info = '<span class="st-pill reg">Already registered</span>'; canAdd = false; }
+    else if (m.byName) info = '<span class="st-pill">Existing person: will be marked Registered</span>';
+    else if (m.sameNumber) info = `<span class="warn-txt">Same number as ${escapeHtml(m.sameNumber.fullName)}</span>`;
+    else info = '<span class="st-pill reg">New person</span>';
+    const time = s.createdAt ? new Date(s.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    return `<tr data-sid="${s.docId}">`
+      + inp(s, 'fullName', 'Full name') + inp(s, 'followup', 'Followup', 'list="followupDatalist"') + inp(s, 'mobile', 'Mobile', 'inputmode="tel"')
+      + inp(s, 'category', 'Category', 'list="categoryDatalist"')
+      + `<td data-label="Match">${info}<div class="sg-time">${time}</div></td>`
+      + `<td class="actions-cell" data-label="Actions">${canAdd ? `<button class="btn small primary sg-add">${m.byName ? 'Register' : 'Add'}</button> ` : ''}<button class="btn small danger sg-del">Dismiss</button></td></tr>`;
+  }).join('');
+  wrap.innerHTML = `<table class="data signups"><thead><tr><th>Full name</th><th>Followup</th><th>Mobile</th><th>Category</th><th>Match</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.sg-add').forEach(b => b.addEventListener('click', () => approveSignup(b.closest('tr').dataset.sid, false)));
+  wrap.querySelectorAll('.sg-del').forEach(b => b.addEventListener('click', () => {
+    const tr = b.closest('tr');
+    if (confirm('Dismiss this sign-up without adding it?')) deleteSignupDoc(tr.dataset.sid);
+  }));
+}
+
+function setupQrTab() {
+  const urlEl = $id('qrUrl'), say = (t, k) => { const m = $id('qrMsg'); m.textContent = t; m.className = 'add-msg ' + (k || ''); };
+  let saved = '';
+  try { saved = localStorage.getItem('anandSignupUrl') || ''; } catch (e) {}
+  if (!saved && /^https?:/i.test(location.protocol)) { try { saved = new URL('register.html', location.href).href; } catch (e) {} }
+  urlEl.value = saved;
+  const draw = () => {
+    const url = urlEl.value.trim();
+    if (!/^https?:\/\/\S+$/i.test(url)) { say('Enter the full address, starting with https://', 'err'); return; }
+    if (typeof QRCode === 'undefined') { say('QR library could not load. Check your internet connection and reload.', 'err'); return; }
+    try { localStorage.setItem('anandSignupUrl', url); } catch (e) {}
+    const box = $id('qrCanvas'); box.innerHTML = '';
+    new QRCode(box, { text: url, width: 280, height: 280, colorDark: '#0B3B2C', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    $id('qrUrlText').textContent = url;
+    $id('qrPoster').hidden = false;
+    $id('qrDownload').style.display = ''; $id('qrPrint').style.display = '';
+    say('QR code ready. Test it with your phone camera before printing.', 'ok');
+  };
+  $id('qrGen').addEventListener('click', draw);
+  $id('qrDownload').addEventListener('click', () => {
+    const c = $id('qrCanvas').querySelector('canvas');
+    if (!c) return;
+    const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = 'Anand_APL_Registration_QR.png'; a.click();
+  });
+  $id('qrPrint').addEventListener('click', () => window.print());
+  $id('autoAddToggle').addEventListener('change', e => {
+    autoAddSignups = e.target.checked;
+    try { localStorage.setItem('anandAutoAdd', autoAddSignups ? '1' : '0'); } catch (err) {}
+    if (autoAddSignups) processSignups();
+  });
+  $id('addAllSignups').addEventListener('click', () => {
+    const list = pendingSignups().filter(autoOk);
+    if (list.length && confirm(`Add ${list.length} sign-up(s) as Registered?`)) list.forEach(s => approveSignup(s.docId, true));
+  });
+  if (saved) draw();
+}
+
 async function init() {
   await loadState();
   enforceCategoryStatusInvariant();
   setupTabs();
   setupRecordsTab();
+  setupQrTab();
   setupSearch();
   setupDataTab();
   setupShareButtons();
