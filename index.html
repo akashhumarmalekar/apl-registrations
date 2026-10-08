@@ -802,6 +802,11 @@
   }
   #recordsTableWrap { overflow-x:auto; border-radius:var(--radius); }
   #recordsTableWrap.editing { box-shadow:0 0 0 3px rgba(207,230,46,.75); }
+  th.sortable { cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s; }
+  th.sortable:hover { background:#DDE6D7; }
+  th.sortable:focus-visible { outline:2px solid var(--green); outline-offset:-2px; }
+  .sort-arrow { margin-left:6px; font-size:10px; color:var(--muted); opacity:.65; }
+  th[aria-sort="ascending"] .sort-arrow, th[aria-sort="descending"] .sort-arrow { color:var(--green); opacity:1; }
   .st-pill { display:inline-block; padding:3px 11px; border-radius:999px; font-size:12.5px; font-weight:700; background:#E9EDE5; color:var(--muted); white-space:nowrap; }
   .st-pill.reg { background:var(--green-bg); color:var(--green); }
   .muted-dash { color:var(--muted); }
@@ -1007,6 +1012,13 @@
     <div class="toolbar"><h2>All data <span class="count-pill" id="recordsCount">0</span></h2><button class="btn primary" id="recordsEditBtn">Edit table</button></div>
     <div class="btn-row" style="margin-bottom:12px;">
       <input class="filter-input" id="recordsFilter" type="search" placeholder="Filter by name, mobile, followup or category" style="flex:1 1 260px;">
+      <select class="filter-input" id="recordsSortSel" style="flex:0 0 auto;width:auto;" aria-label="Sort by">
+        <option value="fullName:1">Sort: Name A–Z</option><option value="fullName:-1">Sort: Name Z–A</option>
+        <option value="followup:1">Sort: Followup A–Z</option><option value="followup:-1">Sort: Followup Z–A</option>
+        <option value="mobile:1">Sort: Mobile low→high</option><option value="mobile:-1">Sort: Mobile high→low</option>
+        <option value="status:1">Sort: Not Registered first</option><option value="status:-1">Sort: Registered first</option>
+        <option value="category:1">Sort: Category A–Z</option><option value="category:-1">Sort: Category Z–A</option>
+      </select>
       <select class="filter-input" id="recordsStatusFilter" style="flex:0 0 auto;width:auto;"><option value="all">All statuses</option><option value="reg">Registered</option><option value="pend">Not Registered</option></select>
     </div>
     <div class="add-msg" id="recordsMsg" role="status"></div>
@@ -3471,6 +3483,7 @@ function setupShareButtons() {
 let recordsFilterText = '';
 let recordsStatusFilter = 'all';
 let recordsEditing = false;
+let recordsSort = { key: 'fullName', dir: 1 };
 let recordsEditMode = false; // table is read-only until the Edit table button is pressed
 const $id = x => document.getElementById(x);
 
@@ -3495,6 +3508,23 @@ function recordsSay(text, kind) {
   if (text) recordsSay._t = setTimeout(() => { el.textContent = ''; }, 5000);
 }
 
+function recordsComparator(a, b) {
+  const k = recordsSort.key, d = recordsSort.dir;
+  const va = (a[k] || '').toString().trim(), vb = (b[k] || '').toString().trim();
+  if (!va && vb) return 1;   // blanks always sink to the bottom
+  if (va && !vb) return -1;
+  const c = va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' });
+  return c ? c * d : a.fullName.localeCompare(b.fullName);
+}
+function setRecordsSort(key, dir) {
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  if (dir) recordsSort = { key, dir };
+  else recordsSort = { key, dir: recordsSort.key === key ? -recordsSort.dir : 1 };
+  const sel = $id('recordsSortSel');
+  if (sel) sel.value = recordsSort.key + ':' + recordsSort.dir;
+  renderRecords();
+}
+
 function renderRecords() {
   const wrap = $id('recordsTableWrap');
   if (!wrap) return;
@@ -3507,7 +3537,7 @@ function renderRecords() {
   const q = recordsFilterText.trim().toLowerCase();
   const rows = participants
     .filter(p => matchesFilter(p, q) && (recordsStatusFilter === 'all' || (recordsStatusFilter === 'reg' ? p.status === REGISTERED : p.status !== REGISTERED)))
-    .slice().sort((a, b) => a.fullName.localeCompare(b.fullName));
+    .slice().sort(recordsComparator);
   $id('recordsCount').textContent = rows.length === participants.length ? participants.length : `${rows.length} of ${participants.length}`;
   if (!participants.length) { wrap.innerHTML = '<div class="empty-state">No participants yet. Add one above.</div>'; return; }
   if (!rows.length) { wrap.innerHTML = '<div class="empty-state">No matches for that filter.</div>'; return; }
@@ -3526,7 +3556,12 @@ function renderRecords() {
       + input(p, 'category', 'Category', `list="categoryDatalist" placeholder="${reg ? 'Required' : 'Category'}"`)
       + `<td class="actions-cell" data-label="Actions"><button class="btn small danger rec-del" data-id="${p.id}">Delete</button></td></tr>`;
   }).join('');
-  wrap.innerHTML = `<table class="data records"><thead><tr><th>Full name</th><th>Followup</th><th>Mobile</th><th>Status</th><th>Category</th>${ed ? '<th></th>' : ''}</tr></thead><tbody>${body}</tbody></table>`;
+  const th = (k, label) => `<th class="sortable" data-sort="${k}" tabindex="0" aria-sort="${recordsSort.key === k ? (recordsSort.dir === 1 ? 'ascending' : 'descending') : 'none'}">${label}<span class="sort-arrow">${recordsSort.key === k ? (recordsSort.dir === 1 ? '\u25B2' : '\u25BC') : '\u2195'}</span></th>`;
+  wrap.innerHTML = `<table class="data records"><thead><tr>${th('fullName', 'Full name')}${th('followup', 'Followup')}${th('mobile', 'Mobile')}${th('status', 'Status')}${th('category', 'Category')}${ed ? '<th></th>' : ''}</tr></thead><tbody>${body}</tbody></table>`;
+  wrap.querySelectorAll('th.sortable').forEach(h => {
+    h.addEventListener('click', () => setRecordsSort(h.dataset.sort));
+    h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setRecordsSort(h.dataset.sort); } });
+  });
   if (ed) {
     wrap.querySelectorAll('.cell-input').forEach(el => el.addEventListener('change', () => applyRecordEdit(el)));
     wrap.querySelectorAll('.rec-del').forEach(b => b.addEventListener('click', () => { b.blur(); deleteParticipant(b.dataset.id); }));
@@ -3628,6 +3663,7 @@ function setupRecordsTab() {
   $id('addClear').addEventListener('click', () => { form.querySelectorAll('.cell-err').forEach(x => x.classList.remove('cell-err')); form.reset(); form.dataset.confirmDup = ''; sync(); say(''); });
   $id('recordsEditBtn').addEventListener('click', () => { if (recordsEditMode) setRecordsEditMode(false); else requirePin(() => setRecordsEditMode(true)); });
   $id('recordsFilter').addEventListener('input', e => { recordsFilterText = e.target.value; renderRecords(); });
+  $id('recordsSortSel').addEventListener('change', e => { const [k, d] = e.target.value.split(':'); setRecordsSort(k, parseInt(d, 10)); });
   $id('recordsStatusFilter').addEventListener('change', e => { recordsStatusFilter = e.target.value; renderRecords(); });
 }
 
