@@ -802,10 +802,7 @@
   }
   #recordsTableWrap { overflow-x:auto; border-radius:var(--radius); }
   #recordsTableWrap.editing { box-shadow:0 0 0 3px rgba(207,230,46,.75); }
-  .title-row h1 { display:inline; }
-  .name-edit { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; margin-left:10px; width:34px; height:34px; border:0; border-radius:50%; background:rgba(255,255,255,.12); color:var(--gold); font-size:16px; cursor:pointer; transition:background .15s; }
-  .name-edit:hover { background:rgba(255,255,255,.24); }
-  .name-edit:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+  .tname-display { font-family:var(--display); font-size:22px; font-weight:800; letter-spacing:-.01em; color:var(--navy); margin-right:8px; word-break:break-word; }
   th.sortable { cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s; }
   th.sortable:hover { background:#DDE6D7; }
   th.sortable:focus-visible { outline:2px solid var(--green); outline-offset:-2px; }
@@ -849,7 +846,7 @@
 
 <header class="top">
   <div class="inner">
-    <div class="title-row"><h1 class="js-tname">Anand APL 2026</h1><button type="button" class="name-edit" id="editNameBtn" title="Edit tournament name" aria-label="Edit tournament name">&#9998;</button></div>
+    <h1 class="js-tname">Anand APL 2026</h1>
     <p>Tournament registration</p>
   </div>
 </header>
@@ -1060,6 +1057,14 @@
   </section>
 
   <section class="panel" id="panel-data">
+    <div class="card">
+      <h3>Tournament name</h3>
+      <p class="desc">Shown in the page header, PDFs, shared images, exports, the QR poster and the public registration form.</p>
+      <div class="btn-row" style="align-items:center;">
+        <div class="tname-display js-tname">Anand APL 2026</div>
+        <button class="btn primary" id="editNameBtn">Edit name</button>
+      </div>
+    </div>
     <div class="card">
       <h3>Bulk import</h3>
       <p class="desc">To add one person, use the form in the Data tab. To load many at once, paste rows copied straight from Excel (columns in this order: Full Name, Followup, Mobile, Status, Category — tab or comma separated, header row optional).</p>
