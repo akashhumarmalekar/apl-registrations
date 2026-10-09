@@ -947,7 +947,10 @@
         <button class="btn small whatsapp" id="btnShareRegistered">Share via WhatsApp</button>
       </div>
     </div>
-    <input type="text" class="filter-input" id="registeredFilterInput" placeholder="Filter by name, mobile, followup, or category...">
+    <div class="btn-row" style="margin-bottom:12px;">
+      <input type="text" class="filter-input" id="registeredFilterInput" placeholder="Filter by name, mobile, followup, or category..." style="flex:1 1 260px;">
+      <select class="filter-input" id="registeredSortSel" style="flex:0 0 auto;width:auto;" aria-label="Sort by"><option value="fullName:1">Sort: Name A–Z</option><option value="fullName:-1">Sort: Name Z–A</option><option value="followup:1">Sort: Followup A–Z</option><option value="followup:-1">Sort: Followup Z–A</option><option value="mobile:1">Sort: Mobile low→high</option><option value="mobile:-1">Sort: Mobile high→low</option><option value="category:1">Sort: Category A–Z</option><option value="category:-1">Sort: Category Z–A</option></select>
+    </div>
     <div id="registeredTableWrap"></div>
   </section>
 
@@ -959,7 +962,10 @@
         <button class="btn small whatsapp" id="btnSharePending">Share via WhatsApp</button>
       </div>
     </div>
-    <input type="text" class="filter-input" id="pendingFilterInput" placeholder="Filter by name, mobile, followup, or category...">
+    <div class="btn-row" style="margin-bottom:12px;">
+      <input type="text" class="filter-input" id="pendingFilterInput" placeholder="Filter by name, mobile, followup, or category..." style="flex:1 1 260px;">
+      <select class="filter-input" id="pendingSortSel" style="flex:0 0 auto;width:auto;" aria-label="Sort by"><option value="fullName:1">Sort: Name A–Z</option><option value="fullName:-1">Sort: Name Z–A</option><option value="followup:1">Sort: Followup A–Z</option><option value="followup:-1">Sort: Followup Z–A</option><option value="mobile:1">Sort: Mobile low→high</option><option value="mobile:-1">Sort: Mobile high→low</option><option value="category:1">Sort: Category A–Z</option><option value="category:-1">Sort: Category Z–A</option></select>
+    </div>
     <div id="pendingTableWrap"></div>
   </section>
 
@@ -1540,13 +1546,43 @@ function wireRowActionButtons(wrap) {
   });
 }
 
+const listSort = { registered: { key: 'fullName', dir: 1 }, pending: { key: 'followup', dir: 1 } };
+function sortRowsBy(rows, sort) {
+  const k = sort.key, d = sort.dir;
+  return rows.slice().sort((a, b) => {
+    const va = (a[k] || '').toString().trim(), vb = (b[k] || '').toString().trim();
+    if (!va && vb) return 1;   // blanks sink to the bottom
+    if (va && !vb) return -1;
+    const c = va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' });
+    return c ? c * d : a.fullName.localeCompare(b.fullName);
+  });
+}
+function listTh(which, key, label) {
+  const sort = listSort[which], on = sort.key === key;
+  return `<th class="sortable" data-sort="${key}" tabindex="0" aria-sort="${on ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}">${label}<span class="sort-arrow">${on ? (sort.dir === 1 ? '\u25B2' : '\u25BC') : '\u2195'}</span></th>`;
+}
+function syncListSortSel(which) {
+  const el = document.getElementById(which + 'SortSel');
+  if (el) el.value = listSort[which].key + ':' + listSort[which].dir;
+}
+function wireListSort(which, wrap, rerender) {
+  const go = key => {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    const cur = listSort[which];
+    listSort[which] = { key, dir: cur.key === key ? -cur.dir : 1 };
+    syncListSortSel(which);
+    rerender();
+  };
+  wrap.querySelectorAll('th.sortable').forEach(h => {
+    h.addEventListener('click', () => go(h.dataset.sort));
+    h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(h.dataset.sort); } });
+  });
+}
+
 function renderRegisteredList() {
   const all = participants.filter(p => p.status === REGISTERED);
   const q = registeredFilterText.trim().toLowerCase();
-  const rows = all
-    .filter(p => matchesFilter(p, q))
-    .slice()
-    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  const rows = sortRowsBy(all.filter(p => matchesFilter(p, q)), listSort.registered);
   document.getElementById('registeredCount').textContent = q ? `${rows.length} of ${all.length}` : all.length;
   const wrap = document.getElementById('registeredTableWrap');
   if (all.length === 0) {
@@ -1557,23 +1593,17 @@ function renderRegisteredList() {
     wrap.innerHTML = '<div class="empty-state">No matches for that filter.</div>';
     return;
   }
-  wrap.innerHTML = `<table class="data"><thead><tr><th>Full name</th><th>Followup</th><th>Mobile</th><th>Category</th><th>Actions</th></tr></thead><tbody>
+  wrap.innerHTML = `<table class="data"><thead><tr>${listTh('registered','fullName','Full name')}${listTh('registered','followup','Followup')}${listTh('registered','mobile','Mobile')}${listTh('registered','category','Category')}<th>Actions</th></tr></thead><tbody>
     ${rows.map(p => `<tr><td data-label="Full name">${escapeHtml(p.fullName)}</td><td data-label="Followup">${escapeHtml(p.followup)}</td><td data-label="Mobile">${escapeHtml(p.mobile)}</td><td data-label="Category">${escapeHtml(p.category)}</td><td class="actions-cell" data-label="Actions"><button class="btn small edit-btn" data-id="${p.id}">Edit</button><button class="btn small danger cancel-btn" data-id="${p.id}">Cancel</button></td></tr>`).join('')}
   </tbody></table>`;
+  wireListSort('registered', wrap, renderRegisteredList);
   wireRowActionButtons(wrap);
 }
 
 function renderPendingList() {
   const all = participants.filter(p => p.status !== REGISTERED);
   const q = pendingFilterText.trim().toLowerCase();
-  const rows = all
-    .filter(p => matchesFilter(p, q))
-    .slice()
-    .sort((a, b) => {
-      const f = a.followup.localeCompare(b.followup);
-      if (f !== 0) return f;
-      return a.fullName.localeCompare(b.fullName);
-    });
+  const rows = sortRowsBy(all.filter(p => matchesFilter(p, q)), listSort.pending);
   document.getElementById('pendingCount').textContent = q ? `${rows.length} of ${all.length}` : all.length;
   const wrap = document.getElementById('pendingTableWrap');
   if (all.length === 0) {
@@ -1584,9 +1614,10 @@ function renderPendingList() {
     wrap.innerHTML = '<div class="empty-state">No matches for that filter.</div>';
     return;
   }
-  wrap.innerHTML = `<table class="data"><thead><tr><th>Full name</th><th>Followup</th><th>Mobile</th><th>Category</th><th>Actions</th></tr></thead><tbody>
+  wrap.innerHTML = `<table class="data"><thead><tr>${listTh('pending','fullName','Full name')}${listTh('pending','followup','Followup')}${listTh('pending','mobile','Mobile')}${listTh('pending','category','Category')}<th>Actions</th></tr></thead><tbody>
     ${rows.map(p => `<tr><td data-label="Full name">${escapeHtml(p.fullName)}</td><td data-label="Followup">${escapeHtml(p.followup)}</td><td data-label="Mobile">${escapeHtml(p.mobile)}</td><td data-label="Category">${escapeHtml(p.category)}</td><td class="actions-cell" data-label="Actions"><button class="btn small edit-btn" data-id="${p.id}">Edit</button></td></tr>`).join('')}
   </tbody></table>`;
+  wireListSort('pending', wrap, renderPendingList);
   wireRowActionButtons(wrap);
 }
 
@@ -2188,6 +2219,15 @@ function setupFilters() {
   document.getElementById('pendingFilterInput').addEventListener('input', e => {
     pendingFilterText = e.target.value;
     renderPendingList();
+  });
+  ['registered', 'pending'].forEach(which => {
+    const el = document.getElementById(which + 'SortSel');
+    syncListSortSel(which);
+    el.addEventListener('change', e => {
+      const [k, d] = e.target.value.split(':');
+      listSort[which] = { key: k, dir: parseInt(d, 10) };
+      (which === 'registered' ? renderRegisteredList : renderPendingList)();
+    });
   });
 }
 
