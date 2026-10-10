@@ -4231,7 +4231,8 @@ function downloadTeamsXlsx() {
   XLSX.writeFile(wb, tSlug() + '_teams.xlsx');
 }
 
-// One team per page (A4 portrait). A long team simply continues on the next page with a slim header.
+// Teams are packed onto A4 pages one after another (no big empty gaps). A team is never split
+// across pages unless it is longer than a whole page, in which case it continues with a slim label.
 const TEAM_PDF_COLORS = {
   'cat-mentor':   { text: [31, 95, 139],  tint: [229, 239, 246] },
   'cat-captain':  { text: [94, 110, 12],  tint: [238, 246, 184] },
@@ -4239,41 +4240,70 @@ const TEAM_PDF_COLORS = {
   'cat-gold':     { text: [138, 100, 16], tint: [251, 241, 214] },
   'cat-silver':   { text: [85, 92, 99],   tint: [238, 240, 242] }
 };
+const TEAM_PDF = { mx: 40, topY: 44, bottomMargin: 30, headH: 36, stripH: 3, gap: 6, blockGap: 16 };
 
-function drawTeamPdfHeader(doc, team) {
-  const W = doc.internal.pageSize.getWidth();
-  const mx = 40;
-  const count = `${team.players.length} player${team.players.length === 1 ? '' : 's'}`;
-  doc.setFillColor(11, 59, 44); doc.rect(0, 0, W, 96, 'F');
-  doc.setFillColor(207, 230, 46); doc.rect(0, 96, W, 5, 'F');
-
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(207, 230, 46);
-  doc.text(tName().toUpperCase(), mx, 34, { charSpace: 1.6 });
-
-  doc.setFontSize(10.5);
-  const bw = doc.getTextWidth(count) + 26;
-  doc.setFillColor(207, 230, 46); doc.roundedRect(W - mx - bw, 46, bw, 26, 13, 13, 'F');
-  doc.setTextColor(11, 59, 44); doc.text(count, W - mx - bw / 2, 63, { align: 'center' });
-
-  let fs = 28;
-  const maxW = W - mx * 2 - bw - 16;
-  doc.setTextColor(255, 255, 255); doc.setFontSize(fs);
-  while (fs > 14 && doc.getTextWidth(team.name) > maxW) { fs -= 1; doc.setFontSize(fs); }
-  doc.text(team.name, mx, 72);
-
-  // category counts as coloured chips
-  doc.setFontSize(9.5);
-  let x = mx, y = 122;
+function layoutTeamPdfChips(doc, team, maxW) {
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+  const items = []; let x = 0, row = 0;
   teamCategoryCounts(team.players).forEach(([c, n]) => {
     const label = `${c || 'No category'}  ${n}`;
-    const w = doc.getTextWidth(label) + 20;
-    if (x + w > W - mx) { x = mx; y += 26; }
-    const col = TEAM_PDF_COLORS[catClass(c)] || { text: [85, 92, 99], tint: [238, 240, 242] };
-    doc.setFillColor(...col.tint); doc.roundedRect(x, y - 13, w, 20, 10, 10, 'F');
-    doc.setTextColor(...col.text); doc.text(label, x + 10, y);
-    x += w + 8;
+    const w = doc.getTextWidth(label) + 16;
+    if (x > 0 && x + w > maxW) { x = 0; row++; }
+    items.push({ x, row, w, label, col: TEAM_PDF_COLORS[catClass(c)] || { text: [85, 92, 99], tint: [238, 240, 242] } });
+    x += w + 6;
   });
-  return y + 22; // where the table can start
+  return { items, height: row * 22 + 18 };
+}
+
+function teamPdfTableOptions(team, startY) {
+  const { mx } = TEAM_PDF;
+  return {
+    head: [['#', 'Player', 'Category', 'Mobile', 'Followup']],
+    body: team.players.map((p, i) => [String(i + 1), p.fullName, p.category || '', p.mobile || '', p.followup || '']),
+    startY,
+    margin: { top: 56, left: mx, right: mx, bottom: TEAM_PDF.bottomMargin },
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: { top: 5, bottom: 5, left: 6, right: 6 }, textColor: [20, 33, 27], lineColor: [220, 228, 215], lineWidth: 0.5 },
+    headStyles: { fillColor: [11, 59, 44], textColor: 255, fontStyle: 'bold', fontSize: 8.5, cellPadding: { top: 4, bottom: 4, left: 6, right: 6 } },
+    alternateRowStyles: { fillColor: [250, 252, 248] },
+    columnStyles: { 0: { cellWidth: 24, halign: 'center', textColor: [98, 112, 95] }, 1: { cellWidth: 170, fontStyle: 'bold' }, 2: { cellWidth: 70 }, 3: { cellWidth: 86 } },
+    didParseCell: data => {
+      if (data.section !== 'body') return;
+      const cc = catClass(team.players[data.row.index].category);
+      if (isLeadClass(cc)) data.cell.styles.fillColor = [246, 250, 230];
+      if (data.column.index === 2 && TEAM_PDF_COLORS[cc]) {
+        data.cell.styles.textColor = TEAM_PDF_COLORS[cc].text;
+        data.cell.styles.fontStyle = 'bold';
+      }
+    }
+  };
+}
+
+function drawTeamPdfBlockHead(doc, team, y, chips, contentW) {
+  const { mx, headH, stripH, gap } = TEAM_PDF;
+  const count = `${team.players.length} player${team.players.length === 1 ? '' : 's'}`;
+  doc.setFillColor(11, 59, 44); doc.rect(mx, y, contentW, headH, 'F');
+  doc.setFillColor(207, 230, 46); doc.rect(mx, y + headH, contentW, stripH, 'F');
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+  const bw = doc.getTextWidth(count) + 18;
+  doc.setFillColor(207, 230, 46); doc.roundedRect(mx + contentW - 12 - bw, y + 9, bw, 18, 9, 9, 'F');
+  doc.setTextColor(11, 59, 44); doc.text(count, mx + contentW - 12 - bw / 2, y + 21, { align: 'center' });
+
+  let fs = 16;
+  const maxW = contentW - 24 - bw - 12;
+  doc.setFontSize(fs); doc.setTextColor(255, 255, 255);
+  while (fs > 10 && doc.getTextWidth(team.name) > maxW) { fs -= 1; doc.setFontSize(fs); }
+  doc.text(team.name, mx + 12, y + 23);
+
+  const cy = y + headH + stripH + gap;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+  chips.items.forEach(it => {
+    const cx = mx + it.x, ry = cy + it.row * 22;
+    doc.setFillColor(...it.col.tint); doc.roundedRect(cx, ry, it.w, 18, 9, 9, 'F');
+    doc.setTextColor(...it.col.text); doc.text(it.label, cx + 8, ry + 12.5);
+  });
+  return cy + chips.height + gap; // where the table starts
 }
 
 function downloadTeamsPdf() {
@@ -4283,57 +4313,54 @@ function downloadTeamsPdf() {
     alert('Could not generate the PDF - the PDF library failed to load. Check your internet connection and try again.');
     return;
   }
-  const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   if (typeof doc.autoTable !== 'function') {
     alert('Could not generate the PDF - the table library failed to load. Check your internet connection and try again.');
     return;
   }
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
-  const mx = 40;
+  const { mx, topY, bottomMargin, headH, stripH, gap, blockGap } = TEAM_PDF;
+  const contentW = W - mx * 2;
+  const bottomY = H - bottomMargin - 2;
 
-  teams.forEach((team, ti) => {
-    if (ti > 0) doc.addPage();
+  // A very tall one-page "probe" document lets us measure each table before deciding which page it goes on.
+  const probe = new jsPDF({ unit: 'pt', format: [W, 30000] });
+
+  let y = topY;
+  teams.forEach(team => {
+    const chips = layoutTeamPdfChips(doc, team, contentW);
+    probe.autoTable(teamPdfTableOptions(team, 0));
+    const tableH = probe.lastAutoTable.finalY;
+    const blockH = headH + stripH + gap + chips.height + gap + tableH;
+    if (y > topY && y + blockH > bottomY) { doc.addPage(); y = topY; }
+
+    const startY = drawTeamPdfBlockHead(doc, team, y, chips, contentW);
     const firstPage = doc.internal.getCurrentPageInfo().pageNumber;
-    const startY = drawTeamPdfHeader(doc, team);
     doc.autoTable({
-      head: [['#', 'Player', 'Category', 'Mobile', 'Followup']],
-      body: team.players.map((p, i) => [String(i + 1), p.fullName, p.category || '', p.mobile || '', p.followup || '']),
-      startY,
-      margin: { top: 62, left: mx, right: mx, bottom: 48 },
-      theme: 'grid',
-      styles: { fontSize: 10.5, cellPadding: { top: 6, bottom: 6, left: 7, right: 7 }, textColor: [20, 33, 27], lineColor: [220, 228, 215], lineWidth: 0.5 },
-      headStyles: { fillColor: [11, 59, 44], textColor: 255, fontStyle: 'bold', fontSize: 9.5 },
-      alternateRowStyles: { fillColor: [250, 252, 248] },
-      columnStyles: { 0: { cellWidth: 28, halign: 'center', textColor: [98, 112, 95] }, 1: { cellWidth: 165, fontStyle: 'bold' }, 2: { cellWidth: 72 }, 3: { cellWidth: 88 } },
-      didParseCell: data => {
-        if (data.section !== 'body') return;
-        const p = team.players[data.row.index];
-        const cc = catClass(p.category);
-        if (isLeadClass(cc)) data.cell.styles.fillColor = [246, 250, 230];
-        if (data.column.index === 2 && TEAM_PDF_COLORS[cc]) {
-          data.cell.styles.textColor = TEAM_PDF_COLORS[cc].text;
-          data.cell.styles.fontStyle = 'bold';
-        }
-      },
+      ...teamPdfTableOptions(team, startY),
       didDrawPage: () => {
         if (doc.internal.getCurrentPageInfo().pageNumber > firstPage) {
-          doc.setFillColor(11, 59, 44); doc.rect(0, 0, W, 40, 'F');
-          doc.setFillColor(207, 230, 46); doc.rect(0, 40, W, 3, 'F');
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(255, 255, 255);
-          doc.text(`${team.name} (continued)`, mx, 26);
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(11, 59, 44);
+          doc.text(`${team.name} (continued)`, mx, 46);
         }
       }
     });
+    y = doc.lastAutoTable.finalY + blockGap;
   });
 
+  // slim banner + page numbers on every page
   const pages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
-    doc.setDrawColor(220, 228, 215); doc.line(mx, H - 36, W - mx, H - 36);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(120, 130, 120);
-    doc.text(tName().toUpperCase() + ' \u2014 TEAMS', mx, H - 22);
-    doc.text(`Page ${i} of ${pages}`, W - mx, H - 22, { align: 'right' });
+    doc.setFillColor(11, 59, 44); doc.rect(0, 0, W, 28, 'F');
+    doc.setFillColor(207, 230, 46); doc.rect(0, 28, W, 2, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+    doc.setTextColor(207, 230, 46);
+    doc.text(tName().toUpperCase() + '  \u2014  TEAMS', mx, 18, { charSpace: 1.2 });
+    doc.setTextColor(255, 255, 255);
+    doc.text(`Page ${i} of ${pages}`, W - mx, 18, { align: 'right' });
   }
   doc.save(tSlug() + '_teams.pdf');
 }
