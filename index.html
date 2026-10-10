@@ -814,9 +814,10 @@
   .btn.editing-on { background:var(--gold); border-color:var(--gold-dark); color:var(--navy); font-weight:700; }
   .btn.editing-on:hover { background:#DDF04E; }
   @media (min-width:641px) {
-    table.records td:nth-child(1), table.records td:nth-child(2) { min-width:230px; }
-    table.records td:nth-child(3) { min-width:130px; }
-    table.records td:nth-child(4), table.records td:nth-child(5) { min-width:165px; }
+    table.records td:nth-child(1), table.records td:nth-child(2) { min-width:200px; }
+    table.records td:nth-child(3) { min-width:120px; }
+    table.records td:nth-child(4) { min-width:140px; }
+    table.records td:nth-child(5), table.records td:nth-child(6) { min-width:135px; }
   }
   .dd-edit { margin-left:10px; flex-shrink:0; }
   .drilldown-list .dd-meta { margin-left:auto; }
@@ -840,6 +841,42 @@
   }
   @media (max-width:380px) { .stat-card .value { font-size:22px; } header.top h1 { font-size:22px; } }
   @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+
+  /* ---------------- Teams tab + Team column ---------------- */
+  .teams-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:#fff; }
+  .seg button { font-family:inherit; font-size:13px; font-weight:600; padding:7px 14px; border:0; background:transparent; color:var(--muted); cursor:pointer; }
+  .seg button + button { border-left:1px solid var(--border); }
+  .seg button.on { background:var(--navy); color:#fff; }
+  .seg button:focus-visible { outline:2px solid var(--green); outline-offset:-2px; }
+  #teamsWrap.vertical { display:flex; flex-direction:column; gap:18px; }
+  #teamsWrap.horizontal { display:flex; flex-direction:row; align-items:flex-start; gap:16px; overflow-x:auto; padding-bottom:14px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; }
+  #teamsWrap .empty-state { flex:1; }
+  .team-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:0 1px 2px rgba(20,33,27,.06); }
+  #teamsWrap.horizontal .team-card { flex:0 0 min(430px, 86vw); scroll-snap-align:start; }
+  .team-head { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 14px; background:var(--navy); color:#fff; }
+  .team-head h3 { margin:0; font-family:var(--display); font-size:17px; font-weight:700; letter-spacing:-.01em; word-break:break-word; }
+  .team-count { background:rgba(255,255,255,.14); color:var(--gold); font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .team-card.unassigned .team-head { background:#5F6B63; }
+  .team-chips { display:flex; flex-wrap:wrap; gap:6px; padding:9px 14px; background:#F7FAF4; border-bottom:1px solid var(--border); }
+  .team-chip { font-size:12px; color:var(--muted); background:#fff; border:1px solid var(--border); padding:2px 9px; border-radius:999px; white-space:nowrap; }
+  .team-chip b { color:var(--text); }
+  .team-scroll { overflow-x:auto; }
+  table.team-tbl { width:100%; border-collapse:collapse; font-size:14px; }
+  table.team-tbl th { text-align:left; font-size:12px; font-weight:700; color:#41503F; background:#E9EFE4; padding:8px 12px; white-space:nowrap; }
+  table.team-tbl td { padding:8px 12px; border-top:1px solid var(--border); vertical-align:top; }
+  table.team-tbl tr:hover td { background:#F4F8EE; }
+  table.team-tbl td.num { width:32px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  table.team-tbl td.team-mob { white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .team-pname { font-weight:600; }
+  .team-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+  .cat-pill { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:700; background:#E9EDE5; color:var(--muted); white-space:nowrap; }
+  .cat-pill.cat-mentor { background:var(--blue-bg); color:var(--blue); }
+  .cat-pill.cat-captain { background:#F3F8CF; color:#5E6E0C; }
+  .cat-pill.cat-platinum { background:#ECE9F7; color:#4B3F8F; }
+  .cat-pill.cat-gold { background:var(--amber-bg); color:var(--amber); }
+  .cat-pill.cat-silver { background:#EEF0F2; color:#555C63; }
+  .import-file-name { margin:0; }
 </style>
 </head>
 <body>
@@ -858,6 +895,7 @@
     <button class="tab-btn" data-tab="pending">Pending</button>
     <button class="tab-btn" data-tab="followup">Followup</button>
     <button class="tab-btn" data-tab="category">Category</button>
+    <button class="tab-btn" data-tab="teams">Teams</button>
     <button class="tab-btn" data-tab="records">Data</button>
     <button class="tab-btn" data-tab="qr">QR Sign-ups <span class="tab-badge" id="qrBadge" hidden>0</span></button>
     <button class="tab-btn" data-tab="log">Log</button>
@@ -986,6 +1024,21 @@
     <div id="categoryTableWrap"></div>
   </section>
 
+  <section class="panel" id="panel-teams">
+    <div class="toolbar">
+      <div class="toolbar-left"><h2>Teams</h2><span class="count-pill" id="teamsCount">0</span></div>
+      <div class="teams-toolbar-right">
+        <div class="seg" role="group" aria-label="Table layout">
+          <button type="button" data-layout="vertical" aria-pressed="true">Vertical</button>
+          <button type="button" data-layout="horizontal" aria-pressed="false">Horizontal</button>
+        </div>
+        <button class="btn small excel" id="btnExcelTeams">Download Excel</button>
+      </div>
+    </div>
+    <p class="hint" id="teamsHint" style="margin-top:-4px;margin-bottom:14px;"></p>
+    <div id="teamsWrap" class="vertical"></div>
+  </section>
+
   <section class="panel" id="panel-log">
     <div class="toolbar">
       <h2>Registration log</h2>
@@ -1007,6 +1060,7 @@
           <div class="fg"><label for="addMobile">Contact (mobile) <b>*</b></label><input id="addMobile" type="tel" inputmode="tel" autocomplete="off" placeholder="10-digit number"></div>
           <div class="fg"><label for="addStatus">Status <b>*</b></label><select id="addStatus"><option value="" selected disabled>Select status…</option><option value="Not Registered">Not Registered</option><option value="Registered">Registered</option></select></div>
           <div class="fg"><label for="addCategory">Category <b>*</b></label><input id="addCategory" type="text" list="categoryDatalist" autocomplete="off"></div>
+          <div class="fg"><label for="addTeam">Team</label><input id="addTeam" type="text" list="teamDatalist" autocomplete="off" placeholder="Optional"></div>
         </div>
         <div class="btn-row">
           <button type="submit" class="btn primary" id="addSubmit">Add participant</button>
@@ -1016,15 +1070,17 @@
       </form>
     </div>
     <datalist id="followupDatalist"></datalist>
+    <datalist id="teamDatalist"></datalist>
     <div class="toolbar"><h2>All data <span class="count-pill" id="recordsCount">0</span></h2><button class="btn primary" id="recordsEditBtn">Edit table</button></div>
     <div class="btn-row" style="margin-bottom:12px;">
-      <input class="filter-input" id="recordsFilter" type="search" placeholder="Filter by name, mobile, followup or category" style="flex:1 1 260px;">
+      <input class="filter-input" id="recordsFilter" type="search" placeholder="Filter by name, mobile, followup, category or team" style="flex:1 1 260px;">
       <select class="filter-input" id="recordsSortSel" style="flex:0 0 auto;width:auto;" aria-label="Sort by">
         <option value="fullName:1">Sort: Name A–Z</option><option value="fullName:-1">Sort: Name Z–A</option>
         <option value="followup:1">Sort: Followup A–Z</option><option value="followup:-1">Sort: Followup Z–A</option>
         <option value="mobile:1">Sort: Mobile low→high</option><option value="mobile:-1">Sort: Mobile high→low</option>
         <option value="status:1">Sort: Not Registered first</option><option value="status:-1">Sort: Registered first</option>
         <option value="category:1">Sort: Category A–Z</option><option value="category:-1">Sort: Category Z–A</option>
+        <option value="team:1">Sort: Team A–Z</option><option value="team:-1">Sort: Team Z–A</option>
       </select>
       <select class="filter-input" id="recordsStatusFilter" style="flex:0 0 auto;width:auto;"><option value="all">All statuses</option><option value="reg">Registered</option><option value="pend">Not Registered</option></select>
     </div>
@@ -1073,8 +1129,12 @@
     </div>
     <div class="card">
       <h3>Bulk import</h3>
-      <p class="desc">To add one person, use the form in the Data tab. To load many at once, paste rows copied straight from Excel (columns in this order: Full Name, Followup, Mobile, Status, Category — tab or comma separated, header row optional).</p>
-      <textarea class="data-input" id="importArea" placeholder="Abhay Ramesh Kotadiya	Yash Jayanti Kaila	8928478896	Registered	Yuvak"></textarea>
+      <p class="desc">To add one person, use the form in the Data tab. To load many at once, load an Excel file below or paste rows copied straight from Excel. Columns: Full Name, Followup, Mobile, Status, Category, Team (Team is optional; tab or comma separated). If the first row is a header, columns are matched by their names (<b>Team</b> or <b>Teams</b> both work); without a header they are read in the order above.</p>
+      <div class="btn-row" style="align-items:center;margin-bottom:10px;">
+        <button type="button" class="btn excel" id="btnPickImportFile">Load Excel file (.xlsx)…</button>
+        <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden>
+      </div>
+      <textarea class="data-input" id="importArea" placeholder="Abhay Ramesh Kotadiya	Yash Jayanti Kaila	8928478896	Registered	Yuvak	Bhakti Rockets"></textarea>
       <div class="btn-row">
         <button class="btn primary" id="btnImportReplace">Replace all participants</button>
         <button class="btn" id="btnImportAppend">Append as new participants</button>
@@ -1533,7 +1593,7 @@ function setTarget(newTarget) {
 
 function matchesFilter(p, q) {
   if (!q) return true;
-  const hay = (p.fullName + ' ' + p.mobile + ' ' + p.followup + ' ' + p.category).toLowerCase();
+  const hay = (p.fullName + ' ' + p.mobile + ' ' + p.followup + ' ' + p.category + ' ' + (p.team || '')).toLowerCase();
   return hay.includes(q);
 }
 
@@ -1747,6 +1807,7 @@ function renderAll() {
   renderFollowupReport();
   renderRegisterFollowupSummary();
   renderCategoryReport();
+  renderTeams();
   renderOverallSummary();
   renderLog();
   populateCategoryDatalist();
@@ -2053,6 +2114,8 @@ function openEditModal(id) {
     <input id="editMobile" value="${escapeHtml(p.mobile)}">
     <label for="editCategory">Category ${isReg ? '(required while Registered)' : ''}</label>
     <input id="editCategory" value="${escapeHtml(p.category)}" list="categoryDatalist">
+    <label for="editTeam">Team</label>
+    <input id="editTeam" value="${escapeHtml(p.team)}" list="teamDatalist" placeholder="Optional">
     <label for="editStatus">Status</label>
     <select id="editStatus">
       <option value="${REGISTERED}" ${p.status === REGISTERED ? 'selected' : ''}>Registered</option>
@@ -2086,6 +2149,7 @@ function saveEdit(id) {
   const mobileRaw = document.getElementById('editMobile').value.trim();
   const mobile = normalizeMobile(mobileRaw);
   const category = document.getElementById('editCategory').value.trim();
+  const team = canonicalTeam(document.getElementById('editTeam').value);
   const newStatus = document.getElementById('editStatus').value === REGISTERED ? REGISTERED : NOT_REGISTERED;
 
   if (!fullName) {
@@ -2126,6 +2190,7 @@ function saveEdit(id) {
   p.followup = followup;
   p.mobile = mobile;
   p.category = category;
+  p.team = team;
   p.status = newStatus;
   markParticipantDirty(p.id);
 
@@ -2607,18 +2672,33 @@ function parseDelimited(text) {
   const looksLikeHeader = firstRow.some(c => c.includes('full name') || c.includes('fullname'));
   const dataRows = looksLikeHeader ? rows.slice(1) : rows;
 
-  return dataRows
-    .filter(r => r.length >= 1 && r[0])
-    .map(r => {
-      const fullName = r[0] || '';
-      const followup = r[1] || '';
-      const mobile = r[2] || '';
-      let status = (r[3] || NOT_REGISTERED).trim();
-      if (status.toLowerCase() === 'registered') status = REGISTERED;
-      else status = NOT_REGISTERED;
-      const category = r[4] || '';
-      return { fullName, followup, mobile, status, category };
+  // Without a header: fixed order Full Name, Followup, Mobile, Status, Category, Team.
+  // With a header: match columns by name, so a re-ordered or extra-column sheet still imports correctly.
+  let idx = { fullName: 0, followup: 1, mobile: 2, status: 3, category: 4, team: 5 };
+  if (looksLikeHeader) {
+    const aliases = { fullname: 'fullName', name: 'fullName', followup: 'followup', mobile: 'mobile', contact: 'mobile', status: 'status', category: 'category', team: 'team', teams: 'team' };
+    idx = { fullName: -1, followup: -1, mobile: -1, status: -1, category: -1, team: -1 };
+    rows[0].forEach((h, i) => {
+      const f = aliases[String(h).toLowerCase().replace(/[^a-z]/g, '')];
+      if (f && idx[f] === -1) idx[f] = i;
     });
+    if (idx.fullName === -1) idx.fullName = 0;
+  }
+
+  const seenTeam = new Map(); // keep one spelling per team (case-insensitive)
+  return dataRows
+    .map(r => {
+      const cell = k => (idx[k] >= 0 && r[idx[k]] != null) ? String(r[idx[k]]).trim() : '';
+      let status = cell('status') || NOT_REGISTERED;
+      status = status.toLowerCase() === 'registered' ? REGISTERED : NOT_REGISTERED;
+      let team = cell('team').replace(/\s+/g, ' ');
+      if (team) {
+        const k = team.toLowerCase();
+        if (seenTeam.has(k)) team = seenTeam.get(k); else seenTeam.set(k, team);
+      }
+      return { fullName: cell('fullName'), followup: cell('followup'), mobile: cell('mobile'), status, category: cell('category'), team };
+    })
+    .filter(p => p.fullName);
 }
 
 function findMobileConflicts() {
@@ -2635,6 +2715,38 @@ function findMobileConflicts() {
 }
 
 function setupDataTab() {
+  const importFile = document.getElementById('importFile');
+  document.getElementById('btnPickImportFile').addEventListener('click', () => importFile.click());
+  importFile.addEventListener('change', () => {
+    const f = importFile.files && importFile.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onerror = () => { showImportSummary('Could not read that file.', 'err'); importFile.value = ''; };
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const toRows = ws => XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+        // Prefer the first sheet whose header row has a "Full Name" column; otherwise the first sheet.
+        let sheet = wb.Sheets[wb.SheetNames[0]];
+        for (const n of wb.SheetNames) {
+          const head = (toRows(wb.Sheets[n])[0] || []).map(c => String(c).toLowerCase());
+          if (head.some(c => c.includes('full name') || c.includes('fullname'))) { sheet = wb.Sheets[n]; break; }
+        }
+        const lines = toRows(sheet)
+          .map(r => r.map(c => String(c == null ? '' : c).replace(/[\t\r\n]+/g, ' ').trim()))
+          .filter(r => r.some(c => c));
+        if (!lines.length) { showImportSummary('That file has no rows.', 'err'); return; }
+        document.getElementById('importArea').value = lines.map(r => r.join('\t')).join('\n');
+        showImportSummary(`Loaded ${lines.length} line(s) from ${f.name} into the box above. Check them, then choose "Replace all participants" or "Append as new participants".`, 'info');
+      } catch (err) {
+        console.error('Excel import read failed', err);
+        showImportSummary('Could not read that file. Make sure it is a valid .xlsx or .csv file.', 'err');
+      }
+      importFile.value = '';
+    };
+    reader.readAsArrayBuffer(f);
+  });
+
   document.getElementById('btnImportReplace').addEventListener('click', () => {
     requirePin(() => {
       const text = document.getElementById('importArea').value;
@@ -2698,8 +2810,8 @@ function setupDataTab() {
   });
 
   document.getElementById('btnExportParticipants').addEventListener('click', () => {
-    const header = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category'];
-    const rows = participants.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category]);
+    const header = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category', 'Team'];
+    const rows = participants.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category, p.team || '']);
     downloadCsv(tSlug() + '_participants.csv', header, rows);
   });
 
@@ -2784,7 +2896,7 @@ function downloadXlsx(filename, sheetName, header, rows) {
 }
 
 function participantRows(list) {
-  return list.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category]);
+  return list.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category, p.team || '']);
 }
 
 function groupReportRows(rows) {
@@ -2796,7 +2908,7 @@ function logRows() {
 }
 
 function setupExcelButtons() {
-  const PARTICIPANT_HEADER = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category'];
+  const PARTICIPANT_HEADER = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category', 'Team'];
   const GROUP_HEADER = ['Name', 'Total', 'Registered', 'Pending', 'Registration %'];
   const LOG_HEADER = ['Timestamp', 'Full Name', 'Mobile', 'Followup', 'Category', 'Previous Status', 'New Status'];
 
@@ -2842,6 +2954,7 @@ function setupExcelButtons() {
     XLSX.utils.book_append_sheet(wb, sheetFromRows(PARTICIPANT_HEADER, participantRows(pendingRows)), 'Pending');
     XLSX.utils.book_append_sheet(wb, sheetFromRows(GROUP_HEADER, groupReportRows(buildGroupReport('followup'))), 'Followup Report');
     XLSX.utils.book_append_sheet(wb, sheetFromRows(GROUP_HEADER, groupReportRows(buildGroupReport('category'))), 'Category Report');
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(TEAM_SHEET_HEADER, teamsFlatRows()), 'Teams');
     XLSX.utils.book_append_sheet(wb, sheetFromRows(LOG_HEADER, logRows()), 'Registration Log');
     XLSX.writeFile(wb, tSlug() + '_full_workbook.xlsx');
   });
@@ -3590,6 +3703,8 @@ function renderRecords() {
   const fl = $id('followupDatalist');
   if (fl) fl.innerHTML = Array.from(new Set(participants.map(p => (p.followup || '').trim()).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b)).map(f => `<option value="${escapeHtml(f)}"></option>`).join('');
+  const tl = $id('teamDatalist');
+  if (tl) tl.innerHTML = teamNames().map(t => `<option value="${escapeHtml(t)}"></option>`).join('');
   if (recordsEditing || wrap.contains(document.activeElement)) return; // don't yank focus mid-edit
   const ed = recordsEditMode;
   wrap.classList.toggle('editing', ed);
@@ -3607,16 +3722,17 @@ function renderRecords() {
     const reg = p.status === REGISTERED;
     if (!ed) {
       return `<tr>${view(p, 'fullName', 'Full name')}${view(p, 'followup', 'Followup')}${view(p, 'mobile', 'Mobile')}`
-        + `<td data-label="Status"><span class="st-pill ${reg ? 'reg' : ''}">${reg ? 'Registered' : 'Not Registered'}</span></td>${view(p, 'category', 'Category')}</tr>`;
+        + `<td data-label="Status"><span class="st-pill ${reg ? 'reg' : ''}">${reg ? 'Registered' : 'Not Registered'}</span></td>${view(p, 'category', 'Category')}${view(p, 'team', 'Team')}</tr>`;
     }
     return `<tr data-row="${p.id}" class="${reg ? 'is-reg' : ''}">`
       + input(p, 'fullName', 'Full name') + input(p, 'followup', 'Followup', 'list="followupDatalist"') + input(p, 'mobile', 'Mobile', 'inputmode="tel"')
       + `<td data-label="Status"><select class="cell-input" data-id="${p.id}" data-field="status"><option value="${REGISTERED}" ${reg ? 'selected' : ''}>Registered</option><option value="${NOT_REGISTERED}" ${reg ? '' : 'selected'}>Not Registered</option></select></td>`
       + input(p, 'category', 'Category', `list="categoryDatalist" placeholder="${reg ? 'Required' : 'Category'}"`)
+      + input(p, 'team', 'Team', 'list="teamDatalist" placeholder="Team"')
       + `<td class="actions-cell" data-label="Actions"><button class="btn small danger rec-del" data-id="${p.id}">Delete</button></td></tr>`;
   }).join('');
   const th = (k, label) => `<th class="sortable" data-sort="${k}" tabindex="0" aria-sort="${recordsSort.key === k ? (recordsSort.dir === 1 ? 'ascending' : 'descending') : 'none'}">${label}<span class="sort-arrow">${recordsSort.key === k ? (recordsSort.dir === 1 ? '\u25B2' : '\u25BC') : '\u2195'}</span></th>`;
-  wrap.innerHTML = `<table class="data records"><thead><tr>${th('fullName', 'Full name')}${th('followup', 'Followup')}${th('mobile', 'Mobile')}${th('status', 'Status')}${th('category', 'Category')}${ed ? '<th></th>' : ''}</tr></thead><tbody>${body}</tbody></table>`;
+  wrap.innerHTML = `<table class="data records"><thead><tr>${th('fullName', 'Full name')}${th('followup', 'Followup')}${th('mobile', 'Mobile')}${th('status', 'Status')}${th('category', 'Category')}${th('team', 'Team')}${ed ? '<th></th>' : ''}</tr></thead><tbody>${body}</tbody></table>`;
   wrap.querySelectorAll('th.sortable').forEach(h => {
     h.addEventListener('click', () => setRecordsSort(h.dataset.sort));
     h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setRecordsSort(h.dataset.sort); } });
@@ -3672,6 +3788,8 @@ function applyRecordEdit(el) {
     if (!val && p.status === REGISTERED) { el.value = p.category; return fail('Category is required while Registered.'); }
     p.category = val;
     if (val) { categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : []; if (!categoryMaster.includes(val)) { categoryMaster.push(val); categoryMasterDirty = true; } }
+  } else if (f === 'team') {
+    p.team = canonicalTeam(val); el.value = p.team;
   }
 
   if (prev !== p.status) logStatusChange(p, prev);
@@ -3711,7 +3829,7 @@ function setupRecordsTab() {
     const dup = findDuplicateMobile(mobile, null);
     if (dup && form.dataset.confirmDup !== mobile) { form.dataset.confirmDup = mobile; say(`This number already belongs to ${dup.fullName}. Press Add again to add anyway.`, 'warn'); return; }
     form.dataset.confirmDup = '';
-    const p = { id: genId(), fullName, followup, mobile, status, category };
+    const p = { id: genId(), fullName, followup, mobile, status, category, team: canonicalTeam($id('addTeam').value) };
     participants.push(p); markParticipantDirty(p.id);
     categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : [];
     if (!categoryMaster.includes(category)) { categoryMaster.push(category); categoryMasterDirty = true; }
@@ -3901,6 +4019,142 @@ function setupQrTab() {
   if (saved) draw();
 }
 
+// ---------------- Teams ----------------
+// Display order for the usual auction roles; any other category name follows alphabetically.
+const TEAM_CATEGORY_ORDER = ['mentor', 'captain', 'platinum', 'gold', 'silver'];
+const TEAM_SHEET_HEADER = ['Team', 'Full Name', 'Category', 'Followup', 'Mobile'];
+let teamsLayout = 'vertical';
+try { const l = localStorage.getItem('anandAplTeamsLayout'); if (l === 'horizontal' || l === 'vertical') teamsLayout = l; } catch (e) {}
+
+function cleanTeam(raw) { return String(raw == null ? '' : raw).trim().replace(/\s+/g, ' '); }
+
+// Unique team names (case-insensitive, first spelling wins), A–Z.
+function teamNames() {
+  const seen = new Map();
+  participants.forEach(p => {
+    const t = cleanTeam(p.team);
+    if (t && !seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t);
+  });
+  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+}
+
+// Re-use an existing team's spelling if the typed name matches one ignoring case.
+function canonicalTeam(raw) {
+  const t = cleanTeam(raw);
+  if (!t) return '';
+  return teamNames().find(n => n.toLowerCase() === t.toLowerCase()) || t;
+}
+
+function teamCategoryRank(cat) {
+  const c = (cat || '').trim().toLowerCase();
+  if (!c) return TEAM_CATEGORY_ORDER.length + 1; // blank category last
+  const i = TEAM_CATEGORY_ORDER.indexOf(c);
+  return i === -1 ? TEAM_CATEGORY_ORDER.length : i;
+}
+function compareTeamPlayers(a, b) {
+  const r = teamCategoryRank(a.category) - teamCategoryRank(b.category);
+  if (r) return r;
+  const c = (a.category || '').localeCompare(b.category || '', undefined, { sensitivity: 'base' });
+  return c || (a.fullName || '').localeCompare(b.fullName || '', undefined, { sensitivity: 'base' });
+}
+
+function buildTeamGroups() {
+  const map = new Map();
+  const unassigned = [];
+  participants.forEach(p => {
+    const t = cleanTeam(p.team);
+    if (!t) { unassigned.push(p); return; }
+    const key = t.toLowerCase();
+    if (!map.has(key)) map.set(key, { name: t, players: [] });
+    map.get(key).players.push(p);
+  });
+  const teams = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+  teams.forEach(t => t.players.sort(compareTeamPlayers));
+  unassigned.sort(compareTeamPlayers);
+  return { teams, unassigned };
+}
+
+function teamsFlatRows() {
+  const rows = [];
+  buildTeamGroups().teams.forEach(t => t.players.forEach(p => rows.push([t.name, p.fullName, p.category, p.followup, p.mobile])));
+  return rows;
+}
+
+function catPillHtml(cat) {
+  const c = (cat || '').trim();
+  if (!c) return '<span class="muted-dash">\u2014</span>';
+  const k = c.toLowerCase().replace(/[^a-z]/g, '');
+  return `<span class="cat-pill ${TEAM_CATEGORY_ORDER.includes(k) ? 'cat-' + k : ''}">${escapeHtml(c)}</span>`;
+}
+
+function teamCardHtml(name, players, isUnassigned) {
+  const counts = new Map(); // players are already category-sorted, so insertion order is display order
+  players.forEach(p => { const c = (p.category || '').trim(); counts.set(c, (counts.get(c) || 0) + 1); });
+  const chips = Array.from(counts.entries())
+    .map(([c, n]) => `<span class="team-chip">${escapeHtml(c || 'No category')} <b>${n}</b></span>`).join('');
+  const rows = players.map((p, i) => {
+    const sub = [];
+    if ((p.followup || '').trim()) sub.push('Followup: ' + escapeHtml(p.followup));
+    if (p.status !== REGISTERED) sub.push('Not registered');
+    return `<tr><td class="num">${i + 1}</td><td><div class="team-pname">${escapeHtml(p.fullName)}</div>${sub.length ? `<div class="team-sub">${sub.join(' \u00B7 ')}</div>` : ''}</td><td>${catPillHtml(p.category)}</td><td class="team-mob">${escapeHtml(p.mobile)}</td></tr>`;
+  }).join('');
+  return `<div class="team-card${isUnassigned ? ' unassigned' : ''}">
+    <div class="team-head"><h3>${escapeHtml(name)}</h3><span class="team-count">${players.length} player${players.length === 1 ? '' : 's'}</span></div>
+    <div class="team-chips">${chips}</div>
+    <div class="team-scroll"><table class="team-tbl"><thead><tr><th>#</th><th>Player</th><th>Category</th><th>Mobile</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div>`;
+}
+
+function syncTeamsLayoutButtons() {
+  document.querySelectorAll('#panel-teams .seg button').forEach(b => {
+    const on = b.dataset.layout === teamsLayout;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+
+function renderTeams() {
+  const wrap = document.getElementById('teamsWrap');
+  if (!wrap) return;
+  const { teams, unassigned } = buildTeamGroups();
+  document.getElementById('teamsCount').textContent = teams.length;
+  wrap.className = teamsLayout;
+  syncTeamsLayoutButtons();
+  document.getElementById('teamsHint').textContent = teamsLayout === 'horizontal' && teams.length > 1
+    ? 'Scroll or swipe sideways to see all teams.' : '';
+  if (!teams.length) {
+    wrap.innerHTML = '<div class="empty-state">No teams assigned yet.<br>Import an Excel/CSV with a <b>Team</b> column (Import / Export tab), or set the Team for each player in the Data tab.</div>';
+    return;
+  }
+  wrap.innerHTML = teams.map(t => teamCardHtml(t.name, t.players, false)).join('')
+    + (unassigned.length ? teamCardHtml('Not in any team', unassigned, true) : '');
+}
+
+function downloadTeamsXlsx() {
+  const { teams } = buildTeamGroups();
+  if (!teams.length) { alert('No teams assigned yet.'); return; }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheetFromRows(TEAM_SHEET_HEADER, teamsFlatRows()), 'All Teams');
+  const used = new Set(['all teams']);
+  teams.forEach(t => {
+    const base = (t.name.replace(/[\[\]:*?\/\\]/g, '-').slice(0, 31).trim()) || 'Team';
+    let name = base, n = 2;
+    while (used.has(name.toLowerCase())) { const suf = ' ' + n++; name = base.slice(0, 31 - suf.length) + suf; }
+    used.add(name.toLowerCase());
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(['Full Name', 'Category', 'Followup', 'Mobile'], t.players.map(p => [p.fullName, p.category, p.followup, p.mobile])), name);
+  });
+  XLSX.writeFile(wb, tSlug() + '_teams.xlsx');
+}
+
+function setupTeamsTab() {
+  document.querySelectorAll('#panel-teams .seg button').forEach(b => b.addEventListener('click', () => {
+    teamsLayout = b.dataset.layout;
+    try { localStorage.setItem('anandAplTeamsLayout', teamsLayout); } catch (e) {}
+    renderTeams();
+  }));
+  document.getElementById('btnExcelTeams').addEventListener('click', downloadTeamsXlsx);
+}
+
 // ---------------- Tournament name ----------------
 function tName() { return (tournamentName || '').trim() || 'Anand APL 2026'; }
 function tSlug() { return tName().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'tournament'; }
@@ -3945,6 +4199,7 @@ async function init() {
   enforceCategoryStatusInvariant();
   setupTabs();
   setupRecordsTab();
+  setupTeamsTab();
   setupQrTab();
   setupTournamentName();
   setupSearch();
