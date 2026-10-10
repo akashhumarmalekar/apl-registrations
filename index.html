@@ -846,35 +846,74 @@
   .teams-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   /* The Teams page is wider than the other tabs so four tables fit in one row. */
   #panel-teams { --tw: min(1560px, calc(100vw - 40px)); width:var(--tw); margin-left:calc(50% - var(--tw) / 2); }
-  #teamsWrap { display:grid; grid-template-columns:minmax(0, 1fr); gap:16px; align-items:start; }
+  #teamsStats:empty { display:none; }
+  #teamsWrap { display:grid; grid-template-columns:minmax(0, 1fr); gap:18px; align-items:start; }
   @media (min-width:620px)  { #teamsWrap { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
   @media (min-width:940px)  { #teamsWrap { grid-template-columns:repeat(3, minmax(0, 1fr)); } }
   @media (min-width:1240px) { #teamsWrap { grid-template-columns:repeat(4, minmax(0, 1fr)); } }
   #teamsWrap .empty-state { grid-column:1 / -1; }
-  .team-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:0 1px 2px rgba(20,33,27,.06); }
-  .team-head { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 14px; background:var(--navy); color:#fff; }
-  .team-head h3 { margin:0; font-family:var(--display); font-size:17px; font-weight:700; letter-spacing:-.01em; word-break:break-word; }
-  .team-count { background:rgba(255,255,255,.14); color:var(--gold); font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px; white-space:nowrap; font-variant-numeric:tabular-nums; }
-  .team-card.unassigned .team-head { background:#5F6B63; }
-  .team-chips { display:flex; flex-wrap:wrap; gap:6px; padding:9px 14px; background:#F7FAF4; border-bottom:1px solid var(--border); }
-  .team-chip { font-size:12px; color:var(--muted); background:#fff; border:1px solid var(--border); padding:2px 9px; border-radius:999px; white-space:nowrap; }
-  .team-chip b { color:var(--text); }
+
+  /* Category colours, shared by pills, chips, number badges and the share image.
+     --cc text/strong colour, --ct soft tint, --ca accent bar. */
+  .cat-mentor   { --cc:#1F5F8B; --ct:#E5EFF6; --ca:#2A7AB8; }
+  .cat-captain  { --cc:#5E6E0C; --ct:#EEF6B8; --ca:#A9C60F; }
+  .cat-platinum { --cc:#4B3F8F; --ct:#ECE9F7; --ca:#7B6FD0; }
+  .cat-gold     { --cc:#8A6410; --ct:#FBF1D6; --ca:#D9A21B; }
+  .cat-silver   { --cc:#555C63; --ct:#EEF0F2; --ca:#9AA3AB; }
+  .cat-pill { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; background:var(--ct, #E9EDE5); color:var(--cc, var(--muted)); white-space:nowrap; }
+
+  .team-card { container-type:inline-size; background:#fff; border:1px solid var(--border); border-radius:18px; overflow:hidden; box-shadow:0 14px 28px -20px rgba(11,59,44,.55), 0 1px 2px rgba(20,33,27,.06); }
+  .team-head { display:flex; align-items:center; gap:12px; padding:14px; min-height:92px; color:#fff; background:linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%); border-bottom:3px solid var(--gold); }
+  .team-badge { flex:none; width:42px; height:42px; border-radius:13px; display:flex; align-items:center; justify-content:center; background:var(--gold); color:var(--navy); font-family:var(--display); font-weight:800; font-size:16px; letter-spacing:-.02em; }
+  .team-title { flex:1; min-width:0; }
+  .team-title h3 { margin:0; font-family:var(--display); font-size:18px; font-weight:800; line-height:1.15; letter-spacing:-.01em; word-break:break-word; }
+  .team-count { display:block; margin-top:3px; font-size:12.5px; font-weight:600; color:rgba(255,255,255,.72); }
+  .team-share-btn { flex:none; display:inline-flex; align-items:center; gap:6px; font-family:inherit; font-size:12.5px; font-weight:700; padding:7px 11px; border:0; border-radius:999px; background:#25D366; color:#fff; cursor:pointer; transition:filter .12s, transform .06s; }
+  .team-share-btn:hover { filter:brightness(1.08); }
+  .team-share-btn:active { transform:translateY(1px); }
+  .team-share-btn:disabled { opacity:.65; cursor:wait; }
+  .team-share-btn:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+  .team-share-btn svg { width:15px; height:15px; }
+  /* narrow cards (4 per row): icon-only button so long team names keep their room */
+  @container (max-width: 340px) { .team-share-btn span { display:none; } .team-share-btn { padding:9px; } .team-share-btn svg { width:16px; height:16px; } }
+  .team-card.unassigned .team-head { background:linear-gradient(135deg, #4F5B54, #68746C); border-bottom-color:#9AA39D; }
+  .team-card.unassigned .team-badge { background:#C9D1CB; color:#3C4741; }
+  .team-chips { display:flex; flex-wrap:wrap; gap:6px; padding:10px 14px; background:#F6F9F2; border-bottom:1px solid var(--border); }
+  .team-chip { display:inline-flex; align-items:center; gap:6px; padding:2px 3px 2px 10px; border-radius:999px; background:#fff; border:1px solid var(--border); font-size:12px; font-weight:600; color:var(--cc, var(--muted)); }
+  .team-chip b { min-width:20px; padding:1px 6px; border-radius:999px; text-align:center; font-size:11.5px; background:var(--cc, var(--navy)); color:#fff; }
   .team-scroll { overflow-x:auto; }
   table.team-tbl { width:100%; border-collapse:collapse; font-size:13.5px; }
-  table.team-tbl th { text-align:left; font-size:12px; font-weight:700; color:#41503F; background:#E9EFE4; padding:8px 9px; white-space:nowrap; }
-  table.team-tbl td { padding:8px 9px; border-top:1px solid var(--border); vertical-align:top; }
-  table.team-tbl tr:hover td { background:#F4F8EE; }
-  table.team-tbl td.num { width:26px; color:var(--muted); font-variant-numeric:tabular-nums; }
-  table.team-tbl td.team-mob { white-space:nowrap; font-variant-numeric:tabular-nums; }
-  .team-pname { font-weight:600; }
-  .team-sub { font-size:12px; color:var(--muted); margin-top:3px; }
+  table.team-tbl th { text-align:left; padding:7px 10px; font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); background:#fff; border-bottom:1px solid var(--border); white-space:nowrap; }
+  table.team-tbl td { padding:9px 10px; border-top:1px solid #EEF2EA; vertical-align:top; }
+  table.team-tbl tbody tr:first-child td { border-top:0; }
+  table.team-tbl tbody tr:nth-child(even) td { background:#FAFCF8; }
+  table.team-tbl tbody tr.lead td { background:#F6FAE6; }
+  table.team-tbl tbody tr.lead td:first-child { box-shadow:inset 3px 0 0 var(--ca, var(--gold)); }
+  table.team-tbl tbody tr:hover td { background:#EEF6E4; }
+  table.team-tbl td.num { width:1%; padding-right:2px; }
+  .team-idx { display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:24px; padding:0 4px; border-radius:8px; font-size:12px; font-weight:800; font-variant-numeric:tabular-nums; background:var(--ct, #E9EFE4); color:var(--cc, #41503F); }
+  table.team-tbl td.team-mob { white-space:nowrap; font-variant-numeric:tabular-nums; font-weight:600; color:#2D3A33; letter-spacing:.2px; }
+  .team-pname { font-weight:700; line-height:1.25; }
   .team-pill-line { margin-top:4px; }
-  .cat-pill { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; background:#E9EDE5; color:var(--muted); white-space:nowrap; }
-  .cat-pill.cat-mentor { background:var(--blue-bg); color:var(--blue); }
-  .cat-pill.cat-captain { background:#F3F8CF; color:#5E6E0C; }
-  .cat-pill.cat-platinum { background:#ECE9F7; color:#4B3F8F; }
-  .cat-pill.cat-gold { background:var(--amber-bg); color:var(--amber); }
-  .cat-pill.cat-silver { background:#EEF0F2; color:#555C63; }
+  .team-sub { font-size:12px; color:var(--muted); margin-top:3px; }
+
+  /* Team share image (built offscreen and captured, so it is fully self-contained) */
+  .team-export-card { background:#fff; color:#14211B; font-family:"Figtree", -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .tx-head { padding:24px 24px 20px; color:#fff; background:linear-gradient(135deg, #0B3B2C 0%, #145040 100%); border-bottom:5px solid #CFE62E; }
+  .tx-tourn { font-size:12px; font-weight:700; letter-spacing:2.2px; text-transform:uppercase; color:#CFE62E; }
+  .tx-team { margin-top:8px; font-family:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif; font-size:34px; font-weight:800; line-height:1.08; letter-spacing:-.01em; word-break:break-word; }
+  .tx-count { display:inline-block; margin-top:12px; padding:4px 13px; border-radius:999px; background:#CFE62E; color:#0B3B2C; font-size:13px; font-weight:800; }
+  .tx-chips { display:flex; flex-wrap:wrap; gap:6px; padding:12px 24px; background:#F6F9F2; border-bottom:1px solid #DCE4D7; }
+  .tx-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 4px 3px 11px; border-radius:999px; background:#fff; border:1px solid #DCE4D7; font-size:12.5px; font-weight:700; color:var(--cc, #62705F); }
+  .tx-chip b { min-width:21px; padding:1px 7px; border-radius:999px; text-align:center; font-size:12px; background:var(--cc, #0B3B2C); color:#fff; }
+  .tx-row { display:flex; align-items:center; gap:12px; padding:10px 24px 10px 20px; border-bottom:1px solid #EEF2EA; border-left:4px solid transparent; background:#fff; }
+  .tx-row:nth-child(even) { background:#FAFCF8; }
+  .tx-row.lead { background:#F6FAE6; border-left-color:var(--ca, #CFE62E); }
+  .tx-idx { flex:none; width:28px; height:28px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; background:var(--ct, #E9EFE4); color:var(--cc, #41503F); }
+  .tx-main { flex:1; min-width:0; }
+  .tx-name { font-size:16px; font-weight:700; line-height:1.25; }
+  .tx-mob { margin-top:1px; font-size:12.5px; font-weight:600; color:#62705F; letter-spacing:.3px; }
+  .tx-foot { height:10px; background:#0B3B2C; }
   .import-file-name { margin:0; }
 </style>
 </head>
@@ -1030,6 +1069,7 @@
         <button class="btn small excel" id="btnExcelTeams">Download Excel</button>
       </div>
     </div>
+    <div class="stats-row" id="teamsStats"></div>
     <div id="teamsWrap"></div>
   </section>
 
@@ -4072,30 +4112,87 @@ function teamsFlatRows() {
   return rows;
 }
 
+function catClass(cat) {
+  const k = (cat || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+  return TEAM_CATEGORY_ORDER.includes(k) ? 'cat-' + k : '';
+}
+function isLeadClass(cc) { return cc === 'cat-mentor' || cc === 'cat-captain'; }
+
 function catPillHtml(cat) {
   const c = (cat || '').trim();
   if (!c) return '<span class="muted-dash">\u2014</span>';
-  const k = c.toLowerCase().replace(/[^a-z]/g, '');
-  return `<span class="cat-pill ${TEAM_CATEGORY_ORDER.includes(k) ? 'cat-' + k : ''}">${escapeHtml(c)}</span>`;
+  return `<span class="cat-pill ${catClass(c)}">${escapeHtml(c)}</span>`;
+}
+
+// "Bhakti Rockets" -> "BR", "Gunatit 11" -> "G1", "Alpha" -> "AL"
+function teamInitials(name) {
+  const words = cleanTeam(name).split(' ').filter(Boolean);
+  if (!words.length) return '?';
+  const chars = w => Array.from(w);
+  const s = words.length === 1 ? chars(words[0]).slice(0, 2).join('') : chars(words[0])[0] + chars(words[1])[0];
+  return s.toUpperCase();
+}
+
+const TEAM_SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
+
+function teamCategoryCounts(players) {
+  const counts = new Map(); // players are already category-sorted, so insertion order is display order
+  players.forEach(p => { const c = (p.category || '').trim(); counts.set(c, (counts.get(c) || 0) + 1); });
+  return Array.from(counts.entries());
 }
 
 function teamCardHtml(name, players, isUnassigned) {
-  const counts = new Map(); // players are already category-sorted, so insertion order is display order
-  players.forEach(p => { const c = (p.category || '').trim(); counts.set(c, (counts.get(c) || 0) + 1); });
-  const chips = Array.from(counts.entries())
-    .map(([c, n]) => `<span class="team-chip">${escapeHtml(c || 'No category')} <b>${n}</b></span>`).join('');
+  const chips = teamCategoryCounts(players)
+    .map(([c, n]) => `<span class="team-chip ${catClass(c)}">${escapeHtml(c || 'No category')}<b>${n}</b></span>`).join('');
   const rows = players.map((p, i) => {
+    const cc = catClass(p.category);
     const sub = [];
     if ((p.followup || '').trim()) sub.push('Followup: ' + escapeHtml(p.followup));
     if (p.status !== REGISTERED) sub.push('Not registered');
     const pill = (p.category || '').trim() ? `<div class="team-pill-line">${catPillHtml(p.category)}</div>` : '';
-    return `<tr><td class="num">${i + 1}</td><td><div class="team-pname">${escapeHtml(p.fullName)}</div>${pill}${sub.length ? `<div class="team-sub">${sub.join(' \u00B7 ')}</div>` : ''}</td><td class="team-mob">${escapeHtml(p.mobile)}</td></tr>`;
+    return `<tr class="${cc}${isLeadClass(cc) ? ' lead' : ''}"><td class="num"><span class="team-idx">${i + 1}</span></td><td><div class="team-pname">${escapeHtml(p.fullName)}</div>${pill}${sub.length ? `<div class="team-sub">${sub.join(' \u00B7 ')}</div>` : ''}</td><td class="team-mob">${escapeHtml(p.mobile)}</td></tr>`;
   }).join('');
+  const share = isUnassigned ? ''
+    : `<button type="button" class="team-share-btn" data-team="${escapeHtml(name)}" title="Share ${escapeHtml(name)} on WhatsApp as an image" aria-label="Share ${escapeHtml(name)} as an image">${TEAM_SHARE_ICON}<span>Share</span></button>`;
   return `<div class="team-card${isUnassigned ? ' unassigned' : ''}">
-    <div class="team-head"><h3>${escapeHtml(name)}</h3><span class="team-count">${players.length} player${players.length === 1 ? '' : 's'}</span></div>
+    <div class="team-head"><div class="team-badge">${isUnassigned ? '\u2013' : escapeHtml(teamInitials(name))}</div><div class="team-title"><h3>${escapeHtml(name)}</h3><span class="team-count">${players.length} player${players.length === 1 ? '' : 's'}</span></div>${share}</div>
     <div class="team-chips">${chips}</div>
     <div class="team-scroll"><table class="team-tbl"><thead><tr><th>#</th><th>Player</th><th>Mobile</th></tr></thead><tbody>${rows}</tbody></table></div>
   </div>`;
+}
+
+// The picture that gets shared: one team, branded header, roster with category tags.
+function teamExportCardHtml(team) {
+  const chips = teamCategoryCounts(team.players)
+    .map(([c, n]) => `<span class="tx-chip ${catClass(c)}">${escapeHtml(c || 'No category')}<b>${n}</b></span>`).join('');
+  const rows = team.players.map((p, i) => {
+    const cc = catClass(p.category);
+    return `<div class="tx-row ${cc}${isLeadClass(cc) ? ' lead' : ''}"><div class="tx-idx">${i + 1}</div><div class="tx-main"><div class="tx-name">${escapeHtml(p.fullName)}</div>${(p.mobile || '').trim() ? `<div class="tx-mob">${escapeHtml(p.mobile)}</div>` : ''}</div>${(p.category || '').trim() ? catPillHtml(p.category) : ''}</div>`;
+  }).join('');
+  return `<div class="team-export-card">
+    <div class="tx-head"><div class="tx-tourn">${escapeHtml(tName())}</div><div class="tx-team">${escapeHtml(team.name)}</div><div class="tx-count">${team.players.length} player${team.players.length === 1 ? '' : 's'}</div></div>
+    <div class="tx-chips">${chips}</div>
+    <div class="tx-rows">${rows}</div>
+    <div class="tx-foot"></div>
+  </div>`;
+}
+
+async function shareTeamImage(teamName, btn) {
+  const key = cleanTeam(teamName).toLowerCase();
+  const team = buildTeamGroups().teams.find(t => t.name.toLowerCase() === key);
+  if (!team) { alert('That team no longer exists.'); return; }
+  const label = btn ? btn.querySelector('span') : null;
+  const originalLabel = label ? label.textContent : '';
+  if (btn) { btn.disabled = true; if (label) label.textContent = 'Preparing\u2026'; }
+  try {
+    const sandbox = document.createElement('div');
+    sandbox.innerHTML = teamExportCardHtml(team);
+    const safe = team.name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'team';
+    const caption = `${tName().toUpperCase()} - ${team.name}\n${team.players.length} player${team.players.length === 1 ? '' : 's'}`;
+    await captureAndShareCard(sandbox, `${tSlug()}_team_${safe}.png`, `${team.name} - ${tName()}`, caption);
+  } finally {
+    if (btn) { btn.disabled = false; if (label) label.textContent = originalLabel; }
+  }
 }
 
 function renderTeams() {
@@ -4103,6 +4200,12 @@ function renderTeams() {
   if (!wrap) return;
   const { teams, unassigned } = buildTeamGroups();
   document.getElementById('teamsCount').textContent = teams.length;
+  const inTeams = teams.reduce((s, t) => s + t.players.length, 0);
+  const stats = document.getElementById('teamsStats');
+  if (stats) stats.innerHTML = teams.length
+    ? [['Teams', teams.length], ['Players in teams', inTeams], ['Not in a team', unassigned.length], ['Total players', participants.length]]
+        .map(([l, v]) => `<div class="stat-card"><div class="label">${l}</div><div class="value">${v}</div></div>`).join('')
+    : '';
   if (!teams.length) {
     wrap.innerHTML = '<div class="empty-state">No teams assigned yet.<br>Import an Excel/CSV with a <b>Team</b> column (Import / Export tab), or set the Team for each player in the Data tab.</div>';
     return;
@@ -4129,6 +4232,10 @@ function downloadTeamsXlsx() {
 
 function setupTeamsTab() {
   document.getElementById('btnExcelTeams').addEventListener('click', downloadTeamsXlsx);
+  document.getElementById('teamsWrap').addEventListener('click', e => {
+    const btn = e.target.closest('.team-share-btn');
+    if (btn) shareTeamImage(btn.dataset.team, btn);
+  });
 }
 
 // ---------------- Tournament name ----------------
