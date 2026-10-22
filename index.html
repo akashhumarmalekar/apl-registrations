@@ -418,6 +418,24 @@
   #qrCanvas img, #qrCanvas canvas { max-width:100%; height:auto; }
   .qr-url { margin-top:14px; font-size:12px; color:#646D96; word-break:break-all; }
 
+  /* ---------- Sync from sheet ---------- */
+  .sync-tiles { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; margin:14px 0 12px; }
+  .sync-tile { padding:10px 4px; text-align:center; background:var(--card-2); border:1px solid var(--border); border-radius:14px; }
+  .sync-tile b { display:block; font-size:22px; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; }
+  .sync-tile span { font-size:11.5px; font-weight:600; color:var(--muted); }
+  .sync-tile.add b { color:var(--green); }
+  .sync-tile.upd b { color:var(--blue); }
+  .sync-tile.rem b { color:var(--red); }
+  .sync-note { margin-top:10px; padding:9px 12px; border-radius:12px; font-size:12.5px; line-height:1.45; }
+  .sync-note.warn { color:var(--amber); background:var(--amber-bg); }
+  .sync-note.err { color:var(--red); background:var(--red-bg); font-weight:600; }
+  .sync-note.info { color:var(--blue); background:var(--blue-bg); }
+  .sync-note.ok { color:var(--green); background:var(--green-bg); }
+  details.sync-det { margin-top:10px; font-size:13px; }
+  details.sync-det summary { cursor:pointer; font-weight:700; }
+  details.sync-det ul { margin:6px 0 0; padding-left:18px; max-height:170px; overflow:auto; color:var(--muted); line-height:1.5; }
+  details.sync-det li b { color:var(--text); }
+
   /* ---------- Teams tab ---------- */
   .teams-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   /* The Teams page is wider than the other tabs so four tables fit in one row. */
@@ -856,6 +874,17 @@
         <button class="btn primary" id="editNameBtn">Edit name</button>
       </div>
     </div>
+    <div class="card">
+      <h3>Sync site from Excel template</h3>
+      <p class="desc">Your standing import template. Choose the sheet and the whole site is updated to match it: players are added or updated, players who are not in the sheet are removed, and the Registered, Pending, Followup, Category and Teams views all follow. Columns: <b>Full Name, Followup, Mobile, Category, Status, Team</b> (Reference is optional; the first row must be the header). You see a preview of every change before anything is applied.</p>
+      <div class="btn-row" style="align-items:center;">
+        <button type="button" class="btn primary" id="btnSyncPick">Choose Excel file and sync&hellip;</button>
+        <input type="file" id="syncFile" accept=".xlsx,.xls,.csv" hidden>
+      </div>
+      <p class="hint" style="margin-top:10px;">"Not Registered" in the Category or Team column just means blank, and a Registered player with no team shows as Reserved. Columns that are missing from the sheet are left as they are on the site. If the file has several sheets you can pick which one to use in the preview.</p>
+      <div class="import-summary" id="syncSummary"></div>
+    </div>
+
     <div class="card">
       <h3>Bulk import</h3>
       <p class="desc">To add one person, use the form in the Data tab. To load many at once, load an Excel file below or paste rows copied straight from Excel. Columns: Full Name, Followup, Mobile, Status, Category, Team, Reference (Team and Reference are optional; tab or comma separated). If the first row is a header, columns are matched by their names (<b>Team</b> or <b>Teams</b> both work); without a header they are read in the order above.</p>
@@ -1664,6 +1693,7 @@ function openModal(html) {
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('show');
   document.getElementById('modalBox').innerHTML = '';
+  document.getElementById('modalBox').style.maxWidth = '';
 }
 function setupModal() {
   const overlay = document.getElementById('modalOverlay');
@@ -2432,7 +2462,8 @@ function parseDelimited(text) {
         const k = team.toLowerCase();
         if (seenTeam.has(k)) team = seenTeam.get(k); else seenTeam.set(k, team);
       }
-      return { fullName: cell('fullName'), followup: cell('followup'), mobile: cell('mobile'), status, category: cell('category'), team, reference: cell('reference').replace(/\s+/g, ' ') };
+      const category = cell('category').replace(/\s+/g, ' ');
+      return { fullName: cell('fullName').replace(/\s+/g, ' '), followup: cell('followup').replace(/\s+/g, ' '), mobile: cell('mobile'), status, category: isStatusLikeCategoryName(category) ? '' : category, team, reference: cell('reference').replace(/\s+/g, ' ') };
     })
     .filter(p => p.fullName);
   out.cols = looksLikeHeader ? Object.keys(idx).filter(k => idx[k] >= 0) : null;
@@ -2453,6 +2484,7 @@ function findMobileConflicts() {
 }
 
 function setupDataTab() {
+  setupSyncImport();
   const importFile = document.getElementById('importFile');
   document.getElementById('btnPickImportFile').addEventListener('click', () => importFile.click());
   importFile.addEventListener('change', () => {
@@ -2625,6 +2657,224 @@ function setupDataTab() {
       scheduleSave();
       showImportSummary('Reset to sample data.', 'info');
     });
+  });
+}
+
+// ---------------- Sync the whole site from the Excel template ----------------
+// One step: pick the sheet and the site becomes a mirror of it. Players in the sheet are added or
+// updated, players who are not in the sheet are removed, and every view (Registered, Pending,
+// Followup, Category, Teams) follows because they all read the same participants list.
+// Columns that are in the sheet are mirrored exactly; columns that are not in the sheet are left alone.
+const SYNC_FIELD_LABEL = { fullName: 'name', followup: 'followup', mobile: 'mobile', status: 'status', category: 'category', team: 'team', reference: 'reference' };
+let syncState = null;
+
+function syncSay(text, kind) {
+  const el = document.getElementById('syncSummary');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'import-summary show ' + kind;
+}
+
+// Every sheet that has a "Full Name" header row (looked for in the first 10 rows), in workbook order.
+function syncReadWorkbook(buf) {
+  const wb = XLSX.read(buf, { type: 'array' });
+  const sheets = [];
+  wb.SheetNames.forEach(name => {
+    const all = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: false, defval: '' })
+      .map(r => r.map(c => String(c == null ? '' : c).replace(/[\t\r\n]+/g, ' ').trim()));
+    const h = all.findIndex((r, i) => i < 10 && r.some(c => c.toLowerCase().includes('full name') || c.toLowerCase().includes('fullname')));
+    if (h === -1) return;
+    const lines = all.slice(h).filter(r => r.some(c => c));
+    sheets.push({ name, lines, dataRows: lines.length - 1 });
+  });
+  return sheets;
+}
+
+// Works out exactly what the sync would do, without changing anything.
+function syncBuildPlan(rows, skippedBlankNames) {
+  const cols = rows.cols || [];
+  const has = k => cols.includes(k);
+  const byName = new Map(), byMobile = new Map(), dupMobile = new Set();
+  participants.forEach(p => {
+    const n = normName(p.fullName);
+    if (n) { if (!byName.has(n)) byName.set(n, []); byName.get(n).push(p); }
+    const m = normalizeMobile(p.mobile);
+    if (m) { if (byMobile.has(m)) dupMobile.add(m); else byMobile.set(m, p); }
+  });
+  const used = new Set();
+  const final = [], added = [], updated = [], statusLog = [];
+  const tally = {};
+  let unchanged = 0;
+  const downgraded = [], badMobile = [];
+  const sheetMobiles = new Map(), sheetNames = new Map();
+
+  rows.forEach(r => {
+    const mobNorm = normalizeMobile(r.mobile);
+    const mob = mobNorm || r.mobile;
+    if (has('mobile') && !mobNorm) badMobile.push(r.fullName);
+    if (mobNorm) sheetMobiles.set(mobNorm, (sheetMobiles.get(mobNorm) || 0) + 1);
+    const nk = normName(r.fullName);
+    sheetNames.set(nk, (sheetNames.get(nk) || 0) + 1);
+
+    // match: by name first, then by mobile (so a corrected name or a corrected mobile still finds the same person)
+    let p = (byName.get(nk) || []).find(x => !used.has(x.id));
+    if (!p && mobNorm && !dupMobile.has(mobNorm)) { const c = byMobile.get(mobNorm); if (c && !used.has(c.id)) p = c; }
+
+    if (!p) {
+      const np = { id: genId(), fullName: r.fullName, followup: r.followup, mobile: mob, status: r.status, category: r.category, team: r.team, reference: r.reference };
+      if (enforceCategoryStatusRule(np) === 'downgraded') downgraded.push(np.fullName);
+      final.push(np);
+      added.push(np.fullName);
+      return;
+    }
+
+    used.add(p.id);
+    const next = { ...p };
+    next.fullName = r.fullName;
+    if (has('followup')) next.followup = r.followup;
+    if (has('mobile')) next.mobile = mob;
+    if (has('category')) next.category = r.category;
+    if (has('team')) next.team = r.team;
+    if (has('reference')) next.reference = r.reference;
+    if (has('status')) next.status = r.status;
+    if (enforceCategoryStatusRule(next) === 'downgraded') downgraded.push(next.fullName);
+
+    const val = (o, k) => k === 'team' ? cleanTeam(o.team) : String(o[k] == null ? '' : o[k]);
+    const changes = ['fullName', 'followup', 'mobile', 'status', 'category', 'team', 'reference']
+      .filter(k => val(p, k) !== val(next, k))
+      .map(k => ({ k, from: val(p, k), to: val(next, k) }));
+    final.push(next);
+    if (!changes.length) { unchanged++; return; }
+    changes.forEach(c => { tally[c.k] = (tally[c.k] || 0) + 1; });
+    updated.push({ name: next.fullName, changes });
+    const ch = changes.find(c => c.k === 'status');
+    if (ch) statusLog.push({ p: next, prev: ch.from });
+  });
+
+  const removed = participants.filter(p => !used.has(p.id)).map(p => p.fullName);
+  const regBefore = participants.filter(p => p.status === REGISTERED).length;
+  const regAfter = final.filter(p => p.status === REGISTERED).length;
+  const categories = Array.from(new Set(final.map(p => (p.category || '').trim()).filter(Boolean))).sort();
+  const dupMob = Array.from(sheetMobiles.values()).filter(n => n > 1).length;
+  const dupNames = Array.from(sheetNames.values()).filter(n => n > 1).length;
+  return { cols, final, added, updated, removed, unchanged, tally, statusLog, downgraded, badMobile, dupMob, dupNames, regBefore, regAfter, categories, skippedBlankNames: skippedBlankNames || 0 };
+}
+
+function syncPreview() {
+  const { fileName, sheets, idx } = syncState;
+  const sheet = sheets[idx];
+  const rows = parseDelimited(sheet.lines.map(r => r.join('\t')).join('\n'));
+  if (!rows.length) { closeModal(); syncSay(`Sheet "${sheet.name}" has no player rows (it needs a Full Name column filled in).`, 'err'); return; }
+  const plan = syncBuildPlan(rows, sheet.dataRows - rows.length);
+  const esc = escapeHtml;
+  const colNames = { fullName: 'Full Name', followup: 'Followup', mobile: 'Mobile', category: 'Category', status: 'Status', team: 'Team', reference: 'Reference' };
+  const allCols = ['fullName', 'followup', 'mobile', 'category', 'status', 'team', 'reference'];
+  const readCols = allCols.filter(k => plan.cols.includes(k)).map(k => colNames[k]);
+  const missingCols = allCols.filter(k => !plan.cols.includes(k)).map(k => colNames[k]);
+  const changesTotal = plan.added.length + plan.updated.length + plan.removed.length;
+  const tooMany = participants.length >= 10 && plan.removed.length > participants.length / 2;
+
+  const notes = [];
+  if (tooMany) notes.push(['err', `This sheet is missing more than half of the players currently on the site (${plan.removed.length} of ${participants.length} would be deleted). Check that you picked the right file and sheet before applying.`]);
+  else if (plan.removed.length) notes.push(['warn', `${plan.removed.length} player(s) are on the site but not in the sheet and will be deleted.`]);
+  if (plan.downgraded.length) notes.push(['warn', `${plan.downgraded.length} player(s) are marked Registered but have no category, so they will be set to Not Registered: ${esc(plan.downgraded.slice(0, 5).join(', '))}${plan.downgraded.length > 5 ? '\u2026' : ''}.`]);
+  if (plan.badMobile.length) notes.push(['warn', `${plan.badMobile.length} row(s) do not have a valid 10-digit mobile: ${esc(plan.badMobile.slice(0, 5).join(', '))}${plan.badMobile.length > 5 ? '\u2026' : ''}.`]);
+  if (plan.dupMob) notes.push(['warn', `${plan.dupMob} mobile number(s) appear more than once in the sheet.`]);
+  if (plan.dupNames) notes.push(['warn', `${plan.dupNames} name(s) appear more than once in the sheet.`]);
+  if (plan.skippedBlankNames > 0) notes.push(['warn', `${plan.skippedBlankNames} row(s) with no Full Name were skipped.`]);
+  if (missingCols.length) notes.push(['info', `Not in this sheet, so left as they are on the site: ${esc(missingCols.join(', '))}.`]);
+  const notesHtml = notes.map(([k, t]) => `<div class="sync-note ${k}">${t}</div>`).join('');
+
+  const tallyTxt = Object.entries(plan.tally).map(([k, n]) => `${SYNC_FIELD_LABEL[k]} ${n}`).join(', ');
+  const listItem = u => `<li><b>${esc(u.name)}</b> \u2014 ${u.changes.map(c => c.k === 'mobile' || c.k === 'fullName' || c.k === 'followup' || c.k === 'reference' ? SYNC_FIELD_LABEL[c.k] + ' changed' : `${SYNC_FIELD_LABEL[c.k]}: ${esc(c.from || '\u2014')} \u2192 ${esc(c.to || '\u2014')}`).join('; ')}</li>`;
+  const more = (arr, n) => arr.length > n ? `<li>\u2026and ${arr.length - n} more</li>` : '';
+  const det = (title, count, inner, open) => count ? `<details class="sync-det"${open ? ' open' : ''}><summary>${title} (${count})</summary><ul>${inner}</ul></details>` : '';
+
+  const sheetPicker = sheets.length > 1 ? `
+    <label for="syncSheetSel">Sheet to import</label>
+    <select id="syncSheetSel">${sheets.map((s, i) => `<option value="${i}"${i === idx ? ' selected' : ''}>${esc(s.name)} \u2014 ${s.dataRows} row(s)</option>`).join('')}</select>` : '';
+
+  openModal(`
+    <h3>Sync site from sheet</h3>
+    <p class="desc" style="margin:0;">${esc(fileName)} \u00b7 sheet <b>${esc(sheet.name)}</b> \u00b7 ${rows.length} player(s)</p>
+    ${sheetPicker}
+    <div class="sync-tiles">
+      <div class="sync-tile add"><b>${plan.added.length}</b><span>Added</span></div>
+      <div class="sync-tile upd"><b>${plan.updated.length}</b><span>Updated</span></div>
+      <div class="sync-tile rem"><b>${plan.removed.length}</b><span>Removed</span></div>
+      <div class="sync-tile"><b>${plan.unchanged}</b><span>Unchanged</span></div>
+    </div>
+    <p class="desc" style="margin:0 0 4px;">Registered: <b>${plan.regBefore} \u2192 ${plan.regAfter}</b> \u00b7 Total players: <b>${participants.length} \u2192 ${plan.final.length}</b>${plan.categories.length ? ` \u00b7 Categories: ${esc(plan.categories.join(', '))}` : ''}</p>
+    ${tallyTxt ? `<p class="hint" style="margin:0;">Field changes: ${esc(tallyTxt)}.</p>` : ''}
+    ${notesHtml}
+    ${det('Removed', plan.removed.length, plan.removed.slice(0, 60).map(n => `<li>${esc(n)}</li>`).join('') + more(plan.removed, 60), true)}
+    ${det('Added', plan.added.length, plan.added.slice(0, 60).map(n => `<li>${esc(n)}</li>`).join('') + more(plan.added, 60), false)}
+    ${det('Updated', plan.updated.length, plan.updated.slice(0, 60).map(listItem).join('') + more(plan.updated, 60), false)}
+    ${changesTotal === 0 ? '<div class="sync-note ok">The site already matches this sheet. Nothing to change.</div>' : ''}
+    <p class="hint" style="margin:12px 0 0;">Columns read: ${esc(readCols.join(', '))}.</p>
+    <div class="btn-row">
+      ${changesTotal === 0 ? '' : '<button class="btn primary" id="syncApplyBtn">Apply sync</button>'}
+      <button class="btn" id="syncCancelBtn">${changesTotal === 0 ? 'Close' : 'Cancel'}</button>
+    </div>
+  `);
+  document.getElementById('modalBox').style.maxWidth = '560px';
+  document.getElementById('syncCancelBtn').addEventListener('click', closeModal);
+  const sel = document.getElementById('syncSheetSel');
+  if (sel) sel.addEventListener('change', () => { syncState.idx = parseInt(sel.value, 10) || 0; syncPreview(); });
+  const apply = document.getElementById('syncApplyBtn');
+  if (apply) apply.addEventListener('click', () => {
+    const sheetName = sheet.name, file = fileName;
+    closeModal();
+    requirePin(() => syncApply(rows, file, sheetName));
+  });
+}
+
+function syncApply(rows, fileName, sheetName) {
+  const plan = syncBuildPlan(rows);   // recomputed now, so it reflects the latest data on the site
+  participants = plan.final;
+  plan.statusLog.forEach(({ p, prev }) => logStatusChange(p, prev));
+  lastRegisteredId = null; lastRegisteredIdDirty = true;
+  categoryMaster = deriveCategoriesFromParticipants(); categoryMasterDirty = true;
+  dirtyParticipantIds.clear(); deletedParticipantIds.clear();
+  participantsFullReplace = true;
+  pendingParticipant = null;
+  renderAll();
+  refreshSuggestions();
+  scheduleSave();
+  let msg = `Site synced from "${sheetName}" in ${fileName}: ${plan.added.length} added, ${plan.updated.length} updated, ${plan.removed.length} removed, ${plan.unchanged} unchanged. Registered: ${plan.regBefore} \u2192 ${plan.regAfter}. Total players: ${plan.final.length}.`;
+  const warn = [];
+  if (plan.downgraded.length) warn.push(`${plan.downgraded.length} Registered row(s) had no category and were set to Not Registered`);
+  if (plan.badMobile.length) warn.push(`${plan.badMobile.length} row(s) have no valid mobile`);
+  if (plan.dupMob) warn.push(`${plan.dupMob} duplicate mobile number(s) in the sheet`);
+  if (warn.length) msg += ' Check: ' + warn.join('; ') + '.';
+  syncSay(msg, warn.length ? 'warn' : 'ok');
+}
+
+function setupSyncImport() {
+  const pick = document.getElementById('btnSyncPick'), input = document.getElementById('syncFile');
+  if (!pick || !input) return;
+  pick.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => {
+    const f = input.files && input.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onerror = () => { syncSay('Could not read that file.', 'err'); input.value = ''; };
+    reader.onload = e => {
+      try {
+        const sheets = syncReadWorkbook(e.target.result);
+        if (!sheets.length) {
+          syncSay('No sheet with a "Full Name" header row was found. The template columns are: Full Name, Followup, Mobile, Category, Status, Team.', 'err');
+        } else {
+          syncState = { fileName: f.name, sheets, idx: 0 };
+          syncPreview();
+        }
+      } catch (err) {
+        console.error('Sync read failed', err);
+        syncSay('Could not read that file. Make sure it is a valid .xlsx or .csv file.', 'err');
+      }
+      input.value = '';
+    };
+    reader.readAsArrayBuffer(f);
   });
 }
 
