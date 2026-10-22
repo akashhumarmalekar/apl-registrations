@@ -3857,7 +3857,7 @@ const TEAM_SHEET_HEADER = ['Team', 'Full Name', 'Category', 'Followup', 'Mobile'
 function cleanTeam(raw) {
   const t = String(raw == null ? '' : raw).trim().replace(/\s+/g, ' ');
   const k = t.toLowerCase();
-  return (k === 'unsold' || k === 'not registered') ? '' : t;   // "Unsold" / "Not Registered" are not teams: those players are simply "not in a team"
+  return (k === 'unsold' || k === 'not registered' || k === 'reserved') ? '' : t;   // "Unsold" / "Reserved" / "Not Registered" are not teams: Registered + no team = Reserved
 }
 
 // Unique team names (case-insensitive, first spelling wins), A–Z.
@@ -4001,13 +4001,14 @@ function renderTeams() {
   const wrap = document.getElementById('teamsWrap');
   if (!wrap) return;
   const { teams, unassigned } = buildTeamGroups();
+  const reserved = unassigned.filter(p => p.status === REGISTERED);   // registered but not in a team
   document.getElementById('teamsCount').textContent = teams.length;
   const inTeams = teams.reduce((s, t) => s + t.players.length, 0);
   const stats = document.getElementById('teamsStats');
   if (stats) stats.innerHTML = teams.length
-    ? [['Teams', teams.length], ['Players in teams', inTeams], ['Not in a team', unassigned.length], ['Total players', participants.length]]
-        .map(([l, v]) => l === 'Not in a team'
-          ? `<div class="stat-card clickable" role="button" tabindex="0" data-action="unsold" title="View unsold players"><div class="label">${l}</div><div class="value">${v}</div><div class="stat-cta">View players &rarr;</div></div>`
+    ? [['Teams', teams.length], ['Players in teams', inTeams], ['Reserved', reserved.length], ['Total players', participants.length]]
+        .map(([l, v]) => l === 'Reserved'
+          ? `<div class="stat-card clickable" role="button" tabindex="0" data-action="unsold" title="View reserved players"><div class="label">${l}</div><div class="value">${v}</div><div class="stat-cta">View players &rarr;</div></div>`
           : `<div class="stat-card"><div class="label">${l}</div><div class="value">${v}</div></div>`).join('')
     : '';
   if (!teams.length) {
@@ -4176,7 +4177,9 @@ function downloadTeamsPdf() {
 }
 
 function openUnsoldModal(keepScroll) {
-  const { unassigned } = buildTeamGroups();
+  const everyone = buildTeamGroups().unassigned;
+  const unassigned = everyone.filter(p => p.status === REGISTERED);   // Reserved = Registered, no team
+  const notRegistered = everyone.length - unassigned.length;
   const opts = '<option value="">Assign to team\u2026</option>' + teamNames().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
   const rows = unassigned.map(p => {
     const meta = [p.category, (p.followup || '').trim() ? 'Followup: ' + p.followup : '', p.mobile].filter(x => x && String(x).trim()).map(escapeHtml).join(' \u00B7 ');
@@ -4185,9 +4188,10 @@ function openUnsoldModal(keepScroll) {
       + `<select class="unsold-assign" data-id="${p.id}" aria-label="Assign ${escapeHtml(p.fullName)} to a team">${opts}</select></li>`;
   }).join('');
   openModal(`
-    <h3>Unsold players <span class="count-pill">${unassigned.length}</span></h3>
-    <p class="desc" style="margin:0 0 12px;">Players who are not in any team. Choose a team on a row to assign that player.</p>
-    ${unassigned.length ? `<ul class="drilldown-list">${rows}</ul>` : '<div class="empty-state">No unsold players. Everyone is in a team.</div>'}
+    <h3>Reserved players <span class="count-pill">${unassigned.length}</span></h3>
+    <p class="desc" style="margin:0 0 12px;">Registered players who are not in any team. Choose a team on a row to place that player.</p>
+    ${unassigned.length ? `<ul class="drilldown-list">${rows}</ul>` : '<div class="empty-state">No reserved players. Every registered player is in a team.</div>'}
+    ${notRegistered ? `<p class="hint" style="margin:10px 0 0;">${notRegistered} more player${notRegistered === 1 ? '' : 's'} with no team ${notRegistered === 1 ? 'is' : 'are'} not registered yet (see the Pending tab).</p>` : ''}
     <div class="btn-row" style="margin-top:14px;"><button class="btn" id="unsoldCloseBtn" style="width:100%;">Close</button></div>
   `);
   const list = document.querySelector('#modalBox .drilldown-list');
