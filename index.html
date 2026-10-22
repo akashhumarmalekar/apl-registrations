@@ -867,7 +867,9 @@
       <div class="btn-row">
         <button class="btn primary" id="btnImportReplace">Replace all participants</button>
         <button class="btn" id="btnImportAppend">Append as new participants</button>
+        <button class="btn excel" id="btnImportUpdate">Update existing participants</button>
       </div>
+      <p class="hint" style="margin-top:10px;"><b>Update existing participants</b> matches each row to a player already in the app (by name, or by mobile if the name is not found) and changes <b>only the columns in your file</b>. Everything else (category, reference, status when there is no Status column) stays untouched. The first row must be a header. Names that are not found are listed, not added.</p>
       <div class="import-summary" id="importSummary"></div>
     </div>
 
@@ -2420,7 +2422,7 @@ function parseDelimited(text) {
   }
 
   const seenTeam = new Map(); // keep one spelling per team (case-insensitive)
-  return dataRows
+  const out = dataRows
     .map(r => {
       const cell = k => (idx[k] >= 0 && r[idx[k]] != null) ? String(r[idx[k]]).trim() : '';
       let status = cell('status') || NOT_REGISTERED;
@@ -2433,6 +2435,8 @@ function parseDelimited(text) {
       return { fullName: cell('fullName'), followup: cell('followup'), mobile: cell('mobile'), status, category: cell('category'), team, reference: cell('reference').replace(/\s+/g, ' ') };
     })
     .filter(p => p.fullName);
+  out.cols = looksLikeHeader ? Object.keys(idx).filter(k => idx[k] >= 0) : null;
+  return out;
 }
 
 function findMobileConflicts() {
@@ -2471,7 +2475,7 @@ function setupDataTab() {
           .filter(r => r.some(c => c));
         if (!lines.length) { showImportSummary('That file has no rows.', 'err'); return; }
         document.getElementById('importArea').value = lines.map(r => r.join('\t')).join('\n');
-        showImportSummary(`Loaded ${lines.length} line(s) from ${f.name} into the box above. Check them, then choose "Replace all participants" or "Append as new participants".`, 'info');
+        showImportSummary(`Loaded ${lines.length} line(s) from ${f.name} into the box above. Check them, then choose "Replace all participants", "Append as new participants" or "Update existing participants".`, 'info');
       } catch (err) {
         console.error('Excel import read failed', err);
         showImportSummary('Could not read that file. Make sure it is a valid .xlsx or .csv file.', 'err');
@@ -2489,6 +2493,8 @@ function setupDataTab() {
         showImportSummary('No valid rows found. Check the format and try again.', 'err');
         return;
       }
+      if (rows.cols && !rows.cols.includes('category') &&
+          !confirm('This file has no Category column.\n\n"Replace all" would remove every player\'s category, and everyone marked Registered would become Not Registered.\n\nPress Cancel and use "Update existing participants" instead, or OK to replace anyway.')) return;
       participants = rows.map(r => ({ id: genId(), ...r }));
       let ruleDowngraded = 0, ruleCleared = 0;
       participants.forEach(p => {
@@ -2508,6 +2514,53 @@ function setupDataTab() {
       if (ruleCleared > 0) msg += ` ${ruleCleared} row(s) marked Not Registered had a leftover category cleared.`;
       if (conflictCount > 0) msg += ` Warning: ${affected} participant(s) share ${conflictCount} duplicate mobile number(s) — check Registered/Pending.`;
       showImportSummary(msg, conflictCount > 0 ? 'warn' : 'ok');
+    });
+  });
+
+  document.getElementById('btnImportUpdate').addEventListener('click', () => {
+    requirePin(() => {
+      const rows = parseDelimited(document.getElementById('importArea').value);
+      if (rows.length === 0) { showImportSummary('No valid rows found. Check the format and try again.', 'err'); return; }
+      if (!rows.cols) { showImportSummary('"Update existing participants" needs a header row (for example: Full Name, Followup, Mobile, Status, Team) so it knows which columns to change.', 'err'); return; }
+      const cols = rows.cols;
+      const byName = new Map(participants.map(p => [normName(p.fullName), p]));
+      const byMobile = new Map(), dupMob = new Set();
+      participants.forEach(p => { const m = normalizeMobile(p.mobile); if (!m) return; if (byMobile.has(m)) dupMob.add(m); else byMobile.set(m, p); });
+      const ops = [], notFound = [], tally = { team: 0, status: 0, followup: 0, mobile: 0, category: 0, reference: 0 };
+      let unchanged = 0, needsCategory = 0;
+      rows.forEach(r => {
+        let p = byName.get(normName(r.fullName));
+        if (!p) { const m = normalizeMobile(r.mobile); if (m && !dupMob.has(m)) p = byMobile.get(m); }
+        if (!p) { notFound.push(r.fullName); return; }
+        const patch = {};
+        if (cols.includes('followup') && r.followup && r.followup !== p.followup) patch.followup = r.followup;
+        if (cols.includes('mobile')) { const m = normalizeMobile(r.mobile); if (m && m !== normalizeMobile(p.mobile)) patch.mobile = m; }
+        if (cols.includes('category') && r.category && r.category !== p.category) patch.category = r.category;
+        if (cols.includes('reference') && r.reference && r.reference !== (p.reference || '')) patch.reference = r.reference;
+        if (cols.includes('team')) { const t = cleanTeam(r.team), canon = t ? canonicalTeam(t) : ''; if (canon !== cleanTeam(p.team)) patch.team = canon; }
+        if (cols.includes('status') && r.status !== p.status) {
+          const cat = ((patch.category !== undefined ? patch.category : p.category) || '').trim();
+          if (r.status === REGISTERED && !cat) needsCategory++; else patch.status = r.status;
+        }
+        const keys = Object.keys(patch);
+        if (!keys.length) { unchanged++; return; }
+        keys.forEach(k => { tally[k]++; });
+        ops.push({ p, patch });
+      });
+      const breakdown = Object.entries(tally).filter(([, n]) => n).map(([k, n]) => `${k} ${n}`).join(', ');
+      const missing = notFound.length ? ` ${notFound.length} name(s) in the file were not found and were NOT added: ${notFound.slice(0, 8).join(', ')}${notFound.length > 8 ? '\u2026' : ''}.` : '';
+      const catNote = needsCategory ? ` ${needsCategory} player(s) could not be set to Registered because they have no category yet.` : '';
+      if (!ops.length) { showImportSummary(`Nothing to change: ${unchanged} matching player(s) are already up to date.${catNote}${missing}`, notFound.length || needsCategory ? 'warn' : 'info'); return; }
+      if (!confirm(`Update ${ops.length} player(s)?\n\nChanges: ${breakdown}.\nAlready up to date: ${unchanged}.${notFound.length ? '\nNot found (will not be added): ' + notFound.length : ''}${needsCategory ? '\nCannot be Registered without a category: ' + needsCategory : ''}`)) return;
+      ops.forEach(({ p, patch }) => {
+        const prev = p.status;
+        Object.assign(p, patch);
+        if (patch.status && patch.status !== prev) logStatusChange(p, prev);
+        if (patch.category) { categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : []; if (!categoryMaster.includes(patch.category)) { categoryMaster.push(patch.category); categoryMasterDirty = true; } }
+        markParticipantDirty(p.id);
+      });
+      renderAll(); refreshSuggestions(); scheduleSave();
+      showImportSummary(`Updated ${ops.length} player(s) (${breakdown}). ${unchanged} already up to date.${catNote}${missing}`, notFound.length || needsCategory ? 'warn' : 'ok');
     });
   });
 
@@ -3803,7 +3856,8 @@ const TEAM_SHEET_HEADER = ['Team', 'Full Name', 'Category', 'Followup', 'Mobile'
 
 function cleanTeam(raw) {
   const t = String(raw == null ? '' : raw).trim().replace(/\s+/g, ' ');
-  return t.toLowerCase() === 'unsold' ? '' : t;   // "Unsold" is not a team: those players are simply "not in a team"
+  const k = t.toLowerCase();
+  return (k === 'unsold' || k === 'not registered') ? '' : t;   // "Unsold" / "Not Registered" are not teams: those players are simply "not in a team"
 }
 
 // Unique team names (case-insensitive, first spelling wins), A–Z.
