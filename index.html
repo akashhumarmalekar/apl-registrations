@@ -458,6 +458,12 @@
   .team-share-btn svg { width:15px; height:15px; }
   /* narrow cards (4 per row): icon-only button so long team names keep their room */
   @container (max-width: 340px) { .team-share-btn span { display:none; } .team-share-btn { padding:9px; } .team-share-btn svg { width:16px; height:16px; } }
+  .stat-card.clickable { cursor:pointer; position:relative; transition:transform .15s, box-shadow .15s; }
+  .stat-card.clickable:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg, 0 12px 28px rgba(0,0,0,.18)); }
+  .stat-card.clickable:active { transform:translateY(0); }
+  .stat-card.clickable:focus-visible { outline:3px solid var(--blue-b, #3B5BDB); outline-offset:2px; }
+  .stat-cta { margin-top:6px; font-size:12.5px; font-weight:700; color:var(--blue-b, #3B5BDB); }
+  .unsold-assign { flex:0 0 auto; max-width:46%; font-family:inherit; font-size:13.5px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:inherit; }
   .team-card.unassigned .team-head { background:linear-gradient(135deg,#3B4268,#59608A); }
   .team-card.unassigned .team-head::after { background:#8A92B8; }
   .team-card.unassigned .team-badge { background:rgba(255,255,255,.22); box-shadow:none; }
@@ -1077,6 +1083,8 @@ function enforceCategoryStatusInvariant() {
   let changed = false;
   participants.forEach(p => {
     if (enforceCategoryStatusRule(p)) { markParticipantDirty(p.id); changed = true; }
+    const rawTeam = String(p.team == null ? '' : p.team).trim();
+    if (rawTeam && !cleanTeam(rawTeam)) { p.team = ''; markParticipantDirty(p.id); changed = true; }   // moves old "Unsold" team players to "not in a team"
   });
   if (changed) scheduleSave();
   return changed;
@@ -2417,7 +2425,7 @@ function parseDelimited(text) {
       const cell = k => (idx[k] >= 0 && r[idx[k]] != null) ? String(r[idx[k]]).trim() : '';
       let status = cell('status') || NOT_REGISTERED;
       status = status.toLowerCase() === 'registered' ? REGISTERED : NOT_REGISTERED;
-      let team = cell('team').replace(/\s+/g, ' ');
+      let team = cleanTeam(cell('team'));
       if (team) {
         const k = team.toLowerCase();
         if (seenTeam.has(k)) team = seenTeam.get(k); else seenTeam.set(k, team);
@@ -3793,7 +3801,10 @@ function setupQrTab() {
 const TEAM_CATEGORY_ORDER = ['mentor', 'captain', 'platinum', 'gold', 'silver'];
 const TEAM_SHEET_HEADER = ['Team', 'Full Name', 'Category', 'Followup', 'Mobile', 'Reference'];
 
-function cleanTeam(raw) { return String(raw == null ? '' : raw).trim().replace(/\s+/g, ' '); }
+function cleanTeam(raw) {
+  const t = String(raw == null ? '' : raw).trim().replace(/\s+/g, ' ');
+  return t.toLowerCase() === 'unsold' ? '' : t;   // "Unsold" is not a team: those players are simply "not in a team"
+}
 
 // Unique team names (case-insensitive, first spelling wins), A–Z.
 function teamNames() {
@@ -3941,14 +3952,15 @@ function renderTeams() {
   const stats = document.getElementById('teamsStats');
   if (stats) stats.innerHTML = teams.length
     ? [['Teams', teams.length], ['Players in teams', inTeams], ['Not in a team', unassigned.length], ['Total players', participants.length]]
-        .map(([l, v]) => `<div class="stat-card"><div class="label">${l}</div><div class="value">${v}</div></div>`).join('')
+        .map(([l, v]) => l === 'Not in a team'
+          ? `<div class="stat-card clickable" role="button" tabindex="0" data-action="unsold" title="View unsold players"><div class="label">${l}</div><div class="value">${v}</div><div class="stat-cta">View players &rarr;</div></div>`
+          : `<div class="stat-card"><div class="label">${l}</div><div class="value">${v}</div></div>`).join('')
     : '';
   if (!teams.length) {
     wrap.innerHTML = '<div class="empty-state">No teams assigned yet.<br>Import an Excel/CSV with a <b>Team</b> column (Import / Export tab), or set the Team for each player in the Data tab.</div>';
     return;
   }
-  wrap.innerHTML = teams.map(t => teamCardHtml(t.name, t.players, false)).join('')
-    + (unassigned.length ? teamCardHtml('Not in any team', unassigned, true) : '');
+  wrap.innerHTML = teams.map(t => teamCardHtml(t.name, t.players, false)).join('');
 }
 
 function downloadTeamsXlsx() {
@@ -4109,9 +4121,45 @@ function downloadTeamsPdf() {
   doc.save(tSlug() + '_teams.pdf');
 }
 
+function openUnsoldModal(keepScroll) {
+  const { unassigned } = buildTeamGroups();
+  const opts = '<option value="">Assign to team\u2026</option>' + teamNames().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  const rows = unassigned.map(p => {
+    const meta = [p.category, (p.followup || '').trim() ? 'Followup: ' + p.followup : '', p.mobile].filter(x => x && String(x).trim()).map(escapeHtml).join(' \u00B7 ');
+    const ref = (p.reference || '').trim() ? `<div class="team-sub">Brought by: ${escapeHtml(p.reference)}</div>` : '';
+    return `<li><div><span class="dd-name">${escapeHtml(p.fullName)}</span><div class="team-sub">${meta}</div>${ref}</div>`
+      + `<select class="unsold-assign" data-id="${p.id}" aria-label="Assign ${escapeHtml(p.fullName)} to a team">${opts}</select></li>`;
+  }).join('');
+  openModal(`
+    <h3>Unsold players <span class="count-pill">${unassigned.length}</span></h3>
+    <p class="desc" style="margin:0 0 12px;">Players who are not in any team. Choose a team on a row to assign that player.</p>
+    ${unassigned.length ? `<ul class="drilldown-list">${rows}</ul>` : '<div class="empty-state">No unsold players. Everyone is in a team.</div>'}
+    <div class="btn-row" style="margin-top:14px;"><button class="btn" id="unsoldCloseBtn" style="width:100%;">Close</button></div>
+  `);
+  const list = document.querySelector('#modalBox .drilldown-list');
+  if (list && keepScroll) list.scrollTop = keepScroll;
+  document.getElementById('unsoldCloseBtn').addEventListener('click', closeModal);
+  document.querySelectorAll('#modalBox .unsold-assign').forEach(sel => sel.addEventListener('change', () => {
+    const p = participants.find(x => x.id === sel.dataset.id), team = sel.value;
+    if (!p || !team) return;
+    const top = list ? list.scrollTop : 0;
+    requirePin(() => {
+      p.team = canonicalTeam(team);
+      markParticipantDirty(p.id);
+      renderAll(); refreshSuggestions(); scheduleSave();
+      openUnsoldModal(top);
+    });
+  }));
+}
+
 function setupTeamsTab() {
   document.getElementById('btnExcelTeams').addEventListener('click', downloadTeamsXlsx);
   document.getElementById('btnPdfTeams').addEventListener('click', downloadTeamsPdf);
+  const statsEl = document.getElementById('teamsStats');
+  statsEl.addEventListener('click', e => { if (e.target.closest('[data-action="unsold"]')) openUnsoldModal(); });
+  statsEl.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-action="unsold"]')) { e.preventDefault(); openUnsoldModal(); }
+  });
   document.getElementById('teamsWrap').addEventListener('click', e => {
     const btn = e.target.closest('.team-share-btn');
     if (btn) shareTeamImage(btn.dataset.team, btn);
