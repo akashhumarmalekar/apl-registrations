@@ -801,8 +801,8 @@
           <div class="fg"><label for="addName">Full name <b>*</b></label><input id="addName" type="text" autocomplete="off" placeholder="e.g. Abhay Ramesh Kotadiya"></div>
           <div class="fg"><label for="addFollowup">Followup <b>*</b></label><input id="addFollowup" type="text" list="followupDatalist" autocomplete="off" placeholder="Followup person"></div>
           <div class="fg"><label for="addMobile">Contact (mobile) <b>*</b></label><input id="addMobile" type="tel" inputmode="tel" autocomplete="off" placeholder="10-digit number"></div>
-          <div class="fg"><label for="addReference">Reference name <b>*</b><span class="fg-hint">who brought this player</span></label><input id="addReference" type="text" list="referenceDatalist" autocomplete="off" placeholder="Name of the person who brought them"></div>
-          <div class="fg"><label for="addTeam">Team <b>*</b></label><select id="addTeam"><option value="">Select team…</option></select></div>
+          <div class="fg"><label for="addReference">Reference name<span class="fg-hint">optional</span></label><input id="addReference" type="text" list="referenceDatalist" autocomplete="off" placeholder="Name of the person who brought them"></div>
+          <div class="fg"><label for="addTeam">Team</label><select id="addTeam"><option value="">Reserved (no team)</option></select></div>
           <div class="fg"><label for="addCategory">Category <b>*</b></label><input id="addCategory" type="text" list="categoryDatalist" autocomplete="off" placeholder="e.g. Batsman"></div>
           <div class="fg"><label for="addStatus">Status</label><select id="addStatus"><option value="Registered" selected>Registered</option><option value="Not Registered">Not Registered</option></select></div>
         </div>
@@ -3772,7 +3772,7 @@ function renderRecords() {
     const names = teamNames(), sig = names.join('|');
     if (ts.dataset.sig !== sig) {
       const keep = ts.value;
-      ts.innerHTML = '<option value="">Select team\u2026</option>' + names.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+      ts.innerHTML = '<option value="">Reserved (no team)</option>' + names.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
       ts.dataset.sig = sig;
       if (keep && names.includes(keep)) ts.value = keep;
     }
@@ -3897,8 +3897,6 @@ function setupRecordsTab() {
     if (!fullName) problems.push([name, 'Full name']);
     if (!followup) problems.push([fu, 'Followup']);
     if (!mo.value.trim()) problems.push([mo, 'Contact']); else if (!mobile) problems.push([mo, 'Contact (needs a valid 10-digit number)']);
-    if (!rf.value.trim()) problems.push([rf, 'Reference name']);
-    if (!tm.value) problems.push([tm, 'Team']);
     if (!st.value) problems.push([st, 'Status']);
     if (!category) problems.push([cat, 'Category']);
     if (problems.length) {
@@ -3915,7 +3913,8 @@ function setupRecordsTab() {
     if (!categoryMaster.includes(category)) { categoryMaster.push(category); categoryMasterDirty = true; }
     if (status === REGISTERED) logStatusChange(p, NOT_REGISTERED);
     form.reset(); sync(); renderAll(); refreshSuggestions(); scheduleSave();
-    say(`Added ${fullName} to ${p.team} (${status}). Brought by ${p.reference}.`, 'ok'); name.focus();
+    const where = p.team ? ` to ${p.team}` : (status === REGISTERED ? ' as Reserved' : '');
+    say(`Added ${fullName}${where} (${status}).${p.reference ? ' Brought by ' + p.reference + '.' : ''}`, 'ok'); name.focus();
   });
   $id('addClear').addEventListener('click', () => { form.querySelectorAll('.cell-err').forEach(x => x.classList.remove('cell-err')); form.reset(); form.dataset.confirmDup = ''; sync(); say(''); });
   $id('recordsEditBtn').addEventListener('click', () => { if (recordsEditMode) setRecordsEditMode(false); else requirePin(() => setRecordsEditMode(true)); });
