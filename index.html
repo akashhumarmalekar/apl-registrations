@@ -342,6 +342,7 @@
   select.filter-input { cursor:pointer; }
   .form-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px 16px; margin-bottom:16px; }
   .fg label { display:block; margin-bottom:6px; font-size:13px; font-weight:600; color:var(--muted); }
+  .fg-hint { margin-left:8px; font-size:12px; font-weight:500; color:var(--muted); }
   .fg label b { color:var(--red); }
   .fg input, .fg select { width:100%; font-family:inherit; font-size:16px; padding:11px 14px; color:var(--text); background:var(--input-bg); border:1.5px solid var(--border); border-radius:12px; outline:none; transition:border-color .15s, box-shadow .15s, background .15s; }
   .fg input:focus, .fg select:focus { border-color:var(--blue-b); box-shadow:var(--ring); background:var(--card); }
@@ -776,9 +777,10 @@
           <div class="fg"><label for="addName">Full name <b>*</b></label><input id="addName" type="text" autocomplete="off" placeholder="e.g. Abhay Ramesh Kotadiya"></div>
           <div class="fg"><label for="addFollowup">Followup <b>*</b></label><input id="addFollowup" type="text" list="followupDatalist" autocomplete="off" placeholder="Followup person"></div>
           <div class="fg"><label for="addMobile">Contact (mobile) <b>*</b></label><input id="addMobile" type="tel" inputmode="tel" autocomplete="off" placeholder="10-digit number"></div>
-          <div class="fg"><label for="addStatus">Status <b>*</b></label><select id="addStatus"><option value="" selected disabled>Select status…</option><option value="Not Registered">Not Registered</option><option value="Registered">Registered</option></select></div>
-          <div class="fg"><label for="addCategory">Category <b>*</b></label><input id="addCategory" type="text" list="categoryDatalist" autocomplete="off"></div>
-          <div class="fg"><label for="addTeam">Team</label><input id="addTeam" type="text" list="teamDatalist" autocomplete="off" placeholder="Optional"></div>
+          <div class="fg"><label for="addReference">Reference name <b>*</b><span class="fg-hint">who brought this player</span></label><input id="addReference" type="text" list="referenceDatalist" autocomplete="off" placeholder="Name of the person who brought them"></div>
+          <div class="fg"><label for="addTeam">Team <b>*</b></label><select id="addTeam"><option value="">Select team…</option></select></div>
+          <div class="fg"><label for="addCategory">Category <b>*</b></label><input id="addCategory" type="text" list="categoryDatalist" autocomplete="off" placeholder="e.g. Batsman"></div>
+          <div class="fg"><label for="addStatus">Status</label><select id="addStatus"><option value="Registered" selected>Registered</option><option value="Not Registered">Not Registered</option></select></div>
         </div>
         <div class="btn-row">
           <button type="submit" class="btn primary" id="addSubmit">Add participant</button>
@@ -789,9 +791,10 @@
     </div>
     <datalist id="followupDatalist"></datalist>
     <datalist id="teamDatalist"></datalist>
+    <datalist id="referenceDatalist"></datalist>
     <div class="toolbar"><h2>All data <span class="count-pill" id="recordsCount">0</span></h2><button class="btn primary" id="recordsEditBtn">Edit table</button></div>
     <div class="btn-row" style="margin-bottom:12px;">
-      <input class="filter-input" id="recordsFilter" type="search" placeholder="Filter by name, mobile, followup, category or team" style="flex:1 1 260px;">
+      <input class="filter-input" id="recordsFilter" type="search" placeholder="Filter by name, mobile, followup, category, team or reference" style="flex:1 1 260px;">
       <select class="filter-input" id="recordsSortSel" style="flex:0 0 auto;width:auto;" aria-label="Sort by">
         <option value="fullName:1">Sort: Name A–Z</option><option value="fullName:-1">Sort: Name Z–A</option>
         <option value="followup:1">Sort: Followup A–Z</option><option value="followup:-1">Sort: Followup Z–A</option>
@@ -799,6 +802,7 @@
         <option value="status:1">Sort: Not Registered first</option><option value="status:-1">Sort: Registered first</option>
         <option value="category:1">Sort: Category A–Z</option><option value="category:-1">Sort: Category Z–A</option>
         <option value="team:1">Sort: Team A–Z</option><option value="team:-1">Sort: Team Z–A</option>
+        <option value="reference:1">Sort: Reference A–Z</option><option value="reference:-1">Sort: Reference Z–A</option>
       </select>
       <select class="filter-input" id="recordsStatusFilter" style="flex:0 0 auto;width:auto;"><option value="all">All statuses</option><option value="reg">Registered</option><option value="pend">Not Registered</option></select>
     </div>
@@ -848,7 +852,7 @@
     </div>
     <div class="card">
       <h3>Bulk import</h3>
-      <p class="desc">To add one person, use the form in the Data tab. To load many at once, load an Excel file below or paste rows copied straight from Excel. Columns: Full Name, Followup, Mobile, Status, Category, Team (Team is optional; tab or comma separated). If the first row is a header, columns are matched by their names (<b>Team</b> or <b>Teams</b> both work); without a header they are read in the order above.</p>
+      <p class="desc">To add one person, use the form in the Data tab. To load many at once, load an Excel file below or paste rows copied straight from Excel. Columns: Full Name, Followup, Mobile, Status, Category, Team, Reference (Team and Reference are optional; tab or comma separated). If the first row is a header, columns are matched by their names (<b>Team</b> or <b>Teams</b> both work); without a header they are read in the order above.</p>
       <div class="btn-row" style="align-items:center;margin-bottom:10px;">
         <button type="button" class="btn excel" id="btnPickImportFile">Load Excel file (.xlsx)…</button>
         <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden>
@@ -1311,7 +1315,7 @@ function setTarget(newTarget) {
 
 function matchesFilter(p, q) {
   if (!q) return true;
-  const hay = (p.fullName + ' ' + p.mobile + ' ' + p.followup + ' ' + p.category + ' ' + (p.team || '')).toLowerCase();
+  const hay = (p.fullName + ' ' + p.mobile + ' ' + p.followup + ' ' + p.category + ' ' + (p.team || '') + ' ' + (p.reference || '')).toLowerCase();
   return hay.includes(q);
 }
 
@@ -1834,6 +1838,8 @@ function openEditModal(id) {
     <input id="editCategory" value="${escapeHtml(p.category)}" list="categoryDatalist">
     <label for="editTeam">Team</label>
     <input id="editTeam" value="${escapeHtml(p.team)}" list="teamDatalist" placeholder="Optional">
+    <label for="editReference">Reference name (who brought this player)</label>
+    <input id="editReference" value="${escapeHtml(p.reference)}" list="referenceDatalist" placeholder="Optional">
     <label for="editStatus">Status</label>
     <select id="editStatus">
       <option value="${REGISTERED}" ${p.status === REGISTERED ? 'selected' : ''}>Registered</option>
@@ -1868,6 +1874,7 @@ function saveEdit(id) {
   const mobile = normalizeMobile(mobileRaw);
   const category = document.getElementById('editCategory').value.trim();
   const team = canonicalTeam(document.getElementById('editTeam').value);
+  const reference = cleanTeam(document.getElementById('editReference').value);
   const newStatus = document.getElementById('editStatus').value === REGISTERED ? REGISTERED : NOT_REGISTERED;
 
   if (!fullName) {
@@ -1909,6 +1916,7 @@ function saveEdit(id) {
   p.mobile = mobile;
   p.category = category;
   p.team = team;
+  p.reference = reference;
   p.status = newStatus;
   markParticipantDirty(p.id);
 
@@ -2392,10 +2400,10 @@ function parseDelimited(text) {
 
   // Without a header: fixed order Full Name, Followup, Mobile, Status, Category, Team.
   // With a header: match columns by name, so a re-ordered or extra-column sheet still imports correctly.
-  let idx = { fullName: 0, followup: 1, mobile: 2, status: 3, category: 4, team: 5 };
+  let idx = { fullName: 0, followup: 1, mobile: 2, status: 3, category: 4, team: 5, reference: 6 };
   if (looksLikeHeader) {
-    const aliases = { fullname: 'fullName', name: 'fullName', followup: 'followup', mobile: 'mobile', contact: 'mobile', status: 'status', category: 'category', team: 'team', teams: 'team' };
-    idx = { fullName: -1, followup: -1, mobile: -1, status: -1, category: -1, team: -1 };
+    const aliases = { fullname: 'fullName', name: 'fullName', followup: 'followup', mobile: 'mobile', contact: 'mobile', status: 'status', category: 'category', team: 'team', teams: 'team', reference: 'reference', referencename: 'reference', referredby: 'reference', broughtby: 'reference', ref: 'reference' };
+    idx = { fullName: -1, followup: -1, mobile: -1, status: -1, category: -1, team: -1, reference: -1 };
     rows[0].forEach((h, i) => {
       const f = aliases[String(h).toLowerCase().replace(/[^a-z]/g, '')];
       if (f && idx[f] === -1) idx[f] = i;
@@ -2414,7 +2422,7 @@ function parseDelimited(text) {
         const k = team.toLowerCase();
         if (seenTeam.has(k)) team = seenTeam.get(k); else seenTeam.set(k, team);
       }
-      return { fullName: cell('fullName'), followup: cell('followup'), mobile: cell('mobile'), status, category: cell('category'), team };
+      return { fullName: cell('fullName'), followup: cell('followup'), mobile: cell('mobile'), status, category: cell('category'), team, reference: cell('reference').replace(/\s+/g, ' ') };
     })
     .filter(p => p.fullName);
 }
@@ -2528,8 +2536,8 @@ function setupDataTab() {
   });
 
   document.getElementById('btnExportParticipants').addEventListener('click', () => {
-    const header = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category', 'Team'];
-    const rows = participants.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category, p.team || '']);
+    const header = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category', 'Team', 'Reference'];
+    const rows = participants.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category, p.team || '', p.reference || '']);
     downloadCsv(tSlug() + '_participants.csv', header, rows);
   });
 
@@ -2614,7 +2622,7 @@ function downloadXlsx(filename, sheetName, header, rows) {
 }
 
 function participantRows(list) {
-  return list.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category, p.team || '']);
+  return list.map(p => [p.fullName, p.followup, p.mobile, p.status, p.category, p.team || '', p.reference || '']);
 }
 
 function groupReportRows(rows) {
@@ -2626,7 +2634,7 @@ function logRows() {
 }
 
 function setupExcelButtons() {
-  const PARTICIPANT_HEADER = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category', 'Team'];
+  const PARTICIPANT_HEADER = ['Full Name', 'Followup', 'Mobile', 'Status', 'Category', 'Team', 'Reference'];
   const GROUP_HEADER = ['Name', 'Total', 'Registered', 'Pending', 'Registration %'];
   const LOG_HEADER = ['Timestamp', 'Full Name', 'Mobile', 'Followup', 'Category', 'Previous Status', 'New Status'];
 
@@ -3445,6 +3453,19 @@ function renderRecords() {
   const fl = $id('followupDatalist');
   if (fl) fl.innerHTML = Array.from(new Set(participants.map(p => (p.followup || '').trim()).filter(Boolean)))
     .sort((a, b) => a.localeCompare(b)).map(f => `<option value="${escapeHtml(f)}"></option>`).join('');
+  const rl = $id('referenceDatalist');
+  if (rl) rl.innerHTML = Array.from(new Set([...participants.map(p => p.fullName), ...participants.map(p => p.followup)].map(x => (x || '').trim()).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b)).map(v => `<option value="${escapeHtml(v)}"></option>`).join('');
+  const ts = $id('addTeam');
+  if (ts) {
+    const names = teamNames(), sig = names.join('|');
+    if (ts.dataset.sig !== sig) {
+      const keep = ts.value;
+      ts.innerHTML = '<option value="">Select team\u2026</option>' + names.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+      ts.dataset.sig = sig;
+      if (keep && names.includes(keep)) ts.value = keep;
+    }
+  }
   const tl = $id('teamDatalist');
   if (tl) tl.innerHTML = teamNames().map(t => `<option value="${escapeHtml(t)}"></option>`).join('');
   if (recordsEditing || wrap.contains(document.activeElement)) return; // don't yank focus mid-edit
@@ -3464,17 +3485,18 @@ function renderRecords() {
     const reg = p.status === REGISTERED;
     if (!ed) {
       return `<tr>${view(p, 'fullName', 'Full name')}${view(p, 'followup', 'Followup')}${view(p, 'mobile', 'Mobile')}`
-        + `<td data-label="Status"><span class="st-pill ${reg ? 'reg' : ''}">${reg ? 'Registered' : 'Not Registered'}</span></td>${view(p, 'category', 'Category')}${view(p, 'team', 'Team')}</tr>`;
+        + `<td data-label="Status"><span class="st-pill ${reg ? 'reg' : ''}">${reg ? 'Registered' : 'Not Registered'}</span></td>${view(p, 'category', 'Category')}${view(p, 'team', 'Team')}${view(p, 'reference', 'Reference')}</tr>`;
     }
     return `<tr data-row="${p.id}" class="${reg ? 'is-reg' : ''}">`
       + input(p, 'fullName', 'Full name') + input(p, 'followup', 'Followup', 'list="followupDatalist"') + input(p, 'mobile', 'Mobile', 'inputmode="tel"')
       + `<td data-label="Status"><select class="cell-input" data-id="${p.id}" data-field="status"><option value="${REGISTERED}" ${reg ? 'selected' : ''}>Registered</option><option value="${NOT_REGISTERED}" ${reg ? '' : 'selected'}>Not Registered</option></select></td>`
       + input(p, 'category', 'Category', `list="categoryDatalist" placeholder="${reg ? 'Required' : 'Category'}"`)
       + input(p, 'team', 'Team', 'list="teamDatalist" placeholder="Team"')
+      + input(p, 'reference', 'Reference', 'list="referenceDatalist" placeholder="Brought by"')
       + `<td class="actions-cell" data-label="Actions"><button class="btn small danger rec-del" data-id="${p.id}">Delete</button></td></tr>`;
   }).join('');
   const th = (k, label) => `<th class="sortable" data-sort="${k}" tabindex="0" aria-sort="${recordsSort.key === k ? (recordsSort.dir === 1 ? 'ascending' : 'descending') : 'none'}">${label}<span class="sort-arrow">${recordsSort.key === k ? (recordsSort.dir === 1 ? '\u25B2' : '\u25BC') : '\u2195'}</span></th>`;
-  wrap.innerHTML = `<table class="data records"><thead><tr>${th('fullName', 'Full name')}${th('followup', 'Followup')}${th('mobile', 'Mobile')}${th('status', 'Status')}${th('category', 'Category')}${th('team', 'Team')}${ed ? '<th></th>' : ''}</tr></thead><tbody>${body}</tbody></table>`;
+  wrap.innerHTML = `<table class="data records"><thead><tr>${th('fullName', 'Full name')}${th('followup', 'Followup')}${th('mobile', 'Mobile')}${th('status', 'Status')}${th('category', 'Category')}${th('team', 'Team')}${th('reference', 'Reference')}${ed ? '<th></th>' : ''}</tr></thead><tbody>${body}</tbody></table>`;
   wrap.querySelectorAll('th.sortable').forEach(h => {
     h.addEventListener('click', () => setRecordsSort(h.dataset.sort));
     h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setRecordsSort(h.dataset.sort); } });
@@ -3532,6 +3554,8 @@ function applyRecordEdit(el) {
     if (val) { categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : []; if (!categoryMaster.includes(val)) { categoryMaster.push(val); categoryMasterDirty = true; } }
   } else if (f === 'team') {
     p.team = canonicalTeam(val); el.value = p.team;
+  } else if (f === 'reference') {
+    p.reference = cleanTeam(val); el.value = p.reference;
   }
 
   if (prev !== p.status) logStatusChange(p, prev);
@@ -3549,18 +3573,21 @@ function setupRecordsTab() {
   const say = (t, k) => { const m = $id('addMsg'); m.textContent = t; m.className = 'add-msg ' + (k || ''); };
   const sync = () => { cat.placeholder = 'e.g. Batsman'; };
   form.addEventListener('input', e => e.target.classList.remove('cell-err'));
+  form.addEventListener('change', e => e.target.classList.remove('cell-err'));
   st.addEventListener('change', () => st.classList.remove('cell-err'));
   st.addEventListener('change', sync); sync();
   form.addEventListener('submit', e => {
     e.preventDefault();
-    const fu = $id('addFollowup'), mo = $id('addMobile');
-    [name, fu, mo, st, cat].forEach(x => x.classList.remove('cell-err'));
+    const fu = $id('addFollowup'), mo = $id('addMobile'), rf = $id('addReference'), tm = $id('addTeam');
+    [name, fu, mo, rf, tm, st, cat].forEach(x => x.classList.remove('cell-err'));
     const fullName = name.value.trim(), followup = fu.value.trim(), mobile = normalizeMobile(mo.value);
     const status = st.value === REGISTERED ? REGISTERED : NOT_REGISTERED, category = cat.value.trim();
     const problems = [];
     if (!fullName) problems.push([name, 'Full name']);
     if (!followup) problems.push([fu, 'Followup']);
     if (!mo.value.trim()) problems.push([mo, 'Contact']); else if (!mobile) problems.push([mo, 'Contact (needs a valid 10-digit number)']);
+    if (!rf.value.trim()) problems.push([rf, 'Reference name']);
+    if (!tm.value) problems.push([tm, 'Team']);
     if (!st.value) problems.push([st, 'Status']);
     if (!category) problems.push([cat, 'Category']);
     if (problems.length) {
@@ -3571,13 +3598,13 @@ function setupRecordsTab() {
     const dup = findDuplicateMobile(mobile, null);
     if (dup && form.dataset.confirmDup !== mobile) { form.dataset.confirmDup = mobile; say(`This number already belongs to ${dup.fullName}. Press Add again to add anyway.`, 'warn'); return; }
     form.dataset.confirmDup = '';
-    const p = { id: genId(), fullName, followup, mobile, status, category, team: canonicalTeam($id('addTeam').value) };
+    const p = { id: genId(), fullName, followup, mobile, status, category, team: canonicalTeam(tm.value), reference: cleanTeam(rf.value) };
     participants.push(p); markParticipantDirty(p.id);
     categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : [];
     if (!categoryMaster.includes(category)) { categoryMaster.push(category); categoryMasterDirty = true; }
     if (status === REGISTERED) logStatusChange(p, NOT_REGISTERED);
     form.reset(); sync(); renderAll(); refreshSuggestions(); scheduleSave();
-    say(`Added ${fullName} as ${status}.`, 'ok'); name.focus();
+    say(`Added ${fullName} to ${p.team} (${status}). Brought by ${p.reference}.`, 'ok'); name.focus();
   });
   $id('addClear').addEventListener('click', () => { form.querySelectorAll('.cell-err').forEach(x => x.classList.remove('cell-err')); form.reset(); form.dataset.confirmDup = ''; sync(); say(''); });
   $id('recordsEditBtn').addEventListener('click', () => { if (recordsEditMode) setRecordsEditMode(false); else requirePin(() => setRecordsEditMode(true)); });
@@ -3764,7 +3791,7 @@ function setupQrTab() {
 // ---------------- Teams ----------------
 // Display order for the usual auction roles; any other category name follows alphabetically.
 const TEAM_CATEGORY_ORDER = ['mentor', 'captain', 'platinum', 'gold', 'silver'];
-const TEAM_SHEET_HEADER = ['Team', 'Full Name', 'Category', 'Followup', 'Mobile'];
+const TEAM_SHEET_HEADER = ['Team', 'Full Name', 'Category', 'Followup', 'Mobile', 'Reference'];
 
 function cleanTeam(raw) { return String(raw == null ? '' : raw).trim().replace(/\s+/g, ' '); }
 
@@ -3816,7 +3843,7 @@ function buildTeamGroups() {
 
 function teamsFlatRows() {
   const rows = [];
-  buildTeamGroups().teams.forEach(t => t.players.forEach(p => rows.push([t.name, p.fullName, p.category, p.followup, p.mobile])));
+  buildTeamGroups().teams.forEach(t => t.players.forEach(p => rows.push([t.name, p.fullName, p.category, p.followup, p.mobile, p.reference || ''])));
   return rows;
 }
 
@@ -3856,6 +3883,7 @@ function teamCardHtml(name, players, isUnassigned) {
     const cc = catClass(p.category);
     const sub = [];
     if ((p.followup || '').trim()) sub.push('Followup: ' + escapeHtml(p.followup));
+    if ((p.reference || '').trim()) sub.push('Brought by: ' + escapeHtml(p.reference));
     if (p.status !== REGISTERED) sub.push('Not registered');
     const pill = (p.category || '').trim() ? `<div class="team-pill-line">${catPillHtml(p.category)}</div>` : '';
     return `<tr class="${cc}${isLeadClass(cc) ? ' lead' : ''}"><td class="num"><span class="team-idx">${i + 1}</span></td><td><div class="team-pname">${escapeHtml(p.fullName)}</div>${pill}${sub.length ? `<div class="team-sub">${sub.join(' \u00B7 ')}</div>` : ''}</td><td class="team-mob">${escapeHtml(p.mobile)}</td></tr>`;
@@ -3934,7 +3962,7 @@ function downloadTeamsXlsx() {
     let name = base, n = 2;
     while (used.has(name.toLowerCase())) { const suf = ' ' + n++; name = base.slice(0, 31 - suf.length) + suf; }
     used.add(name.toLowerCase());
-    XLSX.utils.book_append_sheet(wb, sheetFromRows(['Full Name', 'Category', 'Followup', 'Mobile'], t.players.map(p => [p.fullName, p.category, p.followup, p.mobile])), name);
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(['Full Name', 'Category', 'Followup', 'Mobile', 'Reference'], t.players.map(p => [p.fullName, p.category, p.followup, p.mobile, p.reference || ''])), name);
   });
   XLSX.writeFile(wb, tSlug() + '_teams.xlsx');
 }
