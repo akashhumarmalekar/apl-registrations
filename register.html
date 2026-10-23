@@ -269,7 +269,7 @@
       </div>
 
       <div class="field" id="f-team">
-        <label for="team">Team name <span class="opt">optional</span></label>
+        <label for="team">Team name <span class="req">*</span></label>
         <div id="teamWrap"></div>
         <div class="err" id="e-team"></div>
       </div>
@@ -361,35 +361,31 @@
     $('tName').textContent = name;
     document.title = name + ' \u00b7 Player registration';
   }
-  function mountTeam(loading) {
-    var holder = $('teamWrap'), prev = $('team') ? $('team').value : '', el;
-    holder.innerHTML = '';
-    if (loading || cfg.teams.length) {
-      el = document.createElement('select');
-      el.appendChild(new Option(loading ? 'Loading\u2026' : 'Select team (optional)', ''));
-      if (!loading) cfg.teams.forEach(function (v) { el.appendChild(new Option(v, v)); });
-      el.disabled = !!loading;
-      if (prev && cfg.teams.indexOf(prev) > -1) el.value = prev;
-      var dim = function () { el.classList.toggle('is-empty', !el.value); };
-      el.addEventListener('change', dim); dim();
-    } else {                                   // no team list available: let people type it (still optional)
-      el = document.createElement('input'); el.type = 'text'; el.autocomplete = 'off'; el.autocapitalize = 'words'; el.placeholder = 'Team name (optional)'; el.value = prev;
-    }
-    el.className = (el.className ? el.className + ' ' : '') + 'control'; el.id = 'team'; el.name = 'team';
-    holder.appendChild(el);
+  // Safety net if the live list cannot be loaded: the teams in your player sheet.
+  var FALLBACK_TEAMS = ['Bhakti Rockets', 'Gunatit 11', 'Gunatit Warriors', 'Indigenous Yogi', 'New Team 1', 'New Team 2', 'New Team 3', 'Sarvasva United'];
+  function mountTeam() {
+    var holder = $('teamWrap'), prev = $('team') ? $('team').value : '', list = cfg.teams.length ? cfg.teams : FALLBACK_TEAMS;
+    var el = document.createElement('select');
+    el.appendChild(new Option('Select your team\u2026', ''));
+    list.forEach(function (v) { el.appendChild(new Option(v, v)); });
+    if (prev && list.indexOf(prev) > -1) el.value = prev;
+    var dim = function () { el.classList.toggle('is-empty', !el.value); };
+    el.addEventListener('change', function () { dim(); clearErr('team'); }); dim();
+    el.className = (el.className ? el.className + ' ' : '') + 'control'; el.id = 'team'; el.name = 'team'; el.setAttribute('aria-describedby', 'e-team');
+    holder.innerHTML = ''; holder.appendChild(el);
   }
   var cached = null;
   try { cached = JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); } catch (e) {}
   applyCfg(cached);
-  mountTeam(!cached);
+  mountTeam();
   (function loadCfg() {
-    if (!db) { mountTeam(false); return; }
+    if (!db) { mountTeam(); return; }
     var timer = new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 8000); });
     Promise.race([db.collection(SIGNUPS_COLLECTION).doc('_config').get(), timer]).then(function (snap) {
       var data = snap && snap.exists ? snap.data() : null;
       if (data) { try { localStorage.setItem(CFG_KEY, JSON.stringify(data)); } catch (e) {} }
-      applyCfg(data || cached); mountTeam(false);
-    }).catch(function (e) { console.warn('Could not load form options', e); applyCfg(cached); mountTeam(false); });
+      applyCfg(data || cached); mountTeam();
+    }).catch(function (e) { console.warn('Could not load form options', e); applyCfg(cached); mountTeam(); });
   })();
 
   /* ---------- validation ---------- */
@@ -418,12 +414,13 @@
     var bad = [], name = tidyName($('fullName').value), ref = tidyName($('reference').value), mobile = cleanMobile($('mobile').value);
     var team = $('team').value.replace(/\s+/g, ' ').trim();
     var picked = document.querySelector('input[name="ptype"]:checked'), ptype = picked ? picked.value : '';
-    ['name', 'reference', 'mobile', 'ptype'].forEach(clearErr);
+    ['name', 'reference', 'team', 'mobile', 'ptype'].forEach(clearErr);
     if (!name) bad.push(['name', 'Please enter your full name.', 'fullName']);
     else if (name.split(' ').length < 2) bad.push(['name', 'Please enter your first, middle and last name.', 'fullName']);
     else if (!NAME_RE.test(name)) bad.push(['name', 'Names can only have letters and spaces.', 'fullName']);
     if (!ref) bad.push(['reference', 'Please enter who brought you.', 'reference']);
     else if (ref.length < 2 || !NAME_RE.test(ref)) bad.push(['reference', 'Enter the name of the person who brought you.', 'reference']);
+    if (!team) bad.push(['team', 'Please choose your team.', 'team']);
     if (!mobile) bad.push(['mobile', 'Please enter your mobile number.', 'mobile']);
     else if (!/^[6-9]\d{9}$/.test(mobile)) bad.push(['mobile', 'Enter a valid 10-digit mobile number.', 'mobile']);
     if (!ptype) bad.push(['ptype', 'Please choose New or Existing.', null]);
@@ -481,9 +478,7 @@
     var form = $('regForm'), done = $('done');
     $('doneTitle').textContent = 'Thank you, ' + d.fullName.split(' ')[0] + '!';
     $('doneLead').textContent = again ? 'This registration was already submitted from this phone.' : 'Your details have been received. We will take it from here.';
-    var rows = [['Name', d.fullName], ['Reference', d.reference]];
-    if (d.team) rows.push(['Team', d.team]);
-    rows.push(['Mobile', d.mobile], ['Category', d.playerType]);
+    var rows = [['Name', d.fullName], ['Reference', d.reference], ['Team', d.team], ['Mobile', d.mobile], ['Category', d.playerType]];
     $('summary').innerHTML = rows.map(function (r, i) { return '<div style="--i:' + i + '"><span>' + r[0] + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
     var swap = function () {
       form.hidden = true; form.classList.remove('leaving', 'sending');
@@ -547,7 +542,7 @@
     ['fullName', 'reference', 'mobile'].forEach(function (id) { $(id).value = ''; });
     $('team').value = ''; if ($('team').tagName === 'SELECT') $('team').classList.add('is-empty');
     Array.prototype.forEach.call(document.querySelectorAll('input[name="ptype"]'), function (r) { r.checked = false; });
-    ['name', 'reference', 'mobile', 'ptype'].forEach(clearErr);
+    ['name', 'reference', 'team', 'mobile', 'ptype'].forEach(clearErr);
     $('done').hidden = true; $('done').classList.remove('play', 'entering'); $('regForm').hidden = false; $('regForm').classList.remove('leaving', 'sending');
     $('regForm').classList.add('entering'); setTimeout(function () { $('regForm').classList.remove('entering'); }, 650);
     resetButton();
