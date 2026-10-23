@@ -856,7 +856,7 @@
   <section class="panel" id="panel-qr">
     <div class="card" id="qrCard">
       <h3>Registration QR code</h3>
-      <p class="desc">Upload <b>register.html</b> to any web host, paste its public address here, then print or display the QR code. People scan it and enter their full name, reference name, team (optional), contact number and whether they are a New or Existing player. They appear in the queue below instantly, where you add their followup and category and press Add.</p>
+      <p class="desc">Upload <b>register.html</b> to any web host, paste its public address here, then print or display the QR code. People scan it and enter their full name, reference name, team, contact number and whether they are a New or Existing player. They appear in the queue below instantly, where you add their followup and category and press Add.</p>
       <div class="fg"><label for="qrUrl">Registration form address (URL)</label><input id="qrUrl" type="url" placeholder="https://your-site.com/register.html"></div>
       <div class="btn-row">
         <button class="btn primary" id="qrGen">Generate QR code</button>
@@ -4101,7 +4101,7 @@ function renderQr() {
     const time = s.createdAt ? new Date(s.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
     return `<tr data-sid="${s.docId}">`
       + `<td data-label="Full name"><div class="sg-stack">${inp('fullName')}${type}</div></td>`
-      + `<td data-label="Reference / Team"><div class="sg-stack">${inp('reference', 'list="referenceDatalist"', 'Reference name')}${inp('team', 'list="teamDatalist"', 'Team (optional)')}</div></td>`
+      + `<td data-label="Reference / Team"><div class="sg-stack">${inp('reference', 'list="referenceDatalist"', 'Reference name')}${inp('team', 'list="teamDatalist"', 'Team')}</div></td>`
       + `<td data-label="Mobile">${inp('mobile', 'inputmode="tel"')}</td>`
       + `<td data-label="Followup">${inp('followup', 'list="followupDatalist"', 'Add followup')}</td>`
       + `<td data-label="Category">${inp('category', 'list="categoryDatalist"', 'Category')}</td>`
