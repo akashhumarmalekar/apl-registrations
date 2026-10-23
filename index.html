@@ -358,6 +358,24 @@
   table.records tr.is-reg select.cell-input { color:var(--green); font-weight:600; }
   table.records td { padding-top:7px; padding-bottom:7px; }
   table.signups .cell-input { border-color:var(--border); background:var(--card); }
+  table.signups .cell-input.cell-err { border-color:var(--red); background:var(--red-bg); }
+  .sg-stack { display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .sg-type { align-self:flex-start; display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap; color:var(--blue); background:var(--blue-bg); }
+  .sg-note { margin-top:6px; font-size:12px; line-height:1.35; }
+  #signupsWrap { overflow-x:auto; }
+  @media (min-width:641px) {
+    table.signups th, table.signups td { padding:10px 8px; vertical-align:top; }
+    table.signups th:first-child, table.signups td:first-child { padding-left:14px; }
+    table.signups td.actions-cell { white-space:nowrap; padding-right:14px; }
+    table.signups td:nth-child(1) .cell-input { min-width:150px; }
+    table.signups td:nth-child(2) .cell-input { min-width:140px; }
+    table.signups td:nth-child(3) .cell-input { min-width:112px; }
+    table.signups td:nth-child(4) .cell-input { min-width:140px; }
+    table.signups td:nth-child(5) .cell-input { min-width:105px; }
+    table.signups td:nth-child(6) { min-width:150px; }
+    table.signups .st-pill { white-space:normal; line-height:1.3; border-radius:12px; }
+  }
+  @media (max-width:640px) { table.signups td .sg-stack { flex:1; align-items:flex-end; } table.signups td .sg-stack .cell-input { text-align:right; } table.signups td > .cell-input { flex:1; text-align:right; } }
   #signupsWrap { overflow-x:auto; }
   #recordsTableWrap { overflow-x:auto; border-radius:var(--radius); transition:box-shadow .2s; }
   #recordsTableWrap.editing { box-shadow:0 0 0 3px rgba(76,111,224,.55); }
@@ -838,7 +856,7 @@
   <section class="panel" id="panel-qr">
     <div class="card" id="qrCard">
       <h3>Registration QR code</h3>
-      <p class="desc">Upload <b>register.html</b> to any web host, paste its public address here, then print or display the QR code. People scan it, fill in their details and submit; they appear in the queue below instantly.</p>
+      <p class="desc">Upload <b>register.html</b> to any web host, paste its public address here, then print or display the QR code. People scan it and enter their full name, reference name, team (optional), contact number and whether they are a New or Existing player. They appear in the queue below instantly, where you add their followup and category and press Add.</p>
       <div class="fg"><label for="qrUrl">Registration form address (URL)</label><input id="qrUrl" type="url" placeholder="https://your-site.com/register.html"></div>
       <div class="btn-row">
         <button class="btn primary" id="qrGen">Generate QR code</button>
@@ -862,7 +880,7 @@
     </div>
     <div class="add-msg err" id="signupsErr"></div>
     <div id="signupsWrap"></div>
-    <p class="hint">Check or fix the details, then press <b>Add</b>. New people are added as <b>Registered</b>. If the name already exists in your list, that person is marked Registered instead of being duplicated. Auto-add skips anything that needs a decision (shared phone number, already registered).</p>
+    <p class="hint">Fill in the <b>Followup</b> and <b>Category</b> (an existing player's are filled in for you), check the rest, then press <b>Add</b>. New people are added as <b>Registered</b>, with the reference and team they gave. If the name already exists in your list, that person is marked Registered instead of being duplicated. Auto-add and Add all only handle sign-ups that already have a followup and category, and skip anything that needs a decision (shared phone number, already registered).</p>
   </section>
 
   <section class="panel" id="panel-data">
@@ -3929,6 +3947,7 @@ let signups = [];
 let signupsError = '';
 let signupsUnsub = null;
 const handledSignups = new Set();
+const signupDrafts = {};   // what you have typed into a queue row but not added yet, so a new sign-up arriving does not wipe it
 let autoAddSignups = false;
 try { autoAddSignups = localStorage.getItem('anandAutoAdd') === '1'; } catch (e) {}
 const normName = x => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -3953,7 +3972,14 @@ function signupMatch(s) {
   const sameNumber = mob ? (participants.find(p => p !== byName && normalizeMobile(p.mobile) === mob) || null) : null;
   return { byName, sameNumber };
 }
-function autoOk(s) { const m = signupMatch(s); return !m.sameNumber && !(m.byName && m.byName.status === REGISTERED); }
+const signupFollowup = (s, m) => String(s.followup || (m.byName && m.byName.followup) || '').trim();
+const signupCategory = (s, m) => String(s.category || (m.byName && m.byName.category) || '').trim();
+// Safe to add without a decision: nothing is missing, no shared number, not already registered.
+function autoOk(s) {
+  const m = signupMatch(s);
+  if (m.sameNumber || (m.byName && m.byName.status === REGISTERED)) return false;
+  return !!(String(s.fullName || '').trim() && normalizeMobile(s.mobile) && signupFollowup(s, m) && signupCategory(s, m));
+}
 function pendingSignups() { return signups.filter(s => !handledSignups.has(s.docId) && !participants.some(p => p.id === 'qr_' + s.docId)); }
 
 function deleteSignupDoc(docId) {
@@ -3981,22 +4007,40 @@ function approveSignup(docId, auto) {
   if (!s || handledSignups.has(docId)) return;
   const row = document.querySelector(`#signupsWrap tr[data-sid="${docId}"]`);
   const val = f => { const el = row && row.querySelector(`[data-sf="${f}"]`); return (el ? el.value : (s[f] || '')).toString().trim(); };
-  const fullName = val('fullName'), followup = val('followup'), category = val('category'), mobile = normalizeMobile(val('mobile'));
-  if (!fullName || !followup || !category || !mobile) {
-    if (!auto) alert('Full name, followup, a valid 10-digit mobile and category are all required.');
+  const fullName = val('fullName'), mobile = normalizeMobile(val('mobile'));
+  const m = signupMatch({ fullName, mobile });
+  // An existing player's followup / category fill in automatically when you leave them blank.
+  const followup = val('followup') || String((m.byName && m.byName.followup) || '').trim();
+  const category = val('category') || String((m.byName && m.byName.category) || '').trim();
+  const reference = val('reference'), team = canonicalTeam(val('team'));
+  const missing = [];
+  if (!fullName) missing.push(['fullName', 'full name']);
+  if (!mobile) missing.push(['mobile', 'a valid 10-digit mobile']);
+  if (!followup) missing.push(['followup', 'followup']);
+  if (!category) missing.push(['category', 'category']);
+  if (missing.length) {
+    if (!auto) {
+      if (row) {
+        row.querySelectorAll('.cell-err').forEach(x => x.classList.remove('cell-err'));
+        missing.forEach(([f]) => { const el = row.querySelector(`[data-sf="${f}"]`); if (el) el.classList.add('cell-err'); });
+        const first = row.querySelector(`[data-sf="${missing[0][0]}"]`); if (first) first.focus();
+      }
+      alert('Please fill in: ' + missing.map(x => x[1]).join(', ') + '.');
+    }
     return;
   }
-  const m = signupMatch({ fullName, mobile });
   let p;
   if (m.byName) {
     p = m.byName;
     const prev = p.status;
     p.status = REGISTERED; p.category = category;
-    if (!(p.followup || '').trim()) p.followup = followup;
+    if (!(p.followup || '').trim() || !auto) p.followup = followup;
     if (!normalizeMobile(p.mobile)) p.mobile = mobile;
+    if (reference && !(p.reference || '').trim()) p.reference = reference;
+    if (team && !cleanTeam(p.team)) p.team = team;
     if (prev !== REGISTERED) logStatusChange(p, prev);
   } else {
-    p = { id: 'qr_' + docId, fullName, followup, mobile, status: REGISTERED, category };
+    p = { id: 'qr_' + docId, fullName, followup, mobile, status: REGISTERED, category, team, reference };
     participants.push(p);
     logStatusChange(p, NOT_REGISTERED);
   }
@@ -4004,23 +4048,25 @@ function approveSignup(docId, auto) {
   if (!categoryMaster.includes(category)) { categoryMaster.push(category); categoryMasterDirty = true; }
   markParticipantDirty(p.id);
   handledSignups.add(docId);
+  delete signupDrafts[docId];
   renderAll(); refreshSuggestions(); scheduleSave();
   afterSaved(p.id, () => deleteSignupDoc(docId));
 }
 
-// Publish category + followup names so the public form can show them as dropdowns.
+// Publish team names (and category / followup names) so the public form can show them as dropdowns.
 let lastCfgSig = '', cfgFailAt = 0;
 function maybePublishSignupConfig() {
   if (!db || !firebaseReady || !participants.length || Date.now() - cfgFailAt < 60000) return;
   const uniq = arr => Array.from(new Set(arr.map(x => (x || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   const categories = uniq([...(categoryMaster || []), ...participants.map(p => p.category)]);
   const followups = uniq(participants.map(p => p.followup));
-  const sig = JSON.stringify([categories, followups, tName()]);
+  const teams = teamNames();
+  const sig = JSON.stringify([categories, followups, teams, tName()]);
   if (sig === lastCfgSig) return;
   lastCfgSig = sig;
   clearTimeout(maybePublishSignupConfig._t);
   maybePublishSignupConfig._t = setTimeout(() => {
-    db.collection(SIGNUPS_COLLECTION).doc('_config').set({ categories, followups, tournamentName: tName(), updatedAt: Date.now() })
+    db.collection(SIGNUPS_COLLECTION).doc('_config').set({ categories, followups, teams, tournamentName: tName(), updatedAt: Date.now() })
       .catch(e => { lastCfgSig = ''; cfgFailAt = Date.now(); console.warn('Could not publish form options', e); });
   }, 1500);
 }
@@ -4038,26 +4084,35 @@ function renderQr() {
   $id('autoAddToggle').checked = autoAddSignups;
   if (wrap.contains(document.activeElement)) return;
   if (!pend.length) { wrap.innerHTML = '<div class="empty-state">No pending sign-ups. New QR registrations appear here instantly.</div>'; return; }
-  const inp = (s, f, label, attrs) => `<td data-label="${label}"><input class="cell-input" data-sf="${f}" value="${escapeHtml(s[f] || '')}" ${attrs || ''}></td>`;
   const rows = pend.map(s => {
     const m = signupMatch(s);
+    const d = signupDrafts[s.docId] || {};
+    const def = { fullName: s.fullName || '', reference: s.reference || '', team: s.team || '', mobile: s.mobile || '', followup: signupFollowup(s, m), category: signupCategory(s, m) };
+    const inp = (f, attrs, ph) => `<input class="cell-input" data-sf="${f}" value="${escapeHtml(d[f] !== undefined ? d[f] : def[f])}" placeholder="${ph || ''}" ${attrs || ''}>`;
     let info, canAdd = true;
     if (m.byName && m.byName.status === REGISTERED) { info = '<span class="st-pill reg">Already registered</span>'; canAdd = false; }
     else if (m.byName) info = '<span class="st-pill">Existing person: will be marked Registered</span>';
     else if (m.sameNumber) info = `<span class="warn-txt">Same number as ${escapeHtml(m.sameNumber.fullName)}</span>`;
     else info = '<span class="st-pill reg">New person</span>';
+    let note = '';
+    if (s.playerType === 'Existing' && !m.byName && !m.sameNumber) note = 'Chose Existing, but this name is not in your list.';
+    else if (s.playerType === 'New' && m.byName) note = 'Chose New, but this name is already in your list.';
+    const type = s.playerType ? `<span class="sg-type" title="Category chosen on the registration form">${escapeHtml(s.playerType)} player</span>` : '';
     const time = s.createdAt ? new Date(s.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
     return `<tr data-sid="${s.docId}">`
-      + inp(s, 'fullName', 'Full name') + inp(s, 'followup', 'Followup', 'list="followupDatalist"') + inp(s, 'mobile', 'Mobile', 'inputmode="tel"')
-      + inp(s, 'category', 'Category', 'list="categoryDatalist"')
-      + `<td data-label="Match">${info}<div class="sg-time">${time}</div></td>`
+      + `<td data-label="Full name"><div class="sg-stack">${inp('fullName')}${type}</div></td>`
+      + `<td data-label="Reference / Team"><div class="sg-stack">${inp('reference', 'list="referenceDatalist"', 'Reference name')}${inp('team', 'list="teamDatalist"', 'Team (optional)')}</div></td>`
+      + `<td data-label="Mobile">${inp('mobile', 'inputmode="tel"')}</td>`
+      + `<td data-label="Followup">${inp('followup', 'list="followupDatalist"', 'Add followup')}</td>`
+      + `<td data-label="Category">${inp('category', 'list="categoryDatalist"', 'Category')}</td>`
+      + `<td data-label="Match">${info}${note ? `<div class="warn-txt sg-note">${note}</div>` : ''}<div class="sg-time">${time}</div></td>`
       + `<td class="actions-cell" data-label="Actions">${canAdd ? `<button class="btn small primary sg-add">${m.byName ? 'Register' : 'Add'}</button> ` : ''}<button class="btn small danger sg-del">Dismiss</button></td></tr>`;
   }).join('');
-  wrap.innerHTML = `<table class="data signups"><thead><tr><th>Full name</th><th>Followup</th><th>Mobile</th><th>Category</th><th>Match</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<table class="data signups"><thead><tr><th>Full name</th><th>Reference / Team</th><th>Mobile</th><th>Followup</th><th>Category</th><th>Match</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.sg-add').forEach(b => b.addEventListener('click', () => approveSignup(b.closest('tr').dataset.sid, false)));
   wrap.querySelectorAll('.sg-del').forEach(b => b.addEventListener('click', () => {
     const tr = b.closest('tr');
-    if (confirm('Dismiss this sign-up without adding it?')) deleteSignupDoc(tr.dataset.sid);
+    if (confirm('Dismiss this sign-up without adding it?')) { delete signupDrafts[tr.dataset.sid]; deleteSignupDoc(tr.dataset.sid); }
   }));
 }
 
@@ -4086,6 +4141,13 @@ function setupQrTab() {
     const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = tSlug() + '_registration_QR.png'; a.click();
   });
   $id('qrPrint').addEventListener('click', () => window.print());
+  $id('signupsWrap').addEventListener('input', e => {
+    const el = e.target.closest && e.target.closest('[data-sf]');
+    const tr = el && el.closest('tr');
+    if (!el || !tr) return;
+    (signupDrafts[tr.dataset.sid] = signupDrafts[tr.dataset.sid] || {})[el.dataset.sf] = el.value;
+    el.classList.remove('cell-err');
+  });
   $id('autoAddToggle').addEventListener('change', e => {
     autoAddSignups = e.target.checked;
     try { localStorage.setItem('anandAutoAdd', autoAddSignups ? '1' : '0'); } catch (err) {}
