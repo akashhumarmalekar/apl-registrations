@@ -130,34 +130,95 @@
   .err { display:none; margin-top:6px; font-size:12.5px; font-weight:600; color:var(--red); }
   .field.invalid .control { border-color:var(--red); background-color:var(--red-bg); }
   .field.invalid .err { display:block; }
+  .opt { margin-left:6px; font-size:12px; font-weight:600; color:var(--muted); }
+  .seg { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .seg-opt { position:relative; margin:0 !important; cursor:pointer; }
+  .seg-opt input { position:absolute; opacity:0; inset:0; width:100%; height:100%; margin:0; cursor:pointer; }
+  .seg-face {
+    display:flex; flex-direction:column; align-items:center; gap:3px; padding:14px 8px 12px; text-align:center;
+    background:var(--input-bg); border:1.5px solid var(--border); border-radius:16px; transition:border-color .15s, background .15s, box-shadow .15s, transform .15s;
+  }
+  .seg-face svg { width:24px; height:24px; color:var(--muted); transition:color .15s, transform .3s; }
+  .seg-face b { font-family:var(--display); font-size:15.5px; font-weight:700; }
+  .seg-face small { font-size:12px; font-weight:500; color:var(--muted); }
+  .seg-opt:hover .seg-face { border-color:var(--border-strong); }
+  .seg-opt input:checked + .seg-face { border-color:var(--blue-b); background:linear-gradient(180deg, rgba(76,111,224,.14), rgba(76,111,224,.06)); box-shadow:var(--ring); animation:segpop .3s cubic-bezier(.2,.9,.3,1.4); }
+  .seg-opt input:checked + .seg-face svg { color:var(--blue-b); transform:scale(1.12); }
+  .seg-opt input:focus-visible + .seg-face { box-shadow:var(--ring); }
+  .field.invalid .seg-face { border-color:var(--red); background:var(--red-bg); }
+  @keyframes segpop { 0% { transform:scale(.96); } 100% { transform:scale(1); } }
   .hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; opacity:0; }
 
   .banner { display:none; margin:2px 0 14px; padding:11px 14px; border-radius:14px; font-size:13.5px; font-weight:600; color:var(--red); background:var(--red-bg); }
   .banner.show { display:block; }
 
   .submit {
-    display:flex; align-items:center; justify-content:center; width:100%; height:56px; margin-top:8px; padding:0 20px; cursor:pointer;
+    position:relative; display:flex; align-items:center; justify-content:center; width:100%; max-width:100%; height:56px; margin:8px auto 0; padding:0 20px; cursor:pointer;
     font-family:var(--display); font-size:16.5px; font-weight:700; letter-spacing:.01em; color:#fff;
     background:var(--primary-grad); border:0; border-radius:16px; box-shadow:0 16px 26px -14px rgba(47,63,166,.85);
-    transition:filter .15s, transform .08s, opacity .15s;
+    transition:width .5s cubic-bezier(.7,0,.25,1), border-radius .5s cubic-bezier(.7,0,.25,1), padding .5s, background .4s, box-shadow .4s, filter .15s, transform .08s;
   }
   .submit:hover { filter:brightness(1.07); }
   .submit:active { transform:translateY(1px); }
-  .submit:disabled { opacity:.75; cursor:progress; filter:none; }
-  .spin { width:18px; height:18px; margin-right:10px; border:2.5px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+  .submit .lbl { transition:opacity .2s, transform .3s; }
+  .submit .ring, .submit .tick-s { position:absolute; inset:0; margin:auto; width:28px; height:28px; opacity:0; pointer-events:none; }
+  .submit .ring circle { fill:none; stroke:#fff; stroke-width:4; stroke-linecap:round; stroke-dasharray:80 200; transform-origin:center; }
+  .submit .tick-s path { fill:none; stroke:#fff; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:30; stroke-dashoffset:30; }
+  .submit.loading, .submit.ok { width:56px; padding:0; border-radius:50%; cursor:progress; filter:none; }
+  .submit.loading .lbl, .submit.ok .lbl { opacity:0; transform:scale(.5); }
+  .submit.loading .ring { opacity:1; animation:spin .85s linear infinite; }
+  .submit.loading .ring circle { animation:dash 1.4s ease-in-out infinite; }
+  .submit.ok { background:linear-gradient(135deg,#25C493,#0E8F5F); box-shadow:0 16px 30px -12px rgba(14,143,95,.8); animation:bump .55s cubic-bezier(.2,.9,.3,1.4); }
+  .submit.ok .tick-s { opacity:1; }
+  .submit.ok .tick-s path { animation:draw .45s .08s cubic-bezier(.6,0,.3,1) forwards; }
+  .submit.ok::after { content:""; position:absolute; inset:0; border-radius:50%; border:3px solid #25C493; animation:ripple .9s ease-out forwards; pointer-events:none; }
+  .submit.shake { animation:shake .45s; }
   @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes dash { 0% { stroke-dasharray:6 200; stroke-dashoffset:0; } 50% { stroke-dasharray:80 200; stroke-dashoffset:-30; } 100% { stroke-dasharray:6 200; stroke-dashoffset:-125; } }
+  @keyframes draw { to { stroke-dashoffset:0; } }
+  @keyframes bump { 0% { transform:scale(1); } 45% { transform:scale(1.22); } 100% { transform:scale(1); } }
+  @keyframes ripple { from { transform:scale(1); opacity:.9; } to { transform:scale(2.6); opacity:0; } }
+  @keyframes shake { 0%,100% { transform:translateX(0); } 18% { transform:translateX(-9px); } 36% { transform:translateX(8px); } 54% { transform:translateX(-6px); } 72% { transform:translateX(4px); } }
+
+  /* while sending: fields dim, the accent bar sweeps across the card */
+  .fields { transition:opacity .35s, filter .35s; }
+  .sheet.sending .fields { opacity:.45; filter:saturate(.6); pointer-events:none; }
+  .sheet.sending::before { background:linear-gradient(90deg,#3CC8DC,#4C6FE0,#E8348C,#F86818,#3CC8DC); background-size:200% 100%; animation:sweep .9s linear infinite; }
+  @keyframes sweep { to { background-position:-200% 0; } }
+  .sheet.leaving { animation:leave .4s cubic-bezier(.5,0,.8,.4) forwards; }
+  @keyframes leave { to { opacity:0; transform:translateY(-14px) scale(.97); } }
+  .sheet.entering { animation:enter .6s cubic-bezier(.2,.9,.3,1) both; }
+  @keyframes enter { from { opacity:0; transform:translateY(22px) scale(.96); } to { opacity:1; transform:none; } }
+
+  /* hero reacts to success */
+  .burst { position:absolute; left:50%; top:46%; width:220px; height:220px; margin:-110px 0 0 -110px; border-radius:50%; pointer-events:none; opacity:0;
+    background:radial-gradient(circle, rgba(143,227,240,.85) 0%, rgba(76,111,224,.35) 40%, transparent 70%); }
+  .hero.celebrate .burst { animation:burst 1.1s ease-out; }
+  .hero.celebrate .logo { animation:tada 1s cubic-bezier(.3,1.4,.5,1); }
+  @keyframes burst { 0% { opacity:.9; transform:scale(.2); } 100% { opacity:0; transform:scale(2.4); } }
+  @keyframes tada { 0% { transform:scale(1); } 20% { transform:scale(1.18) rotate(-4deg); } 40% { transform:scale(1.12) rotate(3deg); } 60% { transform:scale(1.15) rotate(-2deg); } 100% { transform:scale(1) rotate(0); } }
+  #confetti { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:60; }
 
   /* ---------- success ---------- */
   .done { text-align:center; }
   .tick {
-    display:grid; place-items:center; width:78px; height:78px; margin:8px auto 16px; border-radius:50%; color:#fff;
+    position:relative; display:grid; place-items:center; width:78px; height:78px; margin:8px auto 16px; border-radius:50%; color:#fff;
     background:linear-gradient(135deg,#25C493,#0E8F5F); box-shadow:0 16px 28px -12px rgba(14,143,95,.7);
-    animation:pop .5s cubic-bezier(.2,.9,.3,1.3);
   }
+  .tick::before, .tick::after { content:""; position:absolute; inset:0; border-radius:50%; border:3px solid #25C493; opacity:0; }
   .tick svg { width:38px; height:38px; }
-  @keyframes pop { from { transform:scale(.5); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .tick path { stroke-dasharray:30; stroke-dashoffset:30; }
+  .done.play .tick { animation:pop .6s cubic-bezier(.2,.9,.3,1.35) both; }
+  .done.play .tick::before { animation:ripple 1.1s .25s ease-out; }
+  .done.play .tick::after { animation:ripple 1.1s .5s ease-out; }
+  .done.play .tick path { animation:draw .5s .35s cubic-bezier(.6,0,.3,1) forwards; }
+  @keyframes pop { from { transform:scale(.3) rotate(-25deg); opacity:0; } to { transform:scale(1) rotate(0); opacity:1; } }
   .done h2 { margin:0 0 6px; font-size:24px; outline:none; }
   .done .lead { margin:0 auto; max-width:30ch; color:var(--muted); font-size:14.5px; }
+  .done.play h2, .done.play .lead, .done.play .summary, .done.play .again { animation:rise .6s cubic-bezier(.2,.8,.3,1) both; }
+  .done.play h2 { animation-delay:.25s; } .done.play .lead { animation-delay:.33s; } .done.play .summary { animation-delay:.4s; } .done.play .again { animation-delay:.95s; }
+  .done.play .summary div { animation:rise .5s cubic-bezier(.2,.8,.3,1) both; animation-delay:calc(.5s + var(--i, 0) * 80ms); }
+  @keyframes rise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
   .summary { margin:20px 0 4px; text-align:left; overflow:hidden; background:var(--card-2); border:1px solid var(--border); border-radius:16px; }
   .summary div { display:flex; justify-content:space-between; gap:14px; padding:12px 15px; font-size:14px; }
   .summary div + div { border-top:1px solid var(--border); }
@@ -186,6 +247,7 @@
     <h1 id="tName">Anand APL 2026</h1>
     <p>Player registration</p>
   </div>
+  <div class="burst" aria-hidden="true"></div>
 </header>
 
 <main>
@@ -193,43 +255,64 @@
     <h2>Your details</h2>
     <div class="banner" id="banner" role="alert"></div>
 
-    <div class="field" id="f-name">
-      <label for="fullName">Full name <span class="req">*</span></label>
-      <input class="control" id="fullName" name="fullName" type="text" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="First, middle and last name" aria-describedby="e-name">
-      <div class="err" id="e-name"></div>
-    </div>
+    <div class="fields" id="fields">
+      <div class="field" id="f-name">
+        <label for="fullName">Full name <span class="req">*</span></label>
+        <input class="control" id="fullName" name="fullName" type="text" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="First, middle and last name" aria-describedby="e-name">
+        <div class="err" id="e-name"></div>
+      </div>
 
-    <div class="field" id="f-followup">
-      <label for="followup">Followup <span class="req">*</span></label>
-      <div id="followupWrap"></div>
-      <div class="err" id="e-followup"></div>
-    </div>
+      <div class="field" id="f-reference">
+        <label for="reference">Reference name <span class="req">*</span></label>
+        <input class="control" id="reference" name="reference" type="text" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Who brought you?" aria-describedby="e-reference">
+        <div class="err" id="e-reference"></div>
+      </div>
 
-    <div class="field" id="f-mobile">
-      <label for="mobile">Contact (mobile) <span class="req">*</span></label>
-      <input class="control" id="mobile" name="mobile" type="tel" inputmode="numeric" autocomplete="tel-national" enterkeyhint="next" maxlength="16" placeholder="10-digit number" aria-describedby="e-mobile">
-      <div class="err" id="e-mobile"></div>
-    </div>
+      <div class="field" id="f-team">
+        <label for="team">Team name <span class="opt">optional</span></label>
+        <div id="teamWrap"></div>
+        <div class="err" id="e-team"></div>
+      </div>
 
-    <div class="field" id="f-category">
-      <label for="category">Category <span class="req">*</span></label>
-      <div id="categoryWrap"></div>
-      <div class="err" id="e-category"></div>
+      <div class="field" id="f-mobile">
+        <label for="mobile">Contact (mobile) <span class="req">*</span></label>
+        <input class="control" id="mobile" name="mobile" type="tel" inputmode="numeric" autocomplete="tel-national" enterkeyhint="done" maxlength="16" placeholder="10-digit number" aria-describedby="e-mobile">
+        <div class="err" id="e-mobile"></div>
+      </div>
+
+      <div class="field" id="f-ptype">
+        <label id="l-ptype">Category <span class="req">*</span></label>
+        <div class="seg" role="radiogroup" aria-labelledby="l-ptype" aria-describedby="e-ptype">
+          <label class="seg-opt"><input type="radio" name="ptype" value="New"><span class="seg-face">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M17 5h4M5 17v4M3 19h4"/></svg>
+            <b>New</b><small>I'm a new player</small></span></label>
+          <label class="seg-opt"><input type="radio" name="ptype" value="Existing"><span class="seg-face">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0"/><path d="m16 11 2 2 4-4"/></svg>
+            <b>Existing</b><small>I'm an existing player</small></span></label>
+        </div>
+        <div class="err" id="e-ptype"></div>
+      </div>
     </div>
 
     <div class="hp" aria-hidden="true"><label>Website <input type="text" id="hp" tabindex="-1" autocomplete="off"></label></div>
 
-    <button type="submit" class="submit" id="submitBtn">Register</button>
+    <button type="submit" class="submit" id="submitBtn" aria-live="polite">
+      <span class="lbl">Register</span>
+      <svg class="ring" viewBox="0 0 50 50" aria-hidden="true"><circle cx="25" cy="25" r="20"/></svg>
+      <svg class="tick-s" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+    </button>
   </form>
 
   <section class="sheet done" id="done" hidden aria-live="polite">
     <div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
     <h2 id="doneTitle" tabindex="-1">Thank you!</h2>
-    <p class="lead" id="doneLead">Your registration has been received.</p>
+    <p class="lead" id="doneLead">Your details have been received.</p>
     <div class="summary" id="summary"></div>
     <button type="button" class="again" id="againBtn">Register another player</button>
   </section>
 </main>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
 
 <p class="foot">Problems submitting? Please check in at the registration desk.</p>
 
@@ -261,63 +344,61 @@
     try { localStorage.setItem('anandAplTheme', next); } catch (e) {}
   });
 
-  /* ---------- tournament name + dropdown options (published by the admin app) ---------- */
-  var cfg = { tournamentName: '', followups: [], categories: [] };
+  /* ---------- tournament name + team list (published by the admin app) ---------- */
+  var cfg = { tournamentName: '', teams: [] };
   function cleanList(arr) {
     var seen = {}, out = [];
     (Array.isArray(arr) ? arr : []).forEach(function (v) {
       v = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
-      if (!v || /^(not )?registered$/i.test(v) || seen[v.toLowerCase()]) return;
+      if (!v || /^(not registered|reserved|unsold)$/i.test(v) || seen[v.toLowerCase()]) return;
       seen[v.toLowerCase()] = 1; out.push(v);
     });
-    return out.sort(function (a, b) { return a.localeCompare(b); });
+    return out.sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }); });
   }
   function applyCfg(c) {
-    cfg = { tournamentName: String((c && c.tournamentName) || '').trim(), followups: cleanList(c && c.followups), categories: cleanList(c && c.categories) };
+    cfg = { tournamentName: String((c && c.tournamentName) || '').trim(), teams: cleanList(c && c.teams) };
     var name = cfg.tournamentName || DEFAULT_NAME;
     $('tName').textContent = name;
     document.title = name + ' \u00b7 Player registration';
   }
-  function setEmpty(el) { if (el.tagName === 'SELECT') el.classList.toggle('is-empty', !el.value); }
-  function mountChoice(id, items, selectText, typeText, loading) {
-    var holder = $(id + 'Wrap'), prev = $(id) ? $(id).value : '', el;
+  function mountTeam(loading) {
+    var holder = $('teamWrap'), prev = $('team') ? $('team').value : '', el;
     holder.innerHTML = '';
-    if (loading || items.length) {
+    if (loading || cfg.teams.length) {
       el = document.createElement('select');
-      el.appendChild(new Option(loading ? 'Loading\u2026' : selectText, ''));
-      if (!loading) items.forEach(function (v) { el.appendChild(new Option(v, v)); });
+      el.appendChild(new Option(loading ? 'Loading\u2026' : 'Select team (optional)', ''));
+      if (!loading) cfg.teams.forEach(function (v) { el.appendChild(new Option(v, v)); });
       el.disabled = !!loading;
-      if (prev && items.indexOf(prev) > -1) el.value = prev;
-    } else {                                   // options could not be loaded: let people type it
-      el = document.createElement('input'); el.type = 'text'; el.autocomplete = 'off'; el.placeholder = typeText; el.value = prev;
+      if (prev && cfg.teams.indexOf(prev) > -1) el.value = prev;
+      var dim = function () { el.classList.toggle('is-empty', !el.value); };
+      el.addEventListener('change', dim); dim();
+    } else {                                   // no team list available: let people type it (still optional)
+      el = document.createElement('input'); el.type = 'text'; el.autocomplete = 'off'; el.autocapitalize = 'words'; el.placeholder = 'Team name (optional)'; el.value = prev;
     }
-    el.className = 'control'; el.id = id; el.name = id; el.setAttribute('aria-describedby', 'e-' + id);
-    el.addEventListener('input', function () { clearErr(id); setEmpty(el); });
-    el.addEventListener('change', function () { clearErr(id); setEmpty(el); });
-    holder.appendChild(el); setEmpty(el);
-  }
-  function mountChoices(loading) {
-    mountChoice('followup', cfg.followups, 'Select your followup\u2026', 'Your followup person\u2019s name', loading);
-    mountChoice('category', cfg.categories, 'Select category\u2026', 'Your category', loading);
+    el.className = (el.className ? el.className + ' ' : '') + 'control'; el.id = 'team'; el.name = 'team';
+    holder.appendChild(el);
   }
   var cached = null;
   try { cached = JSON.parse(localStorage.getItem(CFG_KEY) || 'null'); } catch (e) {}
   applyCfg(cached);
-  mountChoices(!(cached && (cached.followups || []).length));
+  mountTeam(!cached);
   (function loadCfg() {
-    if (!db) { mountChoices(false); return; }
+    if (!db) { mountTeam(false); return; }
     var timer = new Promise(function (_, rej) { setTimeout(function () { rej(new Error('timeout')); }, 8000); });
     Promise.race([db.collection(SIGNUPS_COLLECTION).doc('_config').get(), timer]).then(function (snap) {
       var data = snap && snap.exists ? snap.data() : null;
       if (data) { try { localStorage.setItem(CFG_KEY, JSON.stringify(data)); } catch (e) {} }
-      applyCfg(data || cached); mountChoices(false);
-    }).catch(function (e) { console.warn('Could not load form options', e); applyCfg(cached); mountChoices(false); });
+      applyCfg(data || cached); mountTeam(false);
+    }).catch(function (e) { console.warn('Could not load form options', e); applyCfg(cached); mountTeam(false); });
   })();
 
   /* ---------- validation ---------- */
-  function setErr(id, msg) { var f = $('f-' + id); f.classList.add('invalid'); $('e-' + id).textContent = msg; }
+  function setErr(id, msg) { $('f-' + id).classList.add('invalid'); $('e-' + id).textContent = msg; }
   function clearErr(id) { var f = $('f-' + id); if (f) f.classList.remove('invalid'); $('banner').classList.remove('show'); }
-  ['fullName', 'mobile'].forEach(function (id) { $(id).addEventListener('input', function () { clearErr(id === 'fullName' ? 'name' : id); }); });
+  $('fullName').addEventListener('input', function () { clearErr('name'); });
+  $('reference').addEventListener('input', function () { clearErr('reference'); });
+  $('mobile').addEventListener('input', function () { clearErr('mobile'); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="ptype"]'), function (r) { r.addEventListener('change', function () { clearErr('ptype'); }); });
 
   function tidyName(v) {
     v = v.replace(/\s+/g, ' ').trim();
@@ -332,37 +413,97 @@
     else if (d.length === 11 && d.charAt(0) === '0') d = d.slice(1);
     return d;
   }
+  var NAME_RE = /^\p{L}[\p{L}\p{M}.'\u2019\- ]*$/u;
   function validate() {
-    var bad = [], name = tidyName($('fullName').value), mobile = cleanMobile($('mobile').value);
-    var followup = $('followup').value.replace(/\s+/g, ' ').trim(), category = $('category').value.replace(/\s+/g, ' ').trim();
-    ['name', 'followup', 'mobile', 'category'].forEach(clearErr);
+    var bad = [], name = tidyName($('fullName').value), ref = tidyName($('reference').value), mobile = cleanMobile($('mobile').value);
+    var team = $('team').value.replace(/\s+/g, ' ').trim();
+    var picked = document.querySelector('input[name="ptype"]:checked'), ptype = picked ? picked.value : '';
+    ['name', 'reference', 'mobile', 'ptype'].forEach(clearErr);
     if (!name) bad.push(['name', 'Please enter your full name.', 'fullName']);
     else if (name.split(' ').length < 2) bad.push(['name', 'Please enter your first, middle and last name.', 'fullName']);
-    else if (!/^\p{L}[\p{L}\p{M}.'\u2019\- ]*$/u.test(name)) bad.push(['name', 'Names can only have letters and spaces.', 'fullName']);
-    if (!followup) bad.push(['followup', 'Please choose your followup.', 'followup']);
+    else if (!NAME_RE.test(name)) bad.push(['name', 'Names can only have letters and spaces.', 'fullName']);
+    if (!ref) bad.push(['reference', 'Please enter who brought you.', 'reference']);
+    else if (ref.length < 2 || !NAME_RE.test(ref)) bad.push(['reference', 'Enter the name of the person who brought you.', 'reference']);
     if (!mobile) bad.push(['mobile', 'Please enter your mobile number.', 'mobile']);
     else if (!/^[6-9]\d{9}$/.test(mobile)) bad.push(['mobile', 'Enter a valid 10-digit mobile number.', 'mobile']);
-    if (!category) bad.push(['category', 'Please choose a category.', 'category']);
+    if (!ptype) bad.push(['ptype', 'Please choose New or Existing.', null]);
     bad.forEach(function (b) { setErr(b[0], b[1]); });
-    if (bad.length) { $(bad[0][2]).focus(); return null; }
-    return { fullName: name, followup: followup, mobile: mobile, category: category };
+    if (bad.length) { var first = bad[0][2] ? $(bad[0][2]) : document.querySelector('input[name="ptype"]'); first.focus(); return null; }
+    return { fullName: name, reference: ref, team: team, mobile: mobile, playerType: ptype };
+  }
+
+  /* ---------- confetti (no library: a few dozen lines on a canvas) ---------- */
+  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var cv = $('confetti'), cx = cv.getContext && cv.getContext('2d'), bits = [], running = false;
+  var COLORS = ['#3CC8DC', '#4C6FE0', '#E8348C', '#F86818', '#FFD23F', '#FFFFFF', '#7B8CFF'];
+  function fitCanvas() {
+    var r = window.devicePixelRatio || 1;
+    cv.width = Math.round(innerWidth * r); cv.height = Math.round(innerHeight * r);
+    cx.setTransform(r, 0, 0, r, 0, 0);
+  }
+  function burst(x, y, n, dir, spread, power) {
+    for (var i = 0; i < n; i++) {
+      var a = dir + (Math.random() - 0.5) * spread, v = (0.45 + Math.random() * 0.55) * power;
+      bits.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, w: 6 + Math.random() * 7, h: 4 + Math.random() * 5,
+        rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.4, tilt: Math.random() * 6.28, vt: 0.08 + Math.random() * 0.15,
+        c: COLORS[(Math.random() * COLORS.length) | 0], round: Math.random() < 0.28, life: 0, max: 95 + Math.random() * 55 });
+    }
+    if (bits.length > 320) bits.splice(0, bits.length - 320);
+    if (!running) { running = true; fitCanvas(); requestAnimationFrame(tick); }
+  }
+  function tick() {
+    cx.clearRect(0, 0, innerWidth, innerHeight);
+    bits = bits.filter(function (b) { return b.life < b.max && b.y < innerHeight + 40; });
+    bits.forEach(function (b) {
+      b.life++; b.vx *= 0.985; b.vy = b.vy * 0.985 + 0.34; b.x += b.vx; b.y += b.vy; b.rot += b.vr; b.tilt += b.vt;
+      var left = b.max - b.life; cx.globalAlpha = left < 30 ? left / 30 : 1;
+      cx.save(); cx.translate(b.x, b.y); cx.rotate(b.rot); cx.scale(1, Math.cos(b.tilt)); cx.fillStyle = b.c;
+      if (b.round) { cx.beginPath(); cx.arc(0, 0, b.h * 0.8, 0, 6.283); cx.fill(); } else { cx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); }
+      cx.restore();
+    });
+    if (bits.length) requestAnimationFrame(tick); else { running = false; cx.clearRect(0, 0, innerWidth, innerHeight); }
+  }
+  function celebrate() {
+    var r = $('submitBtn').getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    burst(x, y, 90, -Math.PI / 2, 1.9, 17);
+    setTimeout(function () { burst(innerWidth * 0.12, innerHeight * 0.35, 36, -0.9, 0.9, 16); burst(innerWidth * 0.88, innerHeight * 0.35, 36, -2.25, 0.9, 16); }, 220);
+    setTimeout(function () { burst(innerWidth / 2, innerHeight * 0.18, 40, Math.PI / 2, 2.6, 6); }, 520);
   }
 
   /* ---------- submit ---------- */
   var busy = false;
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, reduceMotion ? 0 : ms); }); };
   function banner(msg) { var b = $('banner'); b.textContent = msg; b.classList.add('show'); }
   function sentList() { try { return JSON.parse(sessionStorage.getItem(SENT_KEY) || '[]'); } catch (e) { return []; } }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
   function showDone(d, again) {
-    $('regForm').hidden = true; $('done').hidden = false;
-    var first = d.fullName.split(' ')[0];
-    $('doneTitle').textContent = 'Thank you, ' + first + '!';
-    $('doneLead').textContent = again ? 'This registration was already submitted from this phone.' : 'Your registration has been received.';
-    var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
-    $('summary').innerHTML = [['Name', d.fullName], ['Followup', d.followup], ['Mobile', d.mobile], ['Category', d.category]]
-      .map(function (r) { return '<div><span>' + r[0] + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    $('doneTitle').focus({ preventScroll: true });
+    var form = $('regForm'), done = $('done');
+    $('doneTitle').textContent = 'Thank you, ' + d.fullName.split(' ')[0] + '!';
+    $('doneLead').textContent = again ? 'This registration was already submitted from this phone.' : 'Your details have been received. We will take it from here.';
+    var rows = [['Name', d.fullName], ['Reference', d.reference]];
+    if (d.team) rows.push(['Team', d.team]);
+    rows.push(['Mobile', d.mobile], ['Category', d.playerType]);
+    $('summary').innerHTML = rows.map(function (r, i) { return '<div style="--i:' + i + '"><span>' + r[0] + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
+    var swap = function () {
+      form.hidden = true; form.classList.remove('leaving', 'sending');
+      done.hidden = false; done.classList.remove('play', 'entering'); void done.offsetWidth; done.classList.add('play', 'entering');
+      window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+      $('doneTitle').focus({ preventScroll: true });
+    };
+    if (reduceMotion || form.hidden) { swap(); return; }
+    form.classList.add('leaving');
+    setTimeout(swap, 380);
   }
+  function resetButton() { var b = $('submitBtn'); b.classList.remove('loading', 'ok', 'shake'); b.disabled = false; }
+  function fail(msg) {
+    var b = $('submitBtn');
+    $('regForm').classList.remove('sending'); b.classList.remove('loading');
+    void b.offsetWidth; b.classList.add('shake'); setTimeout(function () { b.classList.remove('shake'); }, 480);
+    banner(msg);
+    if (navigator.vibrate) navigator.vibrate(60);
+  }
+
   $('regForm').addEventListener('submit', function (e) {
     e.preventDefault();
     if (busy) return;
@@ -374,27 +515,42 @@
     if (!db) { banner('Could not connect right now. Please check in at the registration desk.'); return; }
     if (navigator.onLine === false) { banner('You appear to be offline. Please check your connection and try again.'); return; }
     busy = true;
-    var btn = $('submitBtn'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Registering\u2026';
+    var btn = $('submitBtn'), form = $('regForm'), started = Date.now();
+    btn.classList.add('loading'); form.classList.add('sending'); $('banner').classList.remove('show');
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     var timer = new Promise(function (_, rej) { setTimeout(function () { rej({ code: 'timeout' }); }, 20000); });
-    var doc = { fullName: d.fullName, followup: d.followup, mobile: d.mobile, category: d.category, createdAt: Date.now() };
+    var doc = { fullName: d.fullName, reference: d.reference, team: d.team, mobile: d.mobile, playerType: d.playerType, createdAt: Date.now() };
     Promise.race([db.collection(SIGNUPS_COLLECTION).add(doc), timer]).then(function () {
       var list = sentList(); list.push(key);
       try { sessionStorage.setItem(SENT_KEY, JSON.stringify(list)); } catch (e) {}
+      return wait(Math.max(0, 950 - (Date.now() - started)));       // let the "sending" morph be seen even on a fast connection
+    }).then(function () {
+      btn.classList.remove('loading'); btn.classList.add('ok');
+      if (navigator.vibrate) navigator.vibrate([20, 50, 30]);
+      return wait(300);
+    }).then(function () {
+      if (!reduceMotion) { celebrate(); var hero = document.querySelector('.hero'); hero.classList.remove('celebrate'); void hero.offsetWidth; hero.classList.add('celebrate'); }
+      return wait(950);
+    }).then(function () {
       showDone(d);
+      setTimeout(function () { resetButton(); }, 700);
     }).catch(function (err) {
       console.error('Submit failed', err);
       var code = err && err.code;
-      banner(code === 'permission-denied' ? 'Registration is not open right now. Please check in at the registration desk.'
+      fail(code === 'permission-denied' ? 'Registration is not open right now. Please check in at the registration desk.'
         : code === 'timeout' ? 'This is taking longer than usual. Please check your connection and try again.'
         : 'Something went wrong. Please try again, or check in at the registration desk.');
-    }).then(function () { busy = false; btn.disabled = false; btn.textContent = 'Register'; });
+    }).then(function () { busy = false; });
   });
 
   $('againBtn').addEventListener('click', function () {
-    ['fullName', 'mobile'].forEach(function (id) { $(id).value = ''; });
-    ['followup', 'category'].forEach(function (id) { $(id).value = ''; setEmpty($(id)); });
-    ['name', 'followup', 'mobile', 'category'].forEach(clearErr);
-    $('done').hidden = true; $('regForm').hidden = false;
+    ['fullName', 'reference', 'mobile'].forEach(function (id) { $(id).value = ''; });
+    $('team').value = ''; if ($('team').tagName === 'SELECT') $('team').classList.add('is-empty');
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="ptype"]'), function (r) { r.checked = false; });
+    ['name', 'reference', 'mobile', 'ptype'].forEach(clearErr);
+    $('done').hidden = true; $('done').classList.remove('play', 'entering'); $('regForm').hidden = false; $('regForm').classList.remove('leaving', 'sending');
+    $('regForm').classList.add('entering'); setTimeout(function () { $('regForm').classList.remove('entering'); }, 650);
+    resetButton();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     $('fullName').focus({ preventScroll: true });
   });
