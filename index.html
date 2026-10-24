@@ -436,6 +436,60 @@
   #qrCanvas img, #qrCanvas canvas { max-width:100%; height:auto; }
   .qr-url { margin-top:14px; font-size:12px; color:#646D96; word-break:break-all; }
 
+  /* ---------- Sign-in, roles and the Access tab ---------- */
+  html[data-role="viewer"] .tab-btn[data-tab="register"], html[data-role="viewer"] .tab-btn[data-tab="records"], html[data-role="viewer"] .tab-btn[data-tab="qr"],
+  html[data-role="viewer"] .tab-btn[data-tab="log"], html[data-role="viewer"] .tab-btn[data-tab="data"], html[data-role="viewer"] .tab-btn[data-tab="access"],
+  html[data-role="viewer"] [data-admin] { display:none !important; }
+  html:not([data-access="on"]) .tab-btn[data-tab="access"], html:not([data-access="on"]) #btnAccount { display:none !important; }
+  .lock {
+    position:fixed; inset:0; z-index:2000; display:flex; align-items:center; justify-content:center; padding:24px; overflow:auto;
+    background:
+      radial-gradient(520px 260px at 88% -10%, rgba(232,52,140,.45), transparent 65%),
+      radial-gradient(460px 280px at 8% 110%, rgba(60,200,220,.32), transparent 65%),
+      radial-gradient(420px 240px at 100% 110%, rgba(248,104,24,.34), transparent 65%),
+      linear-gradient(135deg, #131A4A 0%, #29357A 55%, #3A2E92 100%);
+  }
+  .lock[hidden] { display:none; }
+  .lock-card { position:relative; width:100%; max-width:400px; padding:30px 24px 24px; text-align:center; color:var(--text); background:var(--card); border:1px solid var(--border); border-radius:26px; box-shadow:var(--shadow-lg); }
+  .lock-card::before { content:""; position:absolute; top:0; left:26px; right:26px; height:4px; border-radius:0 0 6px 6px; background:var(--brand-grad); }
+  .lock-logo { display:block; height:84px; width:auto; margin:0 auto 6px; }
+  .lock-card h1 { margin:0; font-family:var(--display); font-size:26px; font-weight:800; letter-spacing:-.02em; }
+  .lock-sub { margin:6px 0 20px; color:var(--muted); font-weight:600; }
+  .g-btn { display:flex; align-items:center; justify-content:center; gap:12px; width:100%; height:52px; padding:0 16px; font:inherit; font-size:15.5px; font-weight:700; color:var(--text); background:var(--card); border:1.5px solid var(--border-strong); border-radius:14px; cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .08s; }
+  .g-btn:hover { border-color:var(--blue-b, #4C6FE0); box-shadow:var(--shadow-md); }
+  .g-btn:active { transform:translateY(1px); }
+  .lock-hint { margin:14px 0 0; font-size:13px; line-height:1.5; color:var(--muted); }
+  .lock-msg { display:none; margin-top:14px; padding:10px 12px; border-radius:12px; font-size:13px; font-weight:600; line-height:1.45; color:var(--red); background:var(--red-bg); text-align:left; }
+  .lock-msg.show { display:block; }
+  .lock-email { padding:10px 12px; border-radius:12px; font-weight:700; word-break:break-all; background:var(--card-2); border:1px solid var(--border); }
+  .lock-row { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:16px; }
+  .lock-spin { width:30px; height:30px; margin:6px auto 4px; border:3px solid var(--border); border-top-color:var(--blue-b, #4C6FE0); border-radius:50%; animation:lockspin .8s linear infinite; }
+  @keyframes lockspin { to { transform:rotate(360deg); } }
+  #btnAccount { padding:0 6px 0 4px; }
+  .acct-avatar { display:grid; place-items:center; width:30px; height:30px; border-radius:50%; font-family:var(--display); font-size:14px; font-weight:800; color:#fff; background:var(--brand-grad); }
+  .role-pill { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+  .role-pill.admin { color:var(--blue); background:var(--blue-bg); }
+  .role-pill.viewer { color:var(--chip-fg, var(--muted)); background:var(--chip-bg); }
+  .acc-form { display:grid; grid-template-columns:1.2fr 1fr .85fr 1.1fr auto; gap:12px; align-items:end; margin-top:14px; }
+  .pw { position:relative; display:flex; }
+  .pw input { flex:1; width:100%; padding-right:74px; }
+  .pw-eye { position:absolute; right:6px; top:6px; bottom:6px; padding:0 12px; border:0; border-radius:9px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; color:var(--text); background:var(--card-3); }
+  .pw-eye:hover { background:var(--border); }
+  .lock-form { text-align:left; }
+  .lock-form .fg { margin-bottom:12px; }
+  .lock-form label { display:block; margin-bottom:6px; font-size:13px; font-weight:700; }
+  .lock-go { width:100%; height:50px; margin-top:4px; font-size:16px; }
+  .lock-link { margin-top:14px; padding:4px 6px; font:inherit; font-size:13px; font-weight:600; color:var(--blue); background:none; border:0; text-decoration:underline; cursor:pointer; }
+  .setup-box { margin-top:14px; padding:12px 14px; text-align:left; font-size:13px; line-height:1.6; background:var(--card-2); border:1px solid var(--border); border-radius:14px; }
+  .setup-box ol { margin:8px 0 10px; padding-left:20px; }
+  .setup-box code { padding:1px 6px; font-size:12.5px; word-break:break-all; background:var(--card-3); border-radius:6px; }
+  .creds { margin-top:14px; padding:14px; background:var(--green-bg); border:1px solid var(--border); border-radius:14px; }
+  .creds pre { margin:8px 0 10px; padding:10px 12px; white-space:pre-wrap; word-break:break-word; font:inherit; font-size:13.5px; line-height:1.55; background:var(--card); border-radius:10px; }
+  .acc-form .fg { margin:0; }
+  .acc-form .opt { margin-left:6px; font-size:12px; font-weight:600; color:var(--muted); }
+  table.access .cell-input { border-color:var(--border); background:var(--card); max-width:140px; }
+  @media (max-width:780px) { .acc-form { grid-template-columns:1fr; } .acc-form .btn { width:100%; } }
+
   /* ---------- Sync from sheet ---------- */
   .sync-tiles { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; margin:14px 0 12px; }
   .sync-tile { padding:10px 4px; text-align:center; background:var(--card-2); border:1px solid var(--border); border-radius:14px; }
@@ -636,6 +690,14 @@
 </style>
 </head>
 <body>
+<div class="lock" id="lock" role="dialog" aria-modal="true" aria-labelledby="lockTitle" hidden>
+  <div class="lock-card">
+    <img class="lock-logo" data-brand alt="Atmiya Premier League logo" width="348" height="300">
+    <h1 class="js-tname" id="lockTitle">Anand APL 2026</h1>
+    <p class="lock-sub" id="lockSub">Loading&hellip;</p>
+    <div id="lockBody"></div>
+  </div>
+</div>
 
 <header class="top">
   <div class="inner brand">
@@ -646,6 +708,7 @@
     </div>
     <div class="top-actions">
       <button type="button" class="icon-btn" id="btnCmdK" aria-label="Quick jump and player search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="lbl">Quick jump</span><kbd id="cmdkHint">Ctrl K</kbd></button>
+      <button type="button" class="icon-btn" id="btnAccount" aria-label="Your account" title="Your account"><span class="acct-avatar" id="acctInitial">?</span></button>
       <button type="button" class="icon-btn" id="btnTheme" aria-label="Switch theme" title="Switch theme"><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
     </div>
   </div>
@@ -664,6 +727,7 @@
     <button class="tab-btn" data-tab="qr"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20v.01M20 20v1"/></svg><span>QR Sign-ups</span><span class="tab-badge" id="qrBadge" hidden>0</span></button>
     <button class="tab-btn" data-tab="log"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log</span></button>
     <button class="tab-btn" data-tab="data"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4"/></svg><span>Import / Export</span></button>
+    <button class="tab-btn" data-tab="access"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span>Access</span></button>
   </div>
 </nav>
 
@@ -724,7 +788,7 @@
               <input type="number" id="targetInput" min="0" step="1">
             </div>
           </div>
-          <button class="edit-target-btn" id="btnEditTarget" data-html2canvas-ignore="true">Edit</button>
+          <button class="edit-target-btn" id="btnEditTarget" data-admin data-html2canvas-ignore="true">Edit</button>
         </div>
         <div class="progress-top">
           <span class="label" id="progressLabel">0 of 60 registered towards target</span>
@@ -883,6 +947,27 @@
     <p class="hint">Fill in the <b>Followup</b> and <b>Category</b> (an existing player's are filled in for you), check the rest, then press <b>Add</b>. New people are added as <b>Registered</b>, with the reference and team they gave. If the name already exists in your list, that person is marked Registered instead of being duplicated. Auto-add and Add all only handle sign-ups that already have a followup and category, and skip anything that needs a decision (shared phone number, already registered).</p>
   </section>
 
+  <section class="panel" id="panel-access">
+    <div class="card">
+      <h3>Give access</h3>
+      <p class="desc">Add a person's mobile number and choose what they can do. They open the site and sign in with their name, that mobile number and the password you give them. You decide which number gets which access.</p>
+      <div class="acc-form">
+        <div class="fg"><label for="accName">Name</label><input id="accName" type="text" placeholder="e.g. Dhaval Chhaya" autocomplete="off"></div>
+        <div class="fg"><label for="accMobile">Mobile number</label><input id="accMobile" type="tel" inputmode="numeric" maxlength="20" placeholder="10-digit number" autocomplete="off"></div>
+        <div class="fg"><label for="accRole">Access</label><select id="accRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div>
+        <div class="fg"><label for="accPass">Password</label><div class="pw"><input id="accPass" type="text" autocomplete="off" autocapitalize="off"><button type="button" class="pw-eye" id="accGen" title="Make a new password">New</button></div></div>
+        <button class="btn primary" id="accAdd">Give access</button>
+      </div>
+      <div class="add-msg" id="accMsg" role="status"></div>
+      <div class="creds" id="accCreds" hidden></div>
+      <p class="hint"><b>Viewer</b> can open Registered, Pending, Followup, Category and Teams, and can download or share those lists, but cannot change anything. <b>Admin</b> can do everything, including adding people here. Removing a number signs that person out straight away.</p>
+    </div>
+    <div class="card">
+      <h3>People with access <span class="count-pill" id="accCount">0</span></h3>
+      <div id="accWrap"></div>
+    </div>
+  </section>
+
   <section class="panel" id="panel-data">
     <div class="card">
       <h3>Tournament name</h3>
@@ -982,6 +1067,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1139,6 +1225,18 @@ function enforceCategoryStatusInvariant() {
   return changed;
 }
 
+let dbPromise = null;
+// One shared Firestore connection (offline cache switched on once, before any read).
+function getDb() {
+  if (!dbPromise) dbPromise = (async () => {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const d = firebase.firestore();
+    try { await d.enablePersistence({ synchronizeTabs: true }); } catch (e) { /* multiple tabs or unsupported browser: fine, just no offline cache */ }
+    return d;
+  })();
+  return dbPromise;
+}
+
 async function loadState() {
   // PIN is a per-device setting, kept locally (not synced across devices).
   try {
@@ -1164,9 +1262,7 @@ async function loadState() {
   }
 
   try {
-    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-    db = firebase.firestore();
-    try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) { /* multiple tabs or unsupported browser — fine, just no offline cache */ }
+    db = await getDb();
     firebaseReady = true;
   } catch (e) {
     console.error('Firebase init failed', e);
@@ -1186,7 +1282,7 @@ async function loadState() {
       participants = SAMPLE_PARTICIPANTS.map(p => ({ id: genId(), ...p }));
       log = [];
       categoryMaster = deriveCategoriesFromParticipants();
-      await docRef.set({ participants, log, lastRegisteredId: null, targetCount, categoryMaster, updatedAt: Date.now() });
+      if (isAdmin()) await docRef.set({ participants, log, lastRegisteredId: null, targetCount, categoryMaster, updatedAt: Date.now() });
     }
   } catch (e) {
     console.error('Initial Firestore load failed', e);
@@ -1218,6 +1314,7 @@ let saveTimer = null;
 let saveInFlight = false;
 let saveQueued = false;
 function scheduleSave() {
+  if (!isAdmin()) return;   // viewers never write
   clearTimeout(saveTimer);
   saveTimer = setTimeout(runScheduledSave, 150);
 }
@@ -3953,7 +4050,7 @@ try { autoAddSignups = localStorage.getItem('anandAutoAdd') === '1'; } catch (e)
 const normName = x => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 function startSignupsListener() {
-  if (!db || signupsUnsub) return;
+  if (!db || signupsUnsub || !isAdmin()) return;
   signupsUnsub = db.collection(SIGNUPS_COLLECTION).onSnapshot(snap => {
     signups = snap.docs.filter(d => d.id !== '_config').map(d => ({ docId: d.id, ...d.data() }))
       .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
@@ -4056,7 +4153,7 @@ function approveSignup(docId, auto) {
 // Publish team names (and category / followup names) so the public form can show them as dropdowns.
 let lastCfgSig = '', cfgFailAt = 0;
 function maybePublishSignupConfig() {
-  if (!db || !firebaseReady || !participants.length || Date.now() - cfgFailAt < 60000) return;
+  if (!db || !firebaseReady || !isAdmin() || !participants.length || Date.now() - cfgFailAt < 60000) return;
   const uniq = arr => Array.from(new Set(arr.map(x => (x || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   const categories = uniq([...(categoryMaster || []), ...participants.map(p => p.category)]);
   const followups = uniq(participants.map(p => p.followup));
@@ -4577,7 +4674,7 @@ function setupQuickJump() {
   function build(q) {
     q = q.trim().toLowerCase();
     items = [];
-    const tabs = Array.from(document.querySelectorAll('.tab-btn')).map(b => ({
+    const tabs = Array.from(document.querySelectorAll('.tab-btn')).filter(b => getComputedStyle(b).display !== 'none').map(b => ({
       kind: 'tab', key: b.dataset.tab, label: b.querySelector('span').textContent.trim(), icon: b.querySelector('svg').outerHTML, sub: ''
     })).filter(t => !q || t.label.toLowerCase().includes(q));
     const players = q ? participants.filter(p => ((p.fullName || '') + ' ' + (p.mobile || '') + ' ' + (p.team || '') + ' ' + (p.category || '')).toLowerCase().includes(q))
@@ -4611,9 +4708,12 @@ function setupQuickJump() {
       const btn = document.querySelector('.tab-btn[data-tab="' + it.key + '"]');
       if (btn) btn.click();
     } else {
-      const btn = document.querySelector('.tab-btn[data-tab="records"]');
+      const viewer = !isAdmin();
+      const who = participants.find(p => p.fullName === it.name);
+      const list = who && who.status === REGISTERED ? 'registered' : 'pending';
+      const btn = document.querySelector(viewer ? '.tab-btn[data-tab="' + list + '"]' : '.tab-btn[data-tab="records"]');
       if (btn) btn.click();
-      const f = document.getElementById('recordsFilter');
+      const f = document.getElementById(viewer ? list + 'FilterInput' : 'recordsFilter');
       if (f) { f.value = it.name; f.dispatchEvent(new Event('input', { bubbles: true })); }
     }
   }
@@ -4640,6 +4740,7 @@ function applyTournamentName() {
   const n = tName();
   document.title = `${n} - Tournament Registration`;
   document.querySelectorAll('.js-tname').forEach(el => { el.textContent = n; });
+  try { localStorage.setItem('anandAplTName', n); } catch (e) {}
 }
 function openTournamentNameModal() {
   openModal(`
@@ -4672,10 +4773,352 @@ function setupTournamentName() {
   applyTournamentName();
 }
 
+// ---------------- Sign-in (name + mobile number + password) and access roles ----------------
+// Each person has an entry in Firestore (anand_apl_access/<mobile>) holding their role and a hash of their password.
+// An admin creates and manages these on the Access tab. To sign in, a person types name + mobile + password; the app
+// writes a session note that contains the hash of what they typed, and the Firestore rules (see firestore.rules) only
+// let them in when it matches the stored hash. So the check happens on the server, not just on this page.
+//   admin  = everything          viewer = read-only (Registered, Pending, Followup, Category, Teams)
+// Set REQUIRE_SIGN_IN to false to go back to an open site.
+const REQUIRE_SIGN_IN = true;
+const ACCESS_COLLECTION = 'anand_apl_access';
+const SESSIONS_COLLECTION = 'anand_apl_sessions';
+let userRole = 'admin';          // stays 'admin' when sign-in is not required (the site behaves as before)
+let currentUser = null;          // { name, mobile }
+let authObj = null, roleUnsub = null, signingOut = false, myPassHash = '', loginDone = null;
+const isAdmin = () => userRole === 'admin';
+const cleanMobile = v => { let d = String(v || '').replace(/\D/g, ''); if (d.length === 12 && d.startsWith('91')) d = d.slice(2); else if (d.length === 11 && d[0] === '0') d = d.slice(1); return d; };
+const validMobile = m => /^[6-9]\d{9}$/.test(m);
+const sessionRef = () => db.collection(SESSIONS_COLLECTION).doc(authObj.currentUser.uid);
+const accessRef = m => db.collection(ACCESS_COLLECTION).doc(m);
+
+// ----- SHA-256 (uses the browser's built-in one, with a small fallback for very old browsers) -----
+const ror32 = (x, n) => (x >>> n) | (x << (32 - n));
+function sha256Fallback(msg) {
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const l = msg.length, bitLen = l * 8;
+  const buf = new Uint8Array(((l + 9 + 63) >> 6) << 6);
+  buf.set(msg); buf[l] = 0x80;
+  const dv = new DataView(buf.buffer);
+  dv.setUint32(buf.length - 8, Math.floor(bitLen / 0x100000000)); dv.setUint32(buf.length - 4, bitLen >>> 0);
+  const w = new Uint32Array(64);
+  for (let i = 0; i < buf.length; i += 64) {
+    for (let j = 0; j < 16; j++) w[j] = dv.getUint32(i + j * 4);
+    for (let j = 16; j < 64; j++) {
+      const s0 = ror32(w[j - 15], 7) ^ ror32(w[j - 15], 18) ^ (w[j - 15] >>> 3), s1 = ror32(w[j - 2], 17) ^ ror32(w[j - 2], 19) ^ (w[j - 2] >>> 10);
+      w[j] = (w[j - 16] + s0 + w[j - 7] + s1) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let j = 0; j < 64; j++) {
+      const S1 = ror32(e, 6) ^ ror32(e, 11) ^ ror32(e, 25), ch = (e & f) ^ (~e & g), t1 = (h + S1 + ch + K[j] + w[j]) >>> 0;
+      const S0 = ror32(a, 2) ^ ror32(a, 13) ^ ror32(a, 22), maj = (a & b) ^ (a & c) ^ (b & c), t2 = (S0 + maj) >>> 0;
+      h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+    }
+    H = [a, b, c, d, e, f, g, h].map((v, k) => (H[k] + v) >>> 0);
+  }
+  return H.map(v => v.toString(16).padStart(8, '0')).join('');
+}
+async function sha256Hex(text) {
+  const data = new TextEncoder().encode(text);
+  if (window.crypto && crypto.subtle) {
+    try { const out = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(out)).map(b => b.toString(16).padStart(2, '0')).join(''); } catch (e) { /* fall through */ }
+  }
+  return sha256Fallback(data);
+}
+const passHashOf = (mobile, password) => sha256Hex(mobile + ':' + password + ':apl-access');
+function makePassword() {                       // 8 easy-to-type characters, no look-alikes
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789', arr = new Uint32Array(8);
+  (window.crypto || window.msCrypto).getRandomValues(arr);
+  return Array.from(arr, n => chars[n % chars.length]).join('');
+}
+
+// ----- the lock screen -----
+function lockShow(state, data) {
+  const lock = $id('lock'), body = $id('lockBody'), sub = $id('lockSub');
+  if (!lock) return;
+  lock.hidden = false;
+  if (state === 'loading') {
+    sub.textContent = data || 'Loading\u2026';
+    body.innerHTML = '<div class="lock-spin" aria-hidden="true"></div>';
+  } else if (state === 'login') {
+    let last = {}; try { last = JSON.parse(localStorage.getItem('anandAplLastLogin') || '{}'); } catch (e) {}
+    sub.textContent = 'Sign in to continue';
+    body.innerHTML = `<form id="loginForm" class="lock-form" novalidate>
+      <div class="fg"><label for="lgName">Your name</label><input id="lgName" type="text" autocomplete="name" autocapitalize="words" placeholder="Full name" value="${escapeHtml(last.name || '')}"></div>
+      <div class="fg"><label for="lgMobile">Mobile number</label><input id="lgMobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="20" placeholder="10-digit number" value="${escapeHtml(last.mobile || '')}"></div>
+      <div class="fg"><label for="lgPass">Password</label><div class="pw"><input id="lgPass" type="password" autocomplete="current-password" autocapitalize="off" placeholder="Password"><button type="button" class="pw-eye" data-act="eye">Show</button></div></div>
+      <button type="submit" class="btn primary lock-go" id="lgGo">Sign in</button>
+      <div class="lock-msg" id="lockMsg" role="alert"></div>
+    </form>
+    <p class="lock-hint">No password yet? Ask an admin to give your mobile number access.</p>
+    <button type="button" class="lock-link" data-act="setup">First-time setup (create the first admin)</button>`;
+  } else if (state === 'setup') {
+    sub.textContent = 'First-time setup';
+    body.innerHTML = `<p class="lock-hint" style="margin:0 0 12px;text-align:left;">Use this once to create the very first admin. Nothing is sent anywhere: it only works out the values you paste into Firebase.</p>
+      <form id="setupForm" class="lock-form" novalidate>
+        <div class="fg"><label for="suName">Admin name</label><input id="suName" type="text" autocomplete="off" placeholder="e.g. Akash"></div>
+        <div class="fg"><label for="suMobile">Admin mobile number</label><input id="suMobile" type="tel" inputmode="numeric" maxlength="20" placeholder="10-digit number"></div>
+        <div class="fg"><label for="suPass">Choose a password (8+ characters)</label><input id="suPass" type="text" autocomplete="off" placeholder="Password"></div>
+        <button type="submit" class="btn primary lock-go">Work out the values</button>
+        <div class="lock-msg" id="lockMsg" role="alert"></div>
+      </form>
+      <div id="setupOut"></div>
+      <button type="button" class="lock-link" data-act="back">Back to sign in</button>`;
+  } else {
+    sub.textContent = 'Something went wrong';
+    body.innerHTML = `<div class="lock-msg show" role="alert">${escapeHtml(data || 'Could not check your access.')}</div>
+      <div class="lock-row"><button type="button" class="btn primary" data-act="retry">Try again</button></div>`;
+  }
+}
+function lockMsg(text) { const m = $id('lockMsg'); if (m) { m.textContent = text; m.classList.toggle('show', !!text); } }
+
+function enterApp(profile, role, hash) {
+  userRole = role; currentUser = profile; myPassHash = hash;
+  try { localStorage.setItem('anandAplLastLogin', JSON.stringify({ name: profile.name, mobile: profile.mobile })); } catch (e) {}
+  $id('lock').hidden = true;
+  // If this person's access changes while the page is open (role changed, password reset, removed), start over.
+  if (roleUnsub) roleUnsub();
+  roleUnsub = accessRef(profile.mobile).onSnapshot(snap => {
+    const data = snap.exists ? snap.data() : null;
+    if (!data || data.role !== userRole || (data.passHash && data.passHash !== myPassHash)) location.reload();
+  }, () => location.reload());
+  if (loginDone) { loginDone(true); loginDone = null; }
+}
+
+async function doLogin() {
+  const name = $id('lgName').value.trim().replace(/\s+/g, ' '), mobile = cleanMobile($id('lgMobile').value), pass = $id('lgPass').value;
+  if (!name) { lockMsg('Please enter your name.'); $id('lgName').focus(); return; }
+  if (!validMobile(mobile)) { lockMsg('Enter your 10-digit mobile number.'); $id('lgMobile').focus(); return; }
+  if (!pass) { lockMsg('Please enter your password.'); $id('lgPass').focus(); return; }
+  const btn = $id('lgGo'); btn.disabled = true; btn.textContent = 'Signing in\u2026'; lockMsg('');
+  try {
+    const hash = await passHashOf(mobile, pass);
+    await sessionRef().set({ mobile, passHash: hash, name, at: Date.now() });
+    const snap = await accessRef(mobile).get({ source: 'server' });       // only succeeds when the hash matches the stored one
+    const data = snap.exists ? snap.data() : null;
+    if (!data || (data.role !== 'admin' && data.role !== 'viewer')) throw { code: 'permission-denied' };
+    enterApp({ name: data.name || name, mobile }, data.role, hash);
+  } catch (e) {
+    console.warn('Sign-in failed', e && e.code);
+    try { await sessionRef().delete(); } catch (e2) {}
+    const b = $id('lgGo'); if (b) { b.disabled = false; b.textContent = 'Sign in'; }
+    const c = (e && e.code) || '';
+    lockMsg(c === 'unavailable' || c === 'auth/network-request-failed' ? 'Could not reach the server. Check your internet connection and try again.'
+      : 'Mobile number or password is not correct, or this number has not been given access.');
+  }
+}
+
+async function doSetup() {
+  const name = $id('suName').value.trim().replace(/\s+/g, ' '), mobile = cleanMobile($id('suMobile').value), pass = $id('suPass').value;
+  if (!name) { lockMsg('Enter the admin name.'); return; }
+  if (!validMobile(mobile)) { lockMsg('Enter a valid 10-digit mobile number.'); return; }
+  if (pass.length < 8) { lockMsg('Use a password of at least 8 characters.'); return; }
+  lockMsg('');
+  const hash = await passHashOf(mobile, pass);
+  $id('setupOut').innerHTML = `<div class="setup-box"><b>In the Firebase console</b><ol>
+    <li>Open <b>Firestore Database</b> and click <b>Start collection</b>.</li>
+    <li>Collection ID: <code>${ACCESS_COLLECTION}</code></li>
+    <li>Document ID: <code>${escapeHtml(mobile)}</code></li>
+    <li>Add three fields, all type <b>string</b>:<br><code>name</code> = <code>${escapeHtml(name)}</code><br><code>role</code> = <code>admin</code><br><code>passHash</code> = <code class="hash">${hash}</code></li></ol>
+    <button type="button" class="btn small" data-act="copyhash" data-hash="${hash}">Copy passHash</button></div>`;
+}
+
+// Resolves true once someone is let in. Never resolves for anyone else (the lock screen stays).
+function accessGate() {
+  lockShow('loading', 'Checking your access\u2026');
+  return new Promise(async resolve => {
+    loginDone = resolve;
+    try { db = await getDb(); authObj = firebase.auth(); }
+    catch (e) { console.error('Auth init failed', e); lockShow('error', 'Could not connect. Check your internet connection.'); return; }
+    const lock = $id('lock');
+    lock.addEventListener('click', async ev => {
+      const b = ev.target.closest('[data-act]'); if (!b) return;
+      const act = b.dataset.act;
+      if (act === 'retry') location.reload();
+      else if (act === 'setup') lockShow('setup');
+      else if (act === 'back') lockShow('login');
+      else if (act === 'eye') { const i = $id('lgPass'); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.textContent = show ? 'Hide' : 'Show'; }
+      else if (act === 'copyhash') { try { await navigator.clipboard.writeText(b.dataset.hash); b.textContent = 'Copied'; } catch (e) { window.prompt('Copy this value', b.dataset.hash); } }
+    });
+    lock.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.id === 'loginForm') doLogin(); else if (ev.target.id === 'setupForm') doSetup(); });
+    try {
+      if (!authObj.currentUser) await new Promise((res, rej) => { const un = authObj.onAuthStateChanged(u => { un(); res(u); }, rej); });
+      if (!authObj.currentUser) await authObj.signInAnonymously();
+    } catch (e) {
+      console.error('Anonymous sign-in failed', e);
+      lockShow('error', e && e.code === 'auth/operation-not-allowed'
+        ? 'Sign-in is not switched on yet. In Firebase open Authentication > Sign-in method, enable "Anonymous", then reload this page.'
+        : 'Could not connect. Check your internet connection and try again.');
+      return;
+    }
+    // Already signed in on this phone? Pick up where they left off.
+    try {
+      const ss = await sessionRef().get({ source: 'server' });
+      if (ss.exists) {
+        const s = ss.data();
+        try {
+          const snap = await accessRef(s.mobile).get({ source: 'server' });
+          const data = snap.exists ? snap.data() : null;
+          if (data && (data.role === 'admin' || data.role === 'viewer')) { enterApp({ name: data.name || s.name || '', mobile: s.mobile }, data.role, s.passHash); return; }
+        } catch (e2) { if (e2 && e2.code === 'unavailable') throw e2; /* access was removed or the password changed */ }
+      }
+    } catch (e) {
+      if (e && e.code === 'unavailable') { lockShow('error', 'Could not reach the server. Check your internet connection and try again.'); return; }
+    }
+    lockShow('login');
+  });
+}
+
+async function signOutNow() {
+  signingOut = true;
+  try { if (roleUnsub) roleUnsub(); } catch (e) {}
+  try { await sessionRef().delete(); } catch (e) {}
+  try { await authObj.signOut(); } catch (e) {}
+  try { if (db) { await db.terminate(); await db.clearPersistence(); } } catch (e) {}   // do not leave player data cached on a shared phone
+  location.reload();
+}
+
+function applyRole() {
+  const on = REQUIRE_SIGN_IN && isFirebaseConfigured();
+  const root = document.documentElement;
+  root.setAttribute('data-role', userRole);
+  root.setAttribute('data-access', on ? 'on' : 'off');
+  if (on && currentUser) { const chip = $id('acctInitial'); if (chip) chip.textContent = (currentUser.name || currentUser.mobile || '?').trim().charAt(0).toUpperCase(); }
+  if (!isAdmin()) { const b = document.querySelector('.tab-btn[data-tab="registered"]'); if (b) b.click(); }
+}
+
+function openAccountModal() {
+  if (!currentUser) return;
+  openModal(`<h3>Your account</h3>
+    <p class="desc" style="margin:0 0 4px;"><b>${escapeHtml(currentUser.name || '')}</b><br>${escapeHtml(currentUser.mobile)}</p>
+    <p style="margin:10px 0 0;"><span class="role-pill ${userRole}">${userRole === 'admin' ? 'Admin' : 'Viewer'}</span> <span class="hint" style="margin-left:6px;">${userRole === 'admin' ? 'Can edit everything.' : 'Can view lists, not change them.'}</span></p>
+    <div class="btn-row"><button class="btn" id="acctPw">Change password</button><button class="btn danger" id="acctSignOut">Sign out</button><button class="btn" id="acctClose">Close</button></div>`);
+  $id('acctClose').addEventListener('click', closeModal);
+  $id('acctSignOut').addEventListener('click', () => { closeModal(); signOutNow(); });
+  $id('acctPw').addEventListener('click', openChangePasswordModal);
+}
+function openChangePasswordModal() {
+  openModal(`<h3>Change password</h3>
+    <div class="fg"><label for="cpOld">Current password</label><input id="cpOld" type="password" autocomplete="current-password"></div>
+    <div class="fg"><label for="cpNew">New password (8+ characters)</label><input id="cpNew" type="password" autocomplete="new-password"></div>
+    <div class="fg"><label for="cpNew2">New password again</label><input id="cpNew2" type="password" autocomplete="new-password"></div>
+    <div class="add-msg" id="cpMsg" role="alert"></div>
+    <div class="btn-row"><button class="btn primary" id="cpSave">Save password</button><button class="btn" id="cpCancel">Cancel</button></div>`);
+  const say = (t, k) => { const m = $id('cpMsg'); m.textContent = t; m.className = 'add-msg ' + (k || ''); };
+  $id('cpCancel').addEventListener('click', closeModal);
+  $id('cpSave').addEventListener('click', async () => {
+    const oldP = $id('cpOld').value, n1 = $id('cpNew').value, n2 = $id('cpNew2').value;
+    if (await passHashOf(currentUser.mobile, oldP) !== myPassHash) { say('Your current password is not correct.', 'err'); return; }
+    if (n1.length < 8) { say('Use at least 8 characters.', 'err'); return; }
+    if (n1 !== n2) { say('The two new passwords do not match.', 'err'); return; }
+    if (n1 === oldP) { say('Choose a password that is different from the current one.', 'err'); return; }
+    try {
+      const h = await passHashOf(currentUser.mobile, n1), batch = db.batch(), prev = myPassHash;
+      batch.update(accessRef(currentUser.mobile), { passHash: h });
+      batch.update(sessionRef(), { passHash: h });
+      myPassHash = h;                                   // set first, so our own access listener does not treat this change as 'someone else reset my password'
+      try { await batch.commit(); } catch (e) { myPassHash = prev; throw e; }
+      say('Password changed. You stay signed in on this phone; other phones will need the new password.', 'ok');
+    } catch (e) { console.error(e); say('Could not change the password. Check your internet connection.', 'err'); }
+  });
+}
+
+// ---------------- Access tab (admins only) ----------------
+let accessList = [], accessUnsub = null, accessErr = '';
+function accSay(text, kind) { const m = $id('accMsg'); if (m) { m.textContent = text; m.className = 'add-msg ' + (kind || ''); } }
+function loginMessage(name, mobile, role, password) {
+  const url = location.origin + location.pathname.replace(/[^\/]*$/, '');
+  return `Hi ${name}, you now have ${role === 'admin' ? 'admin' : 'view-only'} access to ${tName()}.\nOpen: ${url}\nName: ${name}\nMobile: ${mobile}\nPassword: ${password}\n(After signing in you can change your password from the round button at the top right.)`;
+}
+function accShowCreds(title, text) {
+  const box = $id('accCreds'); if (!box) return;
+  box.hidden = false;
+  box.innerHTML = `<b>${escapeHtml(title)}</b><pre>${escapeHtml(text)}</pre><div class="btn-row"><button class="btn small primary" id="accCopyCreds">Copy message</button></div><p class="hint" style="margin:8px 0 0;">Passwords are stored scrambled, so this is the only time you can see it. Copy it now.</p>`;
+  $id('accCopyCreds').addEventListener('click', async () => { try { await navigator.clipboard.writeText(text); $id('accCopyCreds').textContent = 'Copied'; } catch (e) { window.prompt('Copy this message', text); } });
+}
+
+function startAccessListener() {
+  if (!db || accessUnsub || !isAdmin() || !REQUIRE_SIGN_IN || !authObj) return;
+  accessUnsub = db.collection(ACCESS_COLLECTION).onSnapshot(snap => {
+    accessList = snap.docs.map(d => ({ mobile: d.id, ...d.data() }));
+    accessErr = ''; renderAccess();
+  }, err => { console.error('Access list error', err); accessErr = 'Could not load the list of people. Check your Firestore rules.'; renderAccess(); });
+}
+
+function renderAccess() {
+  const wrap = $id('accWrap'); if (!wrap) return;
+  $id('accCount').textContent = accessList.length;
+  if (wrap.contains(document.activeElement) && document.activeElement.tagName === 'SELECT') return;
+  if (accessErr) { wrap.innerHTML = `<div class="empty-state">${escapeHtml(accessErr)}</div>`; return; }
+  if (!accessList.length) { wrap.innerHTML = '<div class="empty-state">Nobody has been added yet.</div>'; return; }
+  const me = currentUser && currentUser.mobile;
+  const list = accessList.slice().sort((a, b) => (a.role === b.role ? 0 : a.role === 'admin' ? -1 : 1) || (a.name || a.mobile).localeCompare(b.name || b.mobile));
+  const rows = list.map(p => {
+    const self = p.mobile === me;
+    const when = p.addedAt ? new Date(p.addedAt).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    return `<tr data-mobile="${escapeHtml(p.mobile)}">
+      <td data-label="Person"><b>${escapeHtml(p.name || p.mobile)}</b>${self ? ' <span class="role-pill viewer">You</span>' : ''}<div class="sg-time">${escapeHtml(p.mobile)}</div></td>
+      <td data-label="Access">${self ? '<span class="role-pill admin">Admin</span>' : `<select class="cell-input acc-role" aria-label="Access"><option value="viewer"${p.role === 'viewer' ? ' selected' : ''}>Viewer</option><option value="admin"${p.role === 'admin' ? ' selected' : ''}>Admin</option></select>`}</td>
+      <td data-label="Added">${escapeHtml(when)}</td>
+      <td class="actions-cell" data-label="Actions">${self ? '<span class="sg-time">Use your account button to change your password</span>' : '<button class="btn small acc-reset">New password</button> <button class="btn small danger acc-del">Remove</button>'}</td></tr>`;
+  }).join('');
+  wrap.innerHTML = `<table class="data access"><thead><tr><th>Person</th><th>Access</th><th>Added</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function setupAccessUi() {
+  const on = REQUIRE_SIGN_IN && isFirebaseConfigured() && !!authObj;
+  const btn = $id('btnAccount');
+  if (btn && on) btn.addEventListener('click', openAccountModal);
+  if (!on || !isAdmin()) return;
+  startAccessListener();
+  $id('accPass').value = makePassword();
+  $id('accGen').addEventListener('click', () => { $id('accPass').value = makePassword(); });
+  $id('accAdd').addEventListener('click', async () => {
+    const name = $id('accName').value.trim().replace(/\s+/g, ' '), mobile = cleanMobile($id('accMobile').value), role = $id('accRole').value === 'admin' ? 'admin' : 'viewer', pass = $id('accPass').value;
+    if (!name) { accSay('Enter the person\'s name.', 'err'); $id('accName').focus(); return; }
+    if (!validMobile(mobile)) { accSay('Enter a valid 10-digit mobile number.', 'err'); $id('accMobile').focus(); return; }
+    if (pass.length < 8) { accSay('The password needs at least 8 characters.', 'err'); $id('accPass').focus(); return; }
+    if (accessList.some(p => p.mobile === mobile)) { accSay('This mobile number already has access. Use "New password" or change the access in the list below.', 'err'); return; }
+    try {
+      await accessRef(mobile).set({ name, role, passHash: await passHashOf(mobile, pass), addedBy: currentUser.mobile, addedAt: Date.now() });
+      $id('accName').value = ''; $id('accMobile').value = ''; $id('accPass').value = makePassword();
+      accSay(`${name} can now sign in as ${role === 'admin' ? 'an Admin' : 'a Viewer'}.`, 'ok');
+      accShowCreds('Send this to ' + name, loginMessage(name, mobile, role, pass));
+    } catch (e) { console.error(e); accSay('Could not save. Check your internet connection and the Firestore rules.', 'err'); }
+  });
+  $id('accWrap').addEventListener('change', async e => {
+    const sel = e.target.closest('.acc-role'); if (!sel) return;
+    const mobile = sel.closest('tr').dataset.mobile, role = sel.value, p = accessList.find(x => x.mobile === mobile) || {};
+    if (p.role === 'admin' && role === 'viewer' && !confirm(`Make ${p.name || mobile} a Viewer? They will no longer be able to edit.`)) { sel.value = 'admin'; return; }
+    try { await accessRef(mobile).update({ role }); accSay(`${p.name || mobile} is now ${role === 'admin' ? 'an Admin' : 'a Viewer'}.`, 'ok'); }
+    catch (err) { console.error(err); sel.value = p.role || 'viewer'; accSay('Could not change the access.', 'err'); }
+  });
+  $id('accWrap').addEventListener('click', async e => {
+    const tr = e.target.closest('tr[data-mobile]'); if (!tr) return;
+    const mobile = tr.dataset.mobile, p = accessList.find(x => x.mobile === mobile) || {};
+    if (e.target.closest('.acc-reset')) {
+      if (!confirm(`Set a new password for ${p.name || mobile}? Their old password stops working and they will be signed out.`)) return;
+      const pass = makePassword();
+      try { await accessRef(mobile).update({ passHash: await passHashOf(mobile, pass) }); accSay(`New password set for ${p.name || mobile}.`, 'ok'); accShowCreds('Send this to ' + (p.name || mobile), loginMessage(p.name || mobile, mobile, p.role, pass)); }
+      catch (err) { console.error(err); accSay('Could not set the new password.', 'err'); }
+    } else if (e.target.closest('.acc-del')) {
+      if (!confirm(`Remove access for ${p.name || mobile}? They will be signed out of the site.`)) return;
+      try { await accessRef(mobile).delete(); accSay(`${p.name || mobile} no longer has access.`, 'ok'); }
+      catch (err) { console.error(err); accSay('Could not remove this person.', 'err'); }
+    }
+  });
+}
+
 async function init() {
+  applyBrandLogo();
+  try { const cachedName = localStorage.getItem('anandAplTName'); if (cachedName) document.querySelectorAll('.js-tname').forEach(el => { el.textContent = cachedName; }); } catch (e) {}
+  if (REQUIRE_SIGN_IN && isFirebaseConfigured()) { const entered = await accessGate(); if (!entered) return; }
   await loadState();
   enforceCategoryStatusInvariant();
   setupTabs();
+  applyRole();
+  setupAccessUi();
   setupRecordsTab();
   setupTeamsTab();
   applyBrandLogo();
