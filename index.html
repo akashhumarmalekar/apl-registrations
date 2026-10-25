@@ -939,6 +939,7 @@
     </div>
     <div class="toolbar"><h2>Incoming sign-ups <span class="count-pill" id="signupsCount">0</span></h2>
       <div class="btn-row" style="margin:0;">
+        <span class="sg-time" id="claimsMsg"></span><button type="button" class="btn small" id="btnRefreshClaims" title="Frees numbers that are no longer registered or waiting here, so those people can sign up again">Refresh number list</button>
         <label class="auto-toggle"><input type="checkbox" id="autoAddToggle"> Auto-add on this device</label>
         <button class="btn primary" id="addAllSignups" style="display:none">Add all</button>
       </div>
@@ -4075,7 +4076,7 @@ function startClaimsListener() {
     claimsLoaded = true; scheduleClaimsSync();
   }, err => console.warn('Claims listener error (check your Firestore rules)', err));
 }
-function scheduleClaimsSync(ms) { clearTimeout(claimsTimer); claimsTimer = setTimeout(syncClaims, ms || 1500); }
+function scheduleClaimsSync(ms) { clearTimeout(claimsTimer); claimsTimer = setTimeout(() => syncClaims(), ms || 600); }
 function wantedClaims() {
   const want = new Map();
   participants.forEach(p => { const m = normalizeMobile(p.mobile); if (m && p.status === REGISTERED) want.set(m, 'registered'); });
@@ -4085,23 +4086,39 @@ function wantedClaims() {
   });
   return want;
 }
+let claimsBusy = false, claimsAgain = false;
+// Makes the list of taken numbers match reality: a number is taken only while a Registered player has it or a sign-up with it is waiting.
+// A number whose player was deleted / cancelled, or whose sign-up was dismissed, is freed at once so it can register again.
 async function syncClaims() {
-  if (!db || !firebaseReady || !isAdmin() || !claimsLoaded || !signupsLoaded) return;
-  const want = wantedClaims(), now = Date.now(), ops = [];
-  if (claimsHave.size > 10 && want.size === 0) return;                 // looks like the data has not loaded; never wipe the claims
-  let retry = false;
-  want.forEach((kind, m) => { const have = claimsHave.get(m); if (!have) ops.push({ m, data: { at: now, kind } }); else if (have.kind !== kind) ops.push({ m, data: { at: have.at || now, kind } }); });
-  claimsHave.forEach((v, m) => {
-    if (want.has(m)) return;
-    if (Math.abs(now - (v.at || 0)) < 120000) { retry = true; return; }   // just created by the form: give the sign-up time to show up here
-    ops.push({ m, del: true });
-  });
-  if (retry) scheduleClaimsSync(125000);
-  for (let i = 0; i < ops.length; i += 400) {
-    const batch = db.batch();
-    ops.slice(i, i + 400).forEach(o => { const ref = db.collection(CLAIMS_COLLECTION).doc(o.m); if (o.del) batch.delete(ref); else batch.set(ref, o.data); });
-    try { await batch.commit(); } catch (e) { console.warn('Could not update number claims', e); return; }
-  }
+  if (!db || !firebaseReady || !isAdmin() || !claimsLoaded || !signupsLoaded) return null;
+  if (claimsBusy) { claimsAgain = true; return null; }
+  claimsBusy = true;
+  try {
+    const want = wantedClaims(), ops = [];
+    if (claimsHave.size > 10 && want.size === 0) return null;           // looks like the data has not loaded; never wipe the list
+    let added = 0, freed = 0;
+    want.forEach((kind, m) => { const have = claimsHave.get(m); if (!have) { ops.push({ m, data: { at: Date.now(), kind } }); added++; } else if (have.kind !== kind) ops.push({ m, data: { at: have.at || Date.now(), kind } }); });
+    for (const m of Array.from(claimsHave.keys())) {
+      if (want.has(m)) continue;
+      // Not backed by anything this screen knows about. Before freeing it, ask the database whether a sign-up for this number really
+      // exists (one may have arrived a moment ago and not reached this screen yet). If we cannot tell, keep it.
+      let waiting = true;
+      try { waiting = (await db.collection(SIGNUPS_COLLECTION).doc(m).get()).exists; } catch (e) { waiting = true; }
+      if (!waiting) { ops.push({ m, del: true }); freed++; }
+    }
+    for (let i = 0; i < ops.length; i += 400) {
+      const batch = db.batch();
+      ops.slice(i, i + 400).forEach(o => { const ref = db.collection(CLAIMS_COLLECTION).doc(o.m); if (o.del) batch.delete(ref); else batch.set(ref, o.data); });
+      await batch.commit();
+    }
+    return { added, freed };
+  } catch (e) { console.warn('Could not update the list of taken numbers', e); return null; }
+  finally { claimsBusy = false; if (claimsAgain) { claimsAgain = false; scheduleClaimsSync(300); } }
+}
+async function refreshNumberList() {
+  const msg = $id('claimsMsg'); if (msg) msg.textContent = 'Checking\u2026';
+  const r = await syncClaims();
+  if (msg) msg.textContent = !r ? 'Could not refresh right now.' : (r.added || r.freed) ? `Done: ${r.freed} number(s) freed, ${r.added} added.` : 'Already up to date.';
 }
 
 function signupMatch(s) {
@@ -4125,7 +4142,7 @@ function pendingSignups() { return signups.filter(s => !handledSignups.has(s.doc
 
 function deleteSignupDoc(docId) {
   if (!db) return;
-  db.collection(SIGNUPS_COLLECTION).doc(docId).delete().catch(e => console.warn('Could not delete sign-up', e));
+  db.collection(SIGNUPS_COLLECTION).doc(docId).delete().then(() => scheduleClaimsSync(200)).catch(e => console.warn('Could not delete sign-up', e));
 }
 // Wait until this participant is safely saved to Firestore, then run fn (used to remove the queue entry).
 function afterSaved(id, fn) {
@@ -4288,6 +4305,7 @@ function setupQrTab() {
     const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = tSlug() + '_registration_QR.png'; a.click();
   });
   $id('qrPrint').addEventListener('click', () => window.print());
+  $id('btnRefreshClaims').addEventListener('click', refreshNumberList);
   $id('signupsWrap').addEventListener('input', e => {
     const el = e.target.closest && e.target.closest('[data-sf]');
     const tr = el && el.closest('tr');
