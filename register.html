@@ -375,7 +375,7 @@
   };
   var SIGNUPS_COLLECTION = 'anand_apl_2026_signups';
   var CLAIMS_COLLECTION = 'anand_apl_2026_claims';   // numbers that are already taken (Registered players + sign-ups waiting)
-  var CFG_KEY = 'anandAplRegCfg', SENT_KEY = 'anandAplRegSent', DEFAULT_NAME = 'Anand APL 2026';
+  var CFG_KEY = 'anandAplRegCfg', DEFAULT_NAME = 'Anand APL 2026';
 
   var $ = function (id) { return document.getElementById(id); };
   var db = null;
@@ -515,7 +515,6 @@
   var busy = false;
   var wait = function (ms) { return new Promise(function (r) { setTimeout(r, reduceMotion ? 0 : ms); }); };
   function banner(msg) { var b = $('banner'); b.textContent = msg; b.classList.add('show'); }
-  function sentList() { try { return JSON.parse(sessionStorage.getItem(SENT_KEY) || '[]'); } catch (e) { return []; } }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function summaryHtml(rows) { return rows.map(function (r, i) { return '<div style="--i:' + i + '"><span>' + r[0] + '</span><b>' + esc(r[1]) + '</b></div>'; }).join(''); }
   function play(el) { el.hidden = false; el.classList.remove('play', 'entering'); void el.offsetWidth; el.classList.add('play', 'entering'); }
@@ -533,8 +532,7 @@
     leaveForm(function () { play($('done')); $('doneTitle').focus({ preventScroll: true }); });
   }
   function showDuplicate(d, kind) {
-    $('dupLead').textContent = kind === 'phone' ? 'This number was already sent from this phone. Each mobile number can only be registered once.'
-      : kind === 'signup' ? 'A registration with this number has already been received. Each mobile number can only be registered once.'
+    $('dupLead').textContent = kind === 'signup' ? 'A registration with this number has already been received. Each mobile number can only be registered once.'
       : 'This mobile number is already registered. Each mobile number can only be registered once.';
     $('dupSummary').innerHTML = summaryHtml([['Mobile number', d.mobile], ['Name you entered', d.fullName]]);
     leaveForm(function () { play($('dup')); $('dupTitle').focus({ preventScroll: true }); });
@@ -578,7 +576,6 @@
     }
 
     Promise.resolve().then(function () {
-      if (sentList().indexOf(d.mobile) > -1) throw { duplicate: true, kind: 'phone' };      // same phone, same number again
       return Promise.race([claimRef.get(), timer]);
     }).then(function (snap) {
       if (snap.exists) throw { duplicate: true, kind: (snap.data() || {}).kind || 'registered' };
@@ -587,8 +584,6 @@
       batch.set(db.collection(SIGNUPS_COLLECTION).doc(d.mobile), doc);
       return Promise.race([batch.commit(), timer]);
     }).then(function () {
-      var list = sentList(); list.push(d.mobile);
-      try { sessionStorage.setItem(SENT_KEY, JSON.stringify(list)); } catch (e) {}
       return minShow();
     }).then(function () {
       btn.classList.remove('loading'); btn.classList.add('ok');
