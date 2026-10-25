@@ -197,6 +197,39 @@
   .hero.celebrate .logo { animation:tada 1s cubic-bezier(.3,1.4,.5,1); }
   @keyframes burst { 0% { opacity:.9; transform:scale(.2); } 100% { opacity:0; transform:scale(2.4); } }
   @keyframes tada { 0% { transform:scale(1); } 20% { transform:scale(1.18) rotate(-4deg); } 40% { transform:scale(1.12) rotate(3deg); } 60% { transform:scale(1.15) rotate(-2deg); } 100% { transform:scale(1) rotate(0); } }
+  /* already-registered: amber, a stamp slams down, no confetti */
+  .submit .excl { position:absolute; inset:0; margin:auto; width:28px; height:28px; opacity:0; pointer-events:none; }
+  .submit .excl path { fill:none; stroke:#fff; stroke-width:3.4; stroke-linecap:round; stroke-dasharray:9; stroke-dashoffset:9; }
+  .submit .excl circle { fill:#fff; opacity:0; }
+  .submit.dupe { width:56px; padding:0; border-radius:50%; cursor:progress; filter:none; background:linear-gradient(135deg,#FFB02E,#F2711C); box-shadow:0 16px 30px -12px rgba(242,113,28,.85); animation:wobble .7s cubic-bezier(.3,1.4,.5,1); }
+  .submit.dupe .lbl { opacity:0; transform:scale(.5); }
+  .submit.dupe .excl { opacity:1; }
+  .submit.dupe .excl path { animation:draw .35s .1s ease forwards; }
+  .submit.dupe .excl circle { animation:dotin .2s .4s ease forwards; }
+  .submit.dupe::after { content:""; position:absolute; inset:0; border-radius:50%; border:3px solid #FFB02E; animation:ripple .9s ease-out forwards; pointer-events:none; }
+  @keyframes wobble { 0% { transform:rotate(0) scale(1); } 15% { transform:rotate(-14deg) scale(1.12); } 30% { transform:rotate(12deg) scale(1.12); } 45% { transform:rotate(-9deg); } 60% { transform:rotate(6deg); } 75% { transform:rotate(-3deg); } 100% { transform:rotate(0) scale(1); } }
+  @keyframes dotin { to { opacity:1; } }
+  .sheet.thud { animation:thud .6s cubic-bezier(.3,1.5,.5,1); }
+  @keyframes thud { 0% { transform:none; box-shadow:0 0 0 0 rgba(255,176,46,.6), var(--shadow-lg); } 25% { transform:translateY(8px) scale(.985); } 55% { transform:translateY(-3px); box-shadow:0 0 0 22px rgba(255,176,46,0), var(--shadow-lg); } 100% { transform:none; box-shadow:0 0 0 0 rgba(255,176,46,0), var(--shadow-lg); } }
+  .hero.warn .burst { background:radial-gradient(circle, rgba(255,196,77,.9) 0%, rgba(242,113,28,.38) 40%, transparent 70%); animation:burst 1.1s ease-out; }
+  .hero.warn .logo { animation:logoshake .6s; }
+  @keyframes logoshake { 0%,100% { transform:translateX(0); } 15% { transform:translateX(-10px) rotate(-3deg); } 35% { transform:translateX(9px) rotate(2deg); } 55% { transform:translateX(-6px); } 75% { transform:translateX(4px); } }
+  .dup { text-align:center; }
+  .dup-badge { position:relative; display:grid; place-items:center; width:78px; height:78px; margin:8px auto 14px; border-radius:50%; color:#fff; background:linear-gradient(135deg,#FFB02E,#F2711C); box-shadow:0 16px 28px -12px rgba(242,113,28,.75); }
+  .dup-badge::before, .dup-badge::after { content:""; position:absolute; inset:0; border-radius:50%; border:3px solid #FFB02E; opacity:0; }
+  .dup-badge svg { width:38px; height:38px; }
+  .dup.play .dup-badge { animation:dropin .65s cubic-bezier(.2,.9,.3,1.3) both; }
+  .dup.play .dup-badge::before { animation:ripple 1.1s .3s ease-out; }
+  .dup.play .dup-badge::after { animation:ripple 1.1s .55s ease-out; }
+  @keyframes dropin { 0% { transform:translateY(-34px) scale(.5); opacity:0; } 60% { transform:translateY(6px) scale(1.06); opacity:1; } 100% { transform:none; opacity:1; } }
+  .dup h2 { margin:0 0 6px; font-size:24px; outline:none; }
+  .dup .lead { margin:0 auto; max-width:32ch; color:var(--muted); font-size:14.5px; }
+  .stamp { display:inline-block; margin:16px auto 2px; padding:8px 18px 7px; font-family:var(--display); font-size:15px; font-weight:800; letter-spacing:.14em; line-height:1.3; text-transform:uppercase; color:#C2410C; border:3px solid #C2410C; border-radius:10px; transform:rotate(-7deg); opacity:0; }
+  [data-theme="dark"] .stamp { color:#FFB86B; border-color:#FFB86B; }
+  .dup.play .stamp { animation:slam .6s .5s cubic-bezier(.2,1.15,.3,1) both; }
+  @keyframes slam { 0% { transform:rotate(-7deg) scale(3); opacity:0; } 55% { transform:rotate(-7deg) scale(.9); opacity:1; } 78% { transform:rotate(-7deg) scale(1.05); } 100% { transform:rotate(-7deg) scale(1); opacity:1; } }
+  .dup.play h2, .dup.play .lead, .dup.play .summary, .dup.play .again { animation:rise .6s cubic-bezier(.2,.8,.3,1) both; }
+  .dup.play h2 { animation-delay:.2s; } .dup.play .lead { animation-delay:.28s; } .dup.play .summary { animation-delay:.95s; } .dup.play .again { animation-delay:1.1s; }
   #confetti { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:60; }
 
   /* ---------- success ---------- */
@@ -300,8 +333,18 @@
       <span class="lbl">Register</span>
       <svg class="ring" viewBox="0 0 50 50" aria-hidden="true"><circle cx="25" cy="25" r="20"/></svg>
       <svg class="tick-s" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+      <svg class="excl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v8"/><circle cx="12" cy="18.2" r="1.7"/></svg>
     </button>
   </form>
+
+  <section class="sheet dup" id="dup" hidden aria-live="assertive">
+    <div class="dup-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg></div>
+    <h2 id="dupTitle" tabindex="-1">Already registered</h2>
+    <p class="lead" id="dupLead"></p>
+    <div class="stamp" aria-hidden="true">Already<br>registered</div>
+    <div class="summary" id="dupSummary"></div>
+    <button type="button" class="again" id="dupAgain">Use a different number</button>
+  </section>
 
   <section class="sheet done" id="done" hidden aria-live="polite">
     <div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
@@ -331,6 +374,7 @@
     appId: "1:33645380972:web:1f4dcd6a09c03f959a9f49"
   };
   var SIGNUPS_COLLECTION = 'anand_apl_2026_signups';
+  var CLAIMS_COLLECTION = 'anand_apl_2026_claims';   // numbers that are already taken (Registered players + sign-ups waiting)
   var CFG_KEY = 'anandAplRegCfg', SENT_KEY = 'anandAplRegSent', DEFAULT_NAME = 'Anand APL 2026';
 
   var $ = function (id) { return document.getElementById(id); };
@@ -473,24 +517,29 @@
   function banner(msg) { var b = $('banner'); b.textContent = msg; b.classList.add('show'); }
   function sentList() { try { return JSON.parse(sessionStorage.getItem(SENT_KEY) || '[]'); } catch (e) { return []; } }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-
-  function showDone(d, again) {
-    var form = $('regForm'), done = $('done');
-    $('doneTitle').textContent = 'Thank you, ' + d.fullName.split(' ')[0] + '!';
-    $('doneLead').textContent = again ? 'This registration was already submitted from this phone.' : 'Your details have been received. We will take it from here.';
-    var rows = [['Name', d.fullName], ['Reference', d.reference], ['Team', d.team], ['Mobile', d.mobile], ['Category', d.playerType]];
-    $('summary').innerHTML = rows.map(function (r, i) { return '<div style="--i:' + i + '"><span>' + r[0] + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
-    var swap = function () {
-      form.hidden = true; form.classList.remove('leaving', 'sending');
-      done.hidden = false; done.classList.remove('play', 'entering'); void done.offsetWidth; done.classList.add('play', 'entering');
-      window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
-      $('doneTitle').focus({ preventScroll: true });
-    };
+  function summaryHtml(rows) { return rows.map(function (r, i) { return '<div style="--i:' + i + '"><span>' + r[0] + '</span><b>' + esc(r[1]) + '</b></div>'; }).join(''); }
+  function play(el) { el.hidden = false; el.classList.remove('play', 'entering'); void el.offsetWidth; el.classList.add('play', 'entering'); }
+  function leaveForm(thenShow) {
+    var form = $('regForm');
+    var swap = function () { form.hidden = true; form.classList.remove('leaving', 'sending', 'thud'); thenShow(); window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); };
     if (reduceMotion || form.hidden) { swap(); return; }
-    form.classList.add('leaving');
-    setTimeout(swap, 380);
+    form.classList.add('leaving'); setTimeout(swap, 380);
   }
-  function resetButton() { var b = $('submitBtn'); b.classList.remove('loading', 'ok', 'shake'); b.disabled = false; }
+
+  function showDone(d) {
+    $('doneTitle').textContent = 'Thank you, ' + d.fullName.split(' ')[0] + '!';
+    $('doneLead').textContent = 'Your details have been received. We will take it from here.';
+    $('summary').innerHTML = summaryHtml([['Name', d.fullName], ['Reference', d.reference], ['Team', d.team], ['Mobile', d.mobile], ['Category', d.playerType]]);
+    leaveForm(function () { play($('done')); $('doneTitle').focus({ preventScroll: true }); });
+  }
+  function showDuplicate(d, kind) {
+    $('dupLead').textContent = kind === 'phone' ? 'This number was already sent from this phone. Each mobile number can only be registered once.'
+      : kind === 'signup' ? 'A registration with this number has already been received. Each mobile number can only be registered once.'
+      : 'This mobile number is already registered. Each mobile number can only be registered once.';
+    $('dupSummary').innerHTML = summaryHtml([['Mobile number', d.mobile], ['Name you entered', d.fullName]]);
+    leaveForm(function () { play($('dup')); $('dupTitle').focus({ preventScroll: true }); });
+  }
+  function resetButton() { var b = $('submitBtn'); b.classList.remove('loading', 'ok', 'dupe', 'shake'); b.disabled = false; }
   function fail(msg) {
     var b = $('submitBtn');
     $('regForm').classList.remove('sending'); b.classList.remove('loading');
@@ -505,8 +554,6 @@
     var d = validate();
     if (!d) return;
     if ($('hp').value) { showDone(d); return; }                       // bots fill the hidden field: pretend it worked
-    var key = d.fullName.toLowerCase() + '|' + d.mobile;
-    if (sentList().indexOf(key) > -1) { showDone(d, true); return; }   // same person tapped Register twice
     if (!db) { banner('Could not connect right now. Please check in at the registration desk.'); return; }
     if (navigator.onLine === false) { banner('You appear to be offline. Please check your connection and try again.'); return; }
     busy = true;
@@ -515,27 +562,66 @@
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     var timer = new Promise(function (_, rej) { setTimeout(function () { rej({ code: 'timeout' }); }, 20000); });
     var doc = { fullName: d.fullName, reference: d.reference, team: d.team, mobile: d.mobile, playerType: d.playerType, createdAt: Date.now() };
-    Promise.race([db.collection(SIGNUPS_COLLECTION).add(doc), timer]).then(function () {
-      var list = sentList(); list.push(key);
+    var claimRef = db.collection(CLAIMS_COLLECTION).doc(d.mobile);
+    var minShow = function () { return wait(Math.max(0, 950 - (Date.now() - started))); };   // let the "checking" morph be seen even on a fast connection
+
+    function duplicateFlow(kind) {
+      return minShow().then(function () {
+        btn.classList.remove('loading'); btn.classList.add('dupe');
+        if (navigator.vibrate) navigator.vibrate([40, 60, 40, 60, 40]);
+        return wait(450);
+      }).then(function () {
+        form.classList.remove('sending'); form.classList.remove('thud'); void form.offsetWidth; form.classList.add('thud');
+        var hero = document.querySelector('.hero'); hero.classList.remove('warn', 'celebrate'); void hero.offsetWidth; hero.classList.add('warn');
+        return wait(1000);
+      }).then(function () { showDuplicate(d, kind); setTimeout(resetButton, 700); });
+    }
+
+    Promise.resolve().then(function () {
+      if (sentList().indexOf(d.mobile) > -1) throw { duplicate: true, kind: 'phone' };      // same phone, same number again
+      return Promise.race([claimRef.get(), timer]);
+    }).then(function (snap) {
+      if (snap.exists) throw { duplicate: true, kind: (snap.data() || {}).kind || 'registered' };
+      var batch = db.batch();                                                              // claim the number and send the sign-up together, so two people cannot both get through
+      batch.set(claimRef, { at: doc.createdAt, kind: 'signup' });
+      batch.set(db.collection(SIGNUPS_COLLECTION).doc(d.mobile), doc);
+      return Promise.race([batch.commit(), timer]);
+    }).then(function () {
+      var list = sentList(); list.push(d.mobile);
       try { sessionStorage.setItem(SENT_KEY, JSON.stringify(list)); } catch (e) {}
-      return wait(Math.max(0, 950 - (Date.now() - started)));       // let the "sending" morph be seen even on a fast connection
+      return minShow();
     }).then(function () {
       btn.classList.remove('loading'); btn.classList.add('ok');
       if (navigator.vibrate) navigator.vibrate([20, 50, 30]);
       return wait(300);
     }).then(function () {
-      if (!reduceMotion) { celebrate(); var hero = document.querySelector('.hero'); hero.classList.remove('celebrate'); void hero.offsetWidth; hero.classList.add('celebrate'); }
+      if (!reduceMotion) { celebrate(); var hero = document.querySelector('.hero'); hero.classList.remove('celebrate', 'warn'); void hero.offsetWidth; hero.classList.add('celebrate'); }
       return wait(950);
     }).then(function () {
       showDone(d);
       setTimeout(function () { resetButton(); }, 700);
     }).catch(function (err) {
+      if (err && err.duplicate) return duplicateFlow(err.kind);
       console.error('Submit failed', err);
       var code = err && err.code;
-      fail(code === 'permission-denied' ? 'Registration is not open right now. Please check in at the registration desk.'
+      var msg = code === 'permission-denied' ? 'Registration is not open right now. Please check in at the registration desk.'
         : code === 'timeout' ? 'This is taking longer than usual. Please check your connection and try again.'
-        : 'Something went wrong. Please try again, or check in at the registration desk.');
+        : 'Something went wrong. Please try again, or check in at the registration desk.';
+      if (code === 'permission-denied') {   // maybe someone sent this same number a moment ago: look again before giving up
+        return claimRef.get().then(function (s2) { if (s2.exists) return duplicateFlow((s2.data() || {}).kind || 'signup'); fail(msg); }, function () { fail(msg); });
+      }
+      fail(msg);
     }).then(function () { busy = false; });
+  });
+
+  $('dupAgain').addEventListener('click', function () {
+    $('dup').hidden = true; $('dup').classList.remove('play', 'entering');
+    $('regForm').hidden = false; $('regForm').classList.remove('leaving', 'sending', 'thud');
+    $('regForm').classList.add('entering'); setTimeout(function () { $('regForm').classList.remove('entering'); }, 650);
+    $('mobile').value = ''; setErr('mobile', 'That number is already registered. Please enter a different number.');
+    resetButton();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    $('mobile').focus({ preventScroll: true });
   });
 
   $('againBtn').addEventListener('click', function () {
@@ -543,7 +629,7 @@
     $('team').value = ''; if ($('team').tagName === 'SELECT') $('team').classList.add('is-empty');
     Array.prototype.forEach.call(document.querySelectorAll('input[name="ptype"]'), function (r) { r.checked = false; });
     ['name', 'reference', 'team', 'mobile', 'ptype'].forEach(clearErr);
-    $('done').hidden = true; $('done').classList.remove('play', 'entering'); $('regForm').hidden = false; $('regForm').classList.remove('leaving', 'sending');
+    $('done').hidden = true; $('done').classList.remove('play', 'entering'); $('dup').hidden = true; $('dup').classList.remove('play', 'entering'); $('regForm').hidden = false; $('regForm').classList.remove('leaving', 'sending');
     $('regForm').classList.add('entering'); setTimeout(function () { $('regForm').classList.remove('entering'); }, 650);
     resetButton();
     window.scrollTo({ top: 0, behavior: 'smooth' });
