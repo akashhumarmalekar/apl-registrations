@@ -361,6 +361,7 @@
   table.signups .cell-input.cell-err { border-color:var(--red); background:var(--red-bg); }
   .sg-stack { display:flex; flex-direction:column; gap:6px; min-width:0; }
   .sg-type { align-self:flex-start; display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap; color:var(--blue); background:var(--blue-bg); }
+  .warn-txt.dupnum { color:var(--red); }
   .sg-note { margin-top:6px; font-size:12px; line-height:1.35; }
   #signupsWrap { overflow-x:auto; }
   @media (min-width:641px) {
@@ -944,7 +945,7 @@
     </div>
     <div class="add-msg err" id="signupsErr"></div>
     <div id="signupsWrap"></div>
-    <p class="hint">Fill in the <b>Followup</b> and <b>Category</b> (an existing player's are filled in for you), check the rest, then press <b>Add</b>. New people are added as <b>Registered</b>, with the reference and team they gave. If the name already exists in your list, that person is marked Registered instead of being duplicated. Auto-add and Add all only handle sign-ups that already have a followup and category, and skip anything that needs a decision (shared phone number, already registered).</p>
+    <p class="hint">Fill in the <b>Followup</b> and <b>Category</b> (an existing player's are filled in for you), check the rest, then press <b>Add</b>. New people are added as <b>Registered</b>, with the reference and team they gave. If the name already exists in your list, that person is marked Registered instead of being duplicated. A mobile number can only be used once: a sign-up whose number already belongs to another player, or came in earlier in this queue, cannot be added. Auto-add and Add all only handle sign-ups that already have a followup and category, and skip anything that needs a decision.</p>
   </section>
 
   <section class="panel" id="panel-access">
@@ -1307,6 +1308,7 @@ async function loadState() {
   });
 
   startSignupsListener();
+  startClaimsListener();
 }
 
 
@@ -1689,6 +1691,7 @@ function renderAll() {
   populateCategoryDatalist();
   renderRecords();
   renderQr();
+  scheduleClaimsSync();
   applyTournamentName();
 }
 
@@ -1972,9 +1975,9 @@ function deleteCategory(name) {
 }
 
 function findDuplicateMobile(mobile, excludeId) {
-  const m = (mobile || '').trim();
+  const m = normalizeMobile(mobile);
   if (!m) return null;
-  return participants.find(p => p.id !== excludeId && (p.mobile || '').trim() === m) || null;
+  return participants.find(p => p.id !== excludeId && normalizeMobile(p.mobile) === m) || null;
 }
 
 function openEditModal(id) {
@@ -2057,13 +2060,11 @@ function saveEdit(id) {
   }
 
   const dup = findDuplicateMobile(mobile, id);
-  if (dup && saveBtn.dataset.confirmed !== '1') {
-    warnEl.textContent = `This mobile number is already used by ${dup.fullName}. Click Save again to confirm.`;
+  if (dup && normalizeMobile(p.mobile) !== mobile) {          // numbers that were already shared before are left alone; a new clash is not allowed
+    warnEl.textContent = `This mobile number is already used by ${dup.fullName}. A number can only be used once.`;
     warnEl.style.display = 'block';
-    saveBtn.dataset.confirmed = '1';
     return;
   }
-  saveBtn.dataset.confirmed = '';
 
   const prevStatus = p.status;
   p.fullName = fullName;
@@ -3965,9 +3966,9 @@ function applyRecordEdit(el) {
   } else if (f === 'mobile') {
     const m = normalizeMobile(val);
     if (!m) { el.value = p.mobile; return fail('Enter a valid 10-digit contact number.'); }
-    el.value = m; p.mobile = m;
     const dup = findDuplicateMobile(m, p.id);
-    if (dup) recordsSay(`Heads up: this number is also used by ${dup.fullName}.`, 'warn');
+    if (dup && normalizeMobile(p.mobile) !== m) { el.value = p.mobile; return fail(`This number is already used by ${dup.fullName}. A mobile number can only be used once.`); }
+    el.value = m; p.mobile = m;
   } else if (f === 'status') {
     if (val === REGISTERED && !(p.category || '').trim()) {
       sel.value = NOT_REGISTERED; cat.classList.add('cell-err'); cat.focus();
@@ -4020,8 +4021,7 @@ function setupRecordsTab() {
       problems[0][0].focus(); return;
     }
     const dup = findDuplicateMobile(mobile, null);
-    if (dup && form.dataset.confirmDup !== mobile) { form.dataset.confirmDup = mobile; say(`This number already belongs to ${dup.fullName}. Press Add again to add anyway.`, 'warn'); return; }
-    form.dataset.confirmDup = '';
+    if (dup) { mo.classList.add('cell-err'); say(`This number already belongs to ${dup.fullName}. A mobile number can only be used once.`, 'err'); mo.focus(); return; }
     const p = { id: genId(), fullName, followup, mobile, status, category, team: canonicalTeam(tm.value), reference: cleanTeam(rf.value) };
     participants.push(p); markParticipantDirty(p.id);
     categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : [];
@@ -4054,8 +4054,8 @@ function startSignupsListener() {
   signupsUnsub = db.collection(SIGNUPS_COLLECTION).onSnapshot(snap => {
     signups = snap.docs.filter(d => d.id !== '_config').map(d => ({ docId: d.id, ...d.data() }))
       .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-    signupsError = '';
-    processSignups();
+    signupsError = ''; signupsLoaded = true;
+    processSignups(); scheduleClaimsSync();
   }, err => {
     console.error('Sign-ups listener error', err);
     signupsError = 'Could not read QR sign-ups. Check your Firestore rules (see the setup notes).';
@@ -4063,18 +4063,62 @@ function startSignupsListener() {
   });
 }
 
+// ---------------- One mobile number = one player: the public form checks these claims ----------------
+// A claim exists for every Registered player's number and every sign-up still waiting in the queue. The QR form looks up
+// the number it was given; if a claim exists it shows the "already registered" screen instead of sending a duplicate.
+const CLAIMS_COLLECTION = 'anand_apl_2026_claims';
+let claimsHave = new Map(), claimsUnsub = null, claimsLoaded = false, signupsLoaded = false, claimsTimer = null;
+function startClaimsListener() {
+  if (!db || claimsUnsub || !isAdmin()) return;
+  claimsUnsub = db.collection(CLAIMS_COLLECTION).onSnapshot(snap => {
+    claimsHave = new Map(snap.docs.map(d => [d.id, d.data()]));
+    claimsLoaded = true; scheduleClaimsSync();
+  }, err => console.warn('Claims listener error (check your Firestore rules)', err));
+}
+function scheduleClaimsSync(ms) { clearTimeout(claimsTimer); claimsTimer = setTimeout(syncClaims, ms || 1500); }
+function wantedClaims() {
+  const want = new Map();
+  participants.forEach(p => { const m = normalizeMobile(p.mobile); if (m && p.status === REGISTERED) want.set(m, 'registered'); });
+  signups.forEach(x => {
+    const m = normalizeMobile(x.mobile);
+    if (m && !handledSignups.has(x.docId) && !participants.some(p => p.id === 'qr_' + x.docId) && !want.has(m)) want.set(m, 'signup');
+  });
+  return want;
+}
+async function syncClaims() {
+  if (!db || !firebaseReady || !isAdmin() || !claimsLoaded || !signupsLoaded) return;
+  const want = wantedClaims(), now = Date.now(), ops = [];
+  if (claimsHave.size > 10 && want.size === 0) return;                 // looks like the data has not loaded; never wipe the claims
+  let retry = false;
+  want.forEach((kind, m) => { const have = claimsHave.get(m); if (!have) ops.push({ m, data: { at: now, kind } }); else if (have.kind !== kind) ops.push({ m, data: { at: have.at || now, kind } }); });
+  claimsHave.forEach((v, m) => {
+    if (want.has(m)) return;
+    if (Math.abs(now - (v.at || 0)) < 120000) { retry = true; return; }   // just created by the form: give the sign-up time to show up here
+    ops.push({ m, del: true });
+  });
+  if (retry) scheduleClaimsSync(125000);
+  for (let i = 0; i < ops.length; i += 400) {
+    const batch = db.batch();
+    ops.slice(i, i + 400).forEach(o => { const ref = db.collection(CLAIMS_COLLECTION).doc(o.m); if (o.del) batch.delete(ref); else batch.set(ref, o.data); });
+    try { await batch.commit(); } catch (e) { console.warn('Could not update number claims', e); return; }
+  }
+}
+
 function signupMatch(s) {
   const nm = normName(s.fullName), mob = normalizeMobile(s.mobile);
   const byName = participants.find(p => normName(p.fullName) === nm) || null;
   const sameNumber = mob ? (participants.find(p => p !== byName && normalizeMobile(p.mobile) === mob) || null) : null;
-  return { byName, sameNumber };
+  // another sign-up with the same number that arrived first (the first one wins)
+  const earlier = o => (o.createdAt || 0) < (s.createdAt || 0) || ((o.createdAt || 0) === (s.createdAt || 0) && String(o.docId) < String(s.docId));
+  const queueDup = mob ? (pendingSignups().find(o => o.docId !== s.docId && normalizeMobile(o.mobile) === mob && earlier(o)) || null) : null;
+  return { byName, sameNumber, queueDup };
 }
 const signupFollowup = (s, m) => String(s.followup || (m.byName && m.byName.followup) || '').trim();
 const signupCategory = (s, m) => String(s.category || (m.byName && m.byName.category) || '').trim();
 // Safe to add without a decision: nothing is missing, no shared number, not already registered.
 function autoOk(s) {
   const m = signupMatch(s);
-  if (m.sameNumber || (m.byName && m.byName.status === REGISTERED)) return false;
+  if (m.sameNumber || m.queueDup || (m.byName && m.byName.status === REGISTERED)) return false;
   return !!(String(s.fullName || '').trim() && normalizeMobile(s.mobile) && signupFollowup(s, m) && signupCategory(s, m));
 }
 function pendingSignups() { return signups.filter(s => !handledSignups.has(s.docId) && !participants.some(p => p.id === 'qr_' + s.docId)); }
@@ -4105,7 +4149,9 @@ function approveSignup(docId, auto) {
   const row = document.querySelector(`#signupsWrap tr[data-sid="${docId}"]`);
   const val = f => { const el = row && row.querySelector(`[data-sf="${f}"]`); return (el ? el.value : (s[f] || '')).toString().trim(); };
   const fullName = val('fullName'), mobile = normalizeMobile(val('mobile'));
-  const m = signupMatch({ fullName, mobile });
+  const m = signupMatch({ docId, fullName, mobile, createdAt: s.createdAt });
+  if (m.sameNumber) { if (!auto) alert(`This mobile number is already used by ${m.sameNumber.fullName}.\n\nA mobile number can only be used once. If this is the same person, change the name in this row to match their record, then press Register. Otherwise dismiss the sign-up.`); return; }
+  if (m.queueDup) { if (!auto) alert(`Another sign-up with this mobile number (${m.queueDup.fullName}) arrived first.\n\nA mobile number can only be used once. Dismiss one of them.`); return; }
   // An existing player's followup / category fill in automatically when you leave them blank.
   const followup = val('followup') || String((m.byName && m.byName.followup) || '').trim();
   const category = val('category') || String((m.byName && m.byName.category) || '').trim();
@@ -4179,7 +4225,8 @@ function renderQr() {
   $id('signupsCount').textContent = pend.length;
   $id('addAllSignups').style.display = pend.filter(autoOk).length > 1 ? '' : 'none';
   $id('autoAddToggle').checked = autoAddSignups;
-  if (wrap.contains(document.activeElement)) return;
+  const ae = document.activeElement;
+  if (wrap.contains(ae) && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)) return;   // do not rebuild a row while you are typing in it (typed values are kept anyway)
   if (!pend.length) { wrap.innerHTML = '<div class="empty-state">No pending sign-ups. New QR registrations appear here instantly.</div>'; return; }
   const rows = pend.map(s => {
     const m = signupMatch(s);
@@ -4188,11 +4235,14 @@ function renderQr() {
     const inp = (f, attrs, ph) => `<input class="cell-input" data-sf="${f}" value="${escapeHtml(d[f] !== undefined ? d[f] : def[f])}" placeholder="${ph || ''}" ${attrs || ''}>`;
     let info, canAdd = true;
     if (m.byName && m.byName.status === REGISTERED) { info = '<span class="st-pill reg">Already registered</span>'; canAdd = false; }
+    else if (m.sameNumber) info = `<span class="warn-txt dupnum">Number already used by ${escapeHtml(m.sameNumber.fullName)}</span>`;
+    else if (m.queueDup) info = `<span class="warn-txt dupnum">Same number as an earlier sign-up (${escapeHtml(m.queueDup.fullName)})</span>`;
     else if (m.byName) info = '<span class="st-pill">Existing person: will be marked Registered</span>';
-    else if (m.sameNumber) info = `<span class="warn-txt">Same number as ${escapeHtml(m.sameNumber.fullName)}</span>`;
     else info = '<span class="st-pill reg">New person</span>';
     let note = '';
-    if (s.playerType === 'Existing' && !m.byName && !m.sameNumber) note = 'Chose Existing, but this name is not in your list.';
+    if (m.sameNumber) note = 'A number can only be used once. If this is the same person, change the name here to match their record.';
+    else if (m.queueDup) note = 'A number can only be used once. Dismiss one of the two.';
+    else if (s.playerType === 'Existing' && !m.byName) note = 'Chose Existing, but this name is not in your list.';
     else if (s.playerType === 'New' && m.byName) note = 'Chose New, but this name is already in your list.';
     const type = s.playerType ? `<span class="sg-type" title="Category chosen on the registration form">${escapeHtml(s.playerType)} player</span>` : '';
     const time = s.createdAt ? new Date(s.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
