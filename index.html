@@ -491,6 +491,50 @@
   table.access .cell-input { border-color:var(--border); background:var(--card); max-width:140px; }
   @media (max-width:780px) { .acc-form { grid-template-columns:1fr; } .acc-form .btn { width:100%; } }
 
+  /* ---------- Tournament stats ---------- */
+  .tstats-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:16px; }
+  .tstats-head h2 { margin:0; font-family:var(--display); font-size:26px; font-weight:800; letter-spacing:-.02em; }
+  .tstats-head .tmeta { margin-top:4px; font-size:13px; color:var(--muted); }
+  .tstats-head select { max-width:260px; }
+  .tstats-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .tgrid { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:10px; margin-bottom:16px; }
+  .tstat { padding:14px 8px; text-align:center; background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow-sm); }
+  .tstat b { display:block; font-family:var(--display); font-size:26px; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; }
+  .tstat span { font-size:12px; font-weight:600; color:var(--muted); }
+  .tleaders { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .lead-card { position:relative; padding:18px 16px 10px; background:var(--card); border:1px solid var(--border); border-radius:20px; box-shadow:var(--shadow-sm); overflow:hidden; }
+  .lead-card::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; }
+  .lead-card.bat::before { background:linear-gradient(90deg, #4C6FE0, #3CC8DC); }
+  .lead-card.bowl::before { background:linear-gradient(90deg, #E8348C, #F86818); }
+  .lead-card h3 { margin:0 0 6px; font-family:var(--display); font-size:18px; font-weight:700; }
+  .lead-row { display:grid; grid-template-columns:32px minmax(0, 1fr) auto; gap:12px; align-items:center; padding:12px 0; border-top:1px solid var(--border); }
+  .rank { display:grid; place-items:center; width:30px; height:30px; border-radius:50%; font-size:13px; font-weight:800; color:var(--muted); background:var(--card-2); border:1px solid var(--border); }
+  .rank.r1 { color:#5A3B00; background:linear-gradient(135deg,#FFE08A,#F5B326); border-color:transparent; }
+  .rank.r2 { color:#3A4150; background:linear-gradient(135deg,#EEF1F6,#BCC4D2); border-color:transparent; }
+  .rank.r3 { color:#4A2A10; background:linear-gradient(135deg,#F2C9A4,#CD8B54); border-color:transparent; }
+  .lead-name { font-weight:700; line-height:1.25; }
+  .lead-sub { font-size:12.5px; color:var(--muted); }
+  .lead-chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+  .chip { padding:2px 8px; font-size:11.5px; font-weight:700; color:var(--muted); background:var(--card-2); border:1px solid var(--border); border-radius:999px; white-space:nowrap; }
+  .lead-val { text-align:right; }
+  .lead-val b { display:block; font-family:var(--display); font-size:26px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+  .lead-val span { font-size:11.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  .lead-note { margin:4px 0 6px; font-size:12px; color:var(--muted); }
+  .tsec { margin:22px 0 10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .tsec h3 { margin:0; font-family:var(--display); font-size:19px; font-weight:700; }
+  .tsec .tools { margin-left:auto; display:flex; flex-wrap:wrap; gap:8px; }
+  .tsec .tools input, .tsec .tools select { height:38px; padding:0 12px; font-size:14px; }
+  .tbl-wrap { overflow-x:auto; background:var(--card); border:1px solid var(--border); border-radius:16px; }
+  table.tbl { width:100%; min-width:760px; border-collapse:collapse; font-size:13.5px; }
+  table.tbl th { padding:11px 12px; text-align:right; font-size:11.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; white-space:nowrap; color:var(--muted); background:var(--card-2); cursor:pointer; user-select:none; }
+  table.tbl th.l, table.tbl td.l { text-align:left; }
+  table.tbl th:hover { color:var(--text); }
+  table.tbl td { padding:10px 12px; text-align:right; border-top:1px solid var(--border); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  table.tbl tbody tr:hover { background:var(--card-2); }
+  .sort-ind { display:inline-block; min-width:12px; margin-left:3px; font-size:9px; }
+  @media (max-width:900px) { .tleaders { grid-template-columns:1fr; } }
+  @media (max-width:640px) { .tgrid { grid-template-columns:repeat(3, minmax(0, 1fr)); } .tstats-head h2 { font-size:22px; } .tsec .tools { margin-left:0; width:100%; } .tsec .tools input { flex:1; min-width:0; } }
+
   /* ---------- Sync from sheet ---------- */
   .sync-tiles { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; margin:14px 0 12px; }
   .sync-tile { padding:10px 4px; text-align:center; background:var(--card-2); border:1px solid var(--border); border-radius:14px; }
@@ -724,6 +768,7 @@
     <button class="tab-btn" data-tab="followup"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>Followup</span></button>
     <button class="tab-btn" data-tab="category"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.2"/></svg><span>Category</span></button>
     <button class="tab-btn" data-tab="teams"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Teams</span></button>
+    <button class="tab-btn" data-tab="stats"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Stats</span></button>
     <button class="tab-btn" data-tab="records"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg><span>Data</span></button>
     <button class="tab-btn" data-tab="qr"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20v.01M20 20v1"/></svg><span>QR Sign-ups</span><span class="tab-badge" id="qrBadge" hidden>0</span></button>
     <button class="tab-btn" data-tab="log"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log</span></button>
@@ -967,6 +1012,29 @@
     <div class="card">
       <h3>People with access <span class="count-pill" id="accCount">0</span></h3>
       <div id="accWrap"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-stats">
+    <div class="tstats-head">
+      <div><h2 id="statsTitle">Tournament stats</h2><div class="tmeta" id="statsMeta"></div></div>
+      <div class="tstats-actions">
+        <select id="statsTournamentSel" aria-label="Tournament" hidden></select>
+        <button class="btn primary small" id="statsImportBtn" data-admin>Import stats Excel</button>
+        <button class="btn small danger" id="statsClearBtn" data-admin style="display:none;">Remove stats</button>
+        <input type="file" id="statsFile" accept=".xlsx,.xls,.csv" hidden>
+      </div>
+    </div>
+    <div class="empty-state" id="statsEmpty">No stats imported yet.</div>
+    <div id="statsBody" hidden>
+      <div class="tgrid" id="statsSummary"></div>
+      <div class="tleaders" id="statsLeaders"></div>
+      <div class="tsec"><h3>Teams</h3></div>
+      <div class="tbl-wrap" id="statsTeams"></div>
+      <div class="tsec"><h3>All players</h3><span class="count-pill" id="statsPlayersCount">0</span>
+        <div class="tools"><input type="search" id="statsSearch" placeholder="Search player or team" autocomplete="off"><select id="statsTeamFilter" aria-label="Team"></select><select id="statsRoleFilter" aria-label="Role"></select></div></div>
+      <div class="tbl-wrap" id="statsPlayers"></div>
+      <p class="hint">Everything on this tab comes only from the Excel file you import here. Strike rate = runs per 100 balls faced. Economy = runs conceded per over, with 6 balls to an over.</p>
     </div>
   </section>
 
@@ -5178,6 +5246,236 @@ function setupAccessUi() {
   });
 }
 
+// ---------------- Tournament stats ----------------
+// Imported from an Excel file and shown exactly as it is. This tab is deliberately separate from everything else on the
+// site: it never reads players, teams or registrations, and importing here never changes them. It keeps its own copy of the
+// data in its own Firestore document (anand_apl_2026_stats/current). Importing replaces the previous stats completely.
+const STATS_COLLECTION = 'anand_apl_2026_stats', STATS_DOC = 'current', STATS_LOCAL_KEY = 'anandAplStatsLocal';
+const STATS_COLUMNS = [   // [field, accepted header names (lower-case, letters and digits only), label shown in messages]
+  ['tournament', ['tournamentname', 'tournament'], 'Tournament Name'],
+  ['team', ['team', 'teamname'], 'Team'],
+  ['name', ['playername', 'player', 'name'], 'Player Name'],
+  ['role', ['playerrole', 'role'], 'Player Role'],
+  ['runs', ['runsscored', 'runs'], 'Runs Scored'],
+  ['balls', ['ballsfaced', 'bf'], 'Balls Faced'],
+  ['fours', ['4s', 'fours'], '4s'],
+  ['sixes', ['6s', 'sixes'], '6s'],
+  ['wickets', ['wickets', 'wkts'], 'Wickets'],
+  ['bowled', ['ballsbowled', 'bb'], 'Balls Bowled'],
+  ['conceded', ['runsconceded', 'rc'], 'Runs Conceded']
+];
+const BALLS_PER_OVER = 6;
+let statsData = null, statsUnsub = null, statsError = '', statsTournament = '';
+let statsSort = { teams: ['runs', -1], players: ['runs', -1] }, statsFilter = { q: '', team: '', role: '' };
+
+const statsNorm = h => String(h == null ? '' : h).toLowerCase().replace(/[^a-z0-9]/g, '');
+const statsOvers = b => `${Math.floor(b / BALLS_PER_OVER)}.${b % BALLS_PER_OVER}`;
+const statsSR = (runs, balls) => balls > 0 ? runs / balls * 100 : null;
+const statsEcon = (conceded, bowled) => bowled > 0 ? conceded / bowled * BALLS_PER_OVER : null;
+const statsFmt = (v, d) => v == null ? '\u2013' : (d ? v.toFixed(d) : String(v));
+
+// ----- reading the Excel file -----
+function statsParse(buf) {
+  const wb = XLSX.read(buf, { type: 'array' });
+  let found = null;
+  for (const sheetName of wb.SheetNames) {
+    const all = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: true, defval: '' });
+    const h = all.findIndex((r, i) => i < 10 && r.some(c => ['playername', 'player'].includes(statsNorm(c))));
+    if (h > -1) { found = { sheetName, header: all[h], data: all.slice(h + 1) }; break; }
+  }
+  if (!found) throw new Error('No sheet with a "Player Name" column was found.');
+  const idx = {}, missing = [];
+  STATS_COLUMNS.forEach(([key, names, label]) => { idx[key] = found.header.findIndex(c => names.includes(statsNorm(c))); if (idx[key] < 0) missing.push(label); });
+  const rows = [], bad = [], seen = new Map(), dupes = [];
+  let skipped = 0, rowNo = (found.data.length ? 0 : 0);
+  found.data.forEach((r, i) => {
+    const cell = key => idx[key] < 0 ? '' : r[idx[key]];
+    const text = key => String(cell(key) == null ? '' : cell(key)).replace(/\s+/g, ' ').trim();
+    if (!r.some(c => String(c).trim() !== '')) return;                       // blank line
+    const name = text('name');
+    if (!name) { skipped++; return; }
+    const o = { tournament: text('tournament') || 'Tournament', team: text('team') || 'No team', name, role: text('role') };
+    ['runs', 'balls', 'fours', 'sixes', 'wickets', 'bowled', 'conceded'].forEach(key => {
+      let v = cell(key);
+      if (v === '' || v == null) v = 0;
+      else if (typeof v === 'string') v = parseFloat(v.replace(/,/g, ''));
+      if (!isFinite(v) || v < 0) { bad.push(`${name}: ${STATS_COLUMNS.find(c => c[0] === key)[2]}`); v = 0; }
+      o[key] = Math.round(v);
+    });
+    const k = [o.tournament, o.team, o.name].map(x => x.toLowerCase()).join('|');
+    if (seen.has(k)) dupes.push(`${o.name} (${o.team})`); else seen.set(k, 1);
+    rows.push(o);
+  });
+  const warn = [];
+  if (missing.length) warn.push(`These columns were not found and count as 0: ${missing.join(', ')}.`);
+  if (skipped) warn.push(`${skipped} row(s) without a player name were skipped.`);
+  if (bad.length) warn.push(`${bad.length} value(s) were not valid numbers and count as 0: ${bad.slice(0, 4).join('; ')}${bad.length > 4 ? '\u2026' : ''}.`);
+  if (dupes.length) warn.push(`${dupes.length} player(s) appear more than once in the same team: ${dupes.slice(0, 4).join(', ')}${dupes.length > 4 ? '\u2026' : ''}. Both rows are kept.`);
+  const w1 = rows.filter(o => o.wickets > 0 && o.bowled === 0).length, w2 = rows.filter(o => o.runs > 0 && o.balls === 0).length;
+  const w3 = rows.filter(o => o.conceded > 0 && o.bowled === 0).length, w4 = rows.filter(o => o.fours * 4 + o.sixes * 6 > o.runs).length;
+  if (w1) warn.push(`${w1} player(s) have wickets but 0 balls bowled (their economy shows as \u2013).`);
+  if (w3) warn.push(`${w3} player(s) have runs conceded but 0 balls bowled.`);
+  if (w2) warn.push(`${w2} player(s) have runs but 0 balls faced (their strike rate shows as \u2013).`);
+  if (w4) warn.push(`${w4} player(s) have more runs from 4s and 6s than total runs.`);
+  return { sheetName: found.sheetName, rows, warn };
+}
+
+// ----- numbers worked out from the imported rows (nothing else on the site is used) -----
+const statsByTournament = () => statsData ? statsData.rows.filter(r => r.tournament === statsTournament) : [];
+function statsTournaments() {
+  const m = new Map(); (statsData ? statsData.rows : []).forEach(r => m.set(r.tournament, (m.get(r.tournament) || 0) + 1));
+  return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(e => e[0]);
+}
+function statsTeamTotals(rows) {
+  const m = new Map();
+  rows.forEach(r => {
+    const t = m.get(r.team) || { team: r.team, players: 0, runs: 0, balls: 0, fours: 0, sixes: 0, wickets: 0, bowled: 0, conceded: 0 };
+    t.players++; ['runs', 'balls', 'fours', 'sixes', 'wickets', 'bowled', 'conceded'].forEach(k => { t[k] += r[k]; }); m.set(r.team, t);
+  });
+  return Array.from(m.values());
+}
+const cmpName = (a, b) => a.name.localeCompare(b.name);
+function statsTopBatters(rows) {   // most runs; level on runs -> higher strike rate, then more boundaries, then name
+  return rows.filter(r => r.runs > 0).sort((a, b) => b.runs - a.runs || (statsSR(b.runs, b.balls) ?? -1) - (statsSR(a.runs, a.balls) ?? -1) || (b.fours + b.sixes) - (a.fours + a.sixes) || cmpName(a, b));
+}
+function statsTopBowlers(rows) {   // most wickets; level on wickets -> better (lower) economy, then more balls bowled, then name
+  return rows.filter(r => r.wickets > 0).sort((a, b) => b.wickets - a.wickets || (statsEcon(a.conceded, a.bowled) ?? 1e9) - (statsEcon(b.conceded, b.bowled) ?? 1e9) || b.bowled - a.bowled || cmpName(a, b));
+}
+
+// ----- drawing the tab -----
+function statsLeaderCard(kind, list) {
+  const bat = kind === 'bat', top = list.slice(0, 5), next = list[5];
+  const key = bat ? 'runs' : 'wickets';
+  const tie = top.some((p, i) => (i < top.length - 1 && p[key] === top[i + 1][key]) || (i === top.length - 1 && next && next[key] === p[key]));
+  const rows = top.map((p, i) => {
+    const chips = bat ? [`${p.balls} balls`, `SR ${statsFmt(statsSR(p.runs, p.balls), 1)}`, `${p.fours} \u00d7 4s`, `${p.sixes} \u00d7 6s`]
+                      : [`${statsOvers(p.bowled)} ov`, `${p.conceded} runs`, `Econ ${statsFmt(statsEcon(p.conceded, p.bowled), 2)}`];
+    return `<div class="lead-row"><span class="rank r${i + 1}">${i + 1}</span>
+      <div class="lead-main"><div class="lead-name">${escapeHtml(p.name)}</div><div class="lead-sub">${escapeHtml(p.team)}${p.role ? ' \u00b7 ' + escapeHtml(p.role) : ''}</div>
+      <div class="lead-chips">${chips.map(c => `<span class="chip">${escapeHtml(c)}</span>`).join('')}</div></div>
+      <div class="lead-val"><b>${p[key]}</b><span>${bat ? 'runs' : 'wickets'}</span></div></div>`;
+  }).join('');
+  return `<div class="lead-card ${bat ? 'bat' : 'bowl'}"><h3>${bat ? 'Top 5 batsmen' : 'Top 5 bowlers'}</h3>
+    ${rows || `<div class="empty-state" style="margin:10px 0;">${bat ? 'No runs scored yet.' : 'No wickets taken yet.'}</div>`}
+    ${tie ? `<p class="lead-note">${bat ? 'Players level on runs are ordered by strike rate, then boundaries.' : 'Players level on wickets are ordered by economy, then balls bowled.'}</p>` : ''}</div>`;
+}
+function statsSortHead(table, cols) {
+  const [k, d] = statsSort[table];
+  return `<tr>${cols.map(([key, label, left]) => `<th class="${left ? 'l' : ''}" data-sort="${key}" data-table="${table}" tabindex="0" role="button" aria-label="Sort by ${escapeHtml(label)}">${escapeHtml(label)}<span class="sort-ind">${k === key ? (d < 0 ? '\u25BC' : '\u25B2') : ''}</span></th>`).join('')}</tr>`;
+}
+function statsSorted(arr, table, getters) {
+  const [k, d] = statsSort[table], g = getters[k] || (r => r[k]);
+  return arr.slice().sort((a, b) => { const x = g(a), y = g(b); if (typeof x === 'string' || typeof y === 'string') return d * String(x ?? '').localeCompare(String(y ?? '')); return d * ((x ?? -1e9) - (y ?? -1e9)) || String(a.name || a.team).localeCompare(String(b.name || b.team)); });
+}
+function statsRenderTeams(rows) {
+  const teams = statsSorted(statsTeamTotals(rows), 'teams', { sr: t => statsSR(t.runs, t.balls), econ: t => statsEcon(t.conceded, t.bowled), overs: t => t.bowled });
+  const cols = [['team', 'Team', true], ['players', 'Players'], ['runs', 'Runs'], ['balls', 'Balls'], ['sr', 'SR'], ['fours', '4s'], ['sixes', '6s'], ['wickets', 'Wickets'], ['overs', 'Overs'], ['conceded', 'Runs conceded'], ['econ', 'Econ']];
+  $id('statsTeams').innerHTML = `<table class="tbl"><thead>${statsSortHead('teams', cols)}</thead><tbody>${teams.map(t => `<tr><td class="l"><b>${escapeHtml(t.team)}</b></td><td>${t.players}</td><td>${t.runs}</td><td>${t.balls}</td><td>${statsFmt(statsSR(t.runs, t.balls), 1)}</td><td>${t.fours}</td><td>${t.sixes}</td><td>${t.wickets}</td><td>${statsOvers(t.bowled)}</td><td>${t.conceded}</td><td>${statsFmt(statsEcon(t.conceded, t.bowled), 2)}</td></tr>`).join('')}</tbody></table>`;
+}
+function statsRenderPlayers(rows) {
+  const q = statsFilter.q.trim().toLowerCase();
+  const list = rows.filter(r => (!statsFilter.team || r.team === statsFilter.team) && (!statsFilter.role || r.role === statsFilter.role) && (!q || r.name.toLowerCase().includes(q) || r.team.toLowerCase().includes(q)));
+  const sorted = statsSorted(list, 'players', { sr: r => statsSR(r.runs, r.balls), econ: r => statsEcon(r.conceded, r.bowled), overs: r => r.bowled });
+  const cols = [['name', 'Player', true], ['team', 'Team', true], ['role', 'Role', true], ['runs', 'Runs'], ['balls', 'Balls'], ['sr', 'SR'], ['fours', '4s'], ['sixes', '6s'], ['wickets', 'Wkts'], ['overs', 'Overs'], ['conceded', 'Runs conc.'], ['econ', 'Econ']];
+  $id('statsPlayersCount').textContent = list.length === rows.length ? rows.length : `${list.length} of ${rows.length}`;
+  $id('statsPlayers').innerHTML = sorted.length ? `<table class="tbl"><thead>${statsSortHead('players', cols)}</thead><tbody>${sorted.map(r => `<tr><td class="l"><b>${escapeHtml(r.name)}</b></td><td class="l">${escapeHtml(r.team)}</td><td class="l">${escapeHtml(r.role)}</td><td>${r.runs}</td><td>${r.balls}</td><td>${statsFmt(statsSR(r.runs, r.balls), 1)}</td><td>${r.fours}</td><td>${r.sixes}</td><td>${r.wickets}</td><td>${statsOvers(r.bowled)}</td><td>${r.conceded}</td><td>${statsFmt(statsEcon(r.conceded, r.bowled), 2)}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="empty-state" style="margin:14px;">No players match that filter.</div>';
+}
+function renderTournamentStats() {
+  const body = $id('statsBody'), empty = $id('statsEmpty'); if (!body) return;
+  $id('statsClearBtn').style.display = statsData && statsData.rows.length ? '' : 'none';
+  if (!statsData || !statsData.rows.length) {
+    body.hidden = true; empty.hidden = false;
+    empty.innerHTML = statsError ? escapeHtml(statsError) : 'No stats imported yet.' + (isAdmin() ? ' Press <b>Import stats Excel</b> and choose your file.' : ' An admin will add them soon.');
+    $id('statsMeta').textContent = ''; $id('statsTitle').textContent = 'Tournament stats';
+    return;
+  }
+  empty.hidden = true; body.hidden = false;
+  const tournaments = statsTournaments();
+  if (!tournaments.includes(statsTournament)) statsTournament = tournaments[0];
+  const rows = statsByTournament(), teams = statsTeamTotals(rows);
+  const sum = k => rows.reduce((s, r) => s + r[k], 0);
+  $id('statsTitle').textContent = statsTournament;
+  $id('statsMeta').textContent = `Imported ${statsData.importedAt ? new Date(statsData.importedAt).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}${statsData.fileName ? ' from ' + statsData.fileName : ''}`;
+  const sel = $id('statsTournamentSel');
+  sel.hidden = tournaments.length < 2;
+  if (tournaments.length > 1) sel.innerHTML = tournaments.map(t => `<option value="${escapeHtml(t)}"${t === statsTournament ? ' selected' : ''}>${escapeHtml(t)}</option>`).join('');
+  const card = (n, label) => `<div class="tstat"><b>${n}</b><span>${label}</span></div>`;
+  $id('statsSummary').innerHTML = card(rows.length, 'Players') + card(teams.length, 'Teams') + card(sum('runs'), 'Runs') + card(sum('wickets'), 'Wickets') + card(sum('fours'), 'Fours') + card(sum('sixes'), 'Sixes');
+  $id('statsLeaders').innerHTML = statsLeaderCard('bat', statsTopBatters(rows)) + statsLeaderCard('bowl', statsTopBowlers(rows));
+  statsRenderTeams(rows);
+  const teamSel = $id('statsTeamFilter'), roleSel = $id('statsRoleFilter');
+  const teamNames = teams.map(t => t.team).sort((a, b) => a.localeCompare(b)), roles = Array.from(new Set(rows.map(r => r.role).filter(Boolean))).sort();
+  if (statsFilter.team && !teamNames.includes(statsFilter.team)) statsFilter.team = '';
+  if (statsFilter.role && !roles.includes(statsFilter.role)) statsFilter.role = '';
+  teamSel.innerHTML = '<option value="">All teams</option>' + teamNames.map(t => `<option value="${escapeHtml(t)}"${t === statsFilter.team ? ' selected' : ''}>${escapeHtml(t)}</option>`).join('');
+  roleSel.innerHTML = '<option value="">All roles</option>' + roles.map(t => `<option value="${escapeHtml(t)}"${t === statsFilter.role ? ' selected' : ''}>${escapeHtml(t)}</option>`).join('');
+  statsRenderPlayers(rows);
+}
+
+// ----- storing: the stats have their own document; nothing else is touched -----
+function statsFromDoc(d) {
+  if (!d) return null;
+  try { const rows = JSON.parse(d.rowsJson || '[]'); return { rows: Array.isArray(rows) ? rows : [], fileName: d.fileName || '', importedAt: d.importedAt || 0 }; } catch (e) { return null; }
+}
+function startStatsListener() {
+  if (statsUnsub) return;
+  if (!db) { try { statsData = JSON.parse(localStorage.getItem(STATS_LOCAL_KEY) || 'null'); } catch (e) {} renderTournamentStats(); return; }   // no cloud database: keep it on this device
+  statsUnsub = db.collection(STATS_COLLECTION).doc(STATS_DOC).onSnapshot(snap => {
+    statsData = snap.exists ? statsFromDoc(snap.data()) : null; statsError = ''; renderTournamentStats();
+  }, err => { console.warn('Stats listener error', err); statsError = 'Could not load the stats. Check your internet connection and the Firestore rules.'; renderTournamentStats(); });
+}
+async function statsSave(parsed, fileName) {
+  const data = { rows: parsed.rows, fileName, importedAt: Date.now() };
+  if (db) await db.collection(STATS_COLLECTION).doc(STATS_DOC).set({ rowsJson: JSON.stringify(parsed.rows), fileName, importedAt: data.importedAt, importedBy: currentUser ? currentUser.mobile : '' });
+  else { try { localStorage.setItem(STATS_LOCAL_KEY, JSON.stringify(data)); } catch (e) {} }
+  statsData = data; statsError = ''; statsTournament = ''; statsFilter = { q: '', team: '', role: '' }; renderTournamentStats();
+}
+async function statsClear() {
+  if (!confirm('Remove all imported stats from the site? You can import the Excel again any time.')) return;
+  try { if (db) await db.collection(STATS_COLLECTION).doc(STATS_DOC).delete(); else localStorage.removeItem(STATS_LOCAL_KEY); statsData = null; renderTournamentStats(); }
+  catch (e) { console.error(e); alert('Could not remove the stats. Check your internet connection.'); }
+}
+
+// ----- import: read, show what will happen, then replace -----
+function statsPreview(parsed, fileName) {
+  const byT = new Map(); parsed.rows.forEach(r => { const t = byT.get(r.tournament) || { n: 0, teams: new Set(), runs: 0, wk: 0 }; t.n++; t.teams.add(r.team); t.runs += r.runs; t.wk += r.wickets; byT.set(r.tournament, t); });
+  const lines = Array.from(byT.entries()).map(([name, t]) => `<tr><td><b>${escapeHtml(name)}</b></td><td>${t.n}</td><td>${t.teams.size}</td><td>${t.runs}</td><td>${t.wk}</td></tr>`).join('');
+  openModal(`<h3>Import stats</h3>
+    <p class="desc" style="margin:0 0 10px;">${escapeHtml(fileName)} \u00b7 sheet <b>${escapeHtml(parsed.sheetName)}</b> \u00b7 ${parsed.rows.length} player row(s)</p>
+    <div class="tbl-wrap"><table class="tbl" style="min-width:0;"><thead><tr><th class="l">Tournament</th><th>Players</th><th>Teams</th><th>Runs</th><th>Wickets</th></tr></thead><tbody>${lines}</tbody></table></div>
+    ${parsed.warn.map(w => `<div class="sync-note warn">${escapeHtml(w)}</div>`).join('')}
+    <div class="sync-note info">This replaces any stats already on the site. Your players, teams and registrations are not touched.</div>
+    <div class="btn-row"><button class="btn primary" id="statsApply"${parsed.rows.length ? '' : ' disabled'}>Import and replace</button><button class="btn" id="statsCancel">Cancel</button></div>`);
+  $id('statsCancel').addEventListener('click', closeModal);
+  $id('statsApply').addEventListener('click', () => { closeModal(); requirePin(async () => { try { await statsSave(parsed, fileName); } catch (e) { console.error(e); alert('Could not save the stats. Check your internet connection and the Firestore rules.'); } }); });
+}
+function setupStatsTab() {
+  const file = $id('statsFile');
+  $id('statsImportBtn').addEventListener('click', () => file.click());
+  $id('statsClearBtn').addEventListener('click', statsClear);
+  file.addEventListener('change', () => {
+    const f = file.files && file.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = e => { try { statsPreview(statsParse(e.target.result), f.name); } catch (err) { console.error(err); alert(err.message || 'Could not read that file.'); } file.value = ''; };
+    reader.onerror = () => { alert('Could not read that file.'); file.value = ''; };
+    reader.readAsArrayBuffer(f);
+  });
+  const panel = $id('panel-stats');
+  panel.addEventListener('click', e => {
+    const th = e.target.closest('th[data-sort]'); if (!th) return;
+    const t = th.dataset.table, k = th.dataset.sort;
+    statsSort[t] = statsSort[t][0] === k ? [k, -statsSort[t][1]] : [k, (k === 'name' || k === 'team' || k === 'role') ? 1 : -1];
+    if (t === 'teams') statsRenderTeams(statsByTournament()); else statsRenderPlayers(statsByTournament());
+  });
+  panel.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('th[data-sort]')) { e.preventDefault(); e.target.click(); } });
+  $id('statsTournamentSel').addEventListener('change', e => { statsTournament = e.target.value; statsFilter = { q: '', team: '', role: '' }; $id('statsSearch').value = ''; renderTournamentStats(); });
+  $id('statsSearch').addEventListener('input', e => { statsFilter.q = e.target.value; statsRenderPlayers(statsByTournament()); });
+  $id('statsTeamFilter').addEventListener('change', e => { statsFilter.team = e.target.value; statsRenderPlayers(statsByTournament()); });
+  $id('statsRoleFilter').addEventListener('change', e => { statsFilter.role = e.target.value; statsRenderPlayers(statsByTournament()); });
+  renderTournamentStats();
+}
+
 async function init() {
   applyBrandLogo();
   try { const cachedName = localStorage.getItem('anandAplTName'); if (cachedName) document.querySelectorAll('.js-tname').forEach(el => { el.textContent = cachedName; }); } catch (e) {}
@@ -5187,6 +5485,8 @@ async function init() {
   setupTabs();
   applyRole();
   setupAccessUi();
+  setupStatsTab();
+  startStatsListener();
   setupRecordsTab();
   setupTeamsTab();
   applyBrandLogo();
