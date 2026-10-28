@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="app-build" content="2026102804">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Anand APL 2026 - Tournament Registration</title>
 <meta name="theme-color" content="#1A2257">
@@ -532,9 +533,41 @@
   table.tbl td { padding:10px 12px; text-align:right; border-top:1px solid var(--border); font-variant-numeric:tabular-nums; white-space:nowrap; }
   table.tbl tbody tr:hover { background:var(--card-2); }
   .sort-ind { display:inline-block; min-width:12px; margin-left:3px; font-size:9px; }
+  .lead-row[data-i], table.tbl tbody tr[data-i] { cursor:pointer; }
+  .lead-row[data-i]:hover { background:var(--card-2); }
+  .lead-row[data-i]:focus-visible, table.tbl tbody tr[data-i]:focus-visible { outline:none; box-shadow:inset 0 0 0 2px var(--blue-b); }
+  .lead-row[data-i] { margin:0 -8px; padding-left:8px; padding-right:8px; border-radius:12px; }
+  table.tbl tbody tr[data-i] td.l b { color:var(--blue); }
+  .pv-back { margin-bottom:14px; }
+  .pv-hero { position:relative; display:flex; align-items:center; gap:16px; padding:22px 20px; margin-bottom:16px; color:#fff; border-radius:22px; overflow:hidden;
+    background:radial-gradient(420px 220px at 90% -20%, rgba(232,52,140,.5), transparent 65%), radial-gradient(380px 220px at 0% 120%, rgba(60,200,220,.35), transparent 65%), linear-gradient(135deg, #131A4A 0%, #29357A 55%, #3A2E92 100%); }
+  .pv-hero::after { content:""; position:absolute; left:0; right:0; bottom:0; height:4px; background:var(--brand-grad); }
+  .pv-avatar { flex:none; display:grid; place-items:center; width:68px; height:68px; border-radius:50%; font-family:var(--display); font-size:26px; font-weight:800; background:rgba(255,255,255,.14); border:2px solid rgba(255,255,255,.35); }
+  .pv-hero h2 { margin:0; font-family:var(--display); font-size:28px; font-weight:800; letter-spacing:-.02em; line-height:1.1; word-break:break-word; }
+  .pv-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .pv-chips span { padding:3px 10px; font-size:12.5px; font-weight:700; border-radius:999px; background:rgba(255,255,255,.16); }
+  .pv-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .pv-card { position:relative; padding:18px 16px 16px; background:var(--card); border:1px solid var(--border); border-radius:20px; box-shadow:var(--shadow-sm); overflow:hidden; }
+  .pv-card::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; }
+  .pv-card.bat::before { background:linear-gradient(90deg, #4C6FE0, #3CC8DC); }
+  .pv-card.bowl::before { background:linear-gradient(90deg, #E8348C, #F86818); }
+  .pv-card.pos::before { background:var(--brand-grad); }
+  .pv-card h3 { margin:0 0 12px; font-family:var(--display); font-size:18px; font-weight:700; }
+  .pv-tiles { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+  .pv-tile { padding:12px 8px; text-align:center; background:var(--card-2); border:1px solid var(--border); border-radius:14px; }
+  .pv-tile b { display:block; font-family:var(--display); font-size:24px; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; }
+  .pv-tile.big b { font-size:30px; }
+  .pv-tile span { font-size:11.5px; font-weight:600; color:var(--muted); }
+  .pv-none { padding:18px 8px; text-align:center; color:var(--muted); font-weight:600; background:var(--card-2); border:1px dashed var(--border-strong); border-radius:14px; }
+  .pv-pos { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; }
+  @media (max-width:900px) { .pv-grid { grid-template-columns:1fr; } .pv-pos { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+  @media (max-width:640px) { .pv-hero { padding:18px 16px; } .pv-hero h2 { font-size:23px; } .pv-avatar { width:56px; height:56px; font-size:21px; } }
   @media (max-width:900px) { .tleaders { grid-template-columns:1fr; } }
   @media (max-width:640px) { .tgrid { grid-template-columns:repeat(3, minmax(0, 1fr)); } .tstats-head h2 { font-size:22px; } .tsec .tools { margin-left:0; width:100%; } .tsec .tools input { flex:1; min-width:0; } }
 
+  .build-tag { padding:18px 16px 30px; text-align:center; font-size:12px; color:var(--muted); opacity:.85; }
+  .update-bar { position:fixed; left:12px; right:12px; bottom:12px; z-index:2500; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; max-width:560px; margin:0 auto; padding:12px 14px; color:#fff; font-weight:600; background:#1A2257; border-radius:16px; box-shadow:0 18px 40px -12px rgba(0,0,0,.55); }
+  .update-bar button { height:38px; padding:0 16px; font:inherit; font-weight:700; color:#1A2257; background:#fff; border:0; border-radius:10px; cursor:pointer; }
   /* ---------- Sync from sheet ---------- */
   .sync-tiles { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; margin:14px 0 12px; }
   .sync-tile { padding:10px 4px; text-align:center; background:var(--card-2); border:1px solid var(--border); border-radius:14px; }
@@ -741,6 +774,7 @@
     <h1 class="js-tname" id="lockTitle">Anand APL 2026</h1>
     <p class="lock-sub" id="lockSub">Loading&hellip;</p>
     <div id="lockBody"></div>
+    <p class="lock-hint" id="lockVer" style="font-size:11.5px;margin-top:18px;"></p>
   </div>
 </div>
 
@@ -1016,6 +1050,7 @@
   </section>
 
   <section class="panel" id="panel-stats">
+    <div id="statsMain">
     <div class="tstats-head">
       <div><h2 id="statsTitle">Tournament stats</h2><div class="tmeta" id="statsMeta"></div></div>
       <div class="tstats-actions">
@@ -1031,11 +1066,13 @@
       <div class="tleaders" id="statsLeaders"></div>
       <div class="tsec"><h3>Teams</h3></div>
       <div class="tbl-wrap" id="statsTeams"></div>
-      <div class="tsec"><h3>All players</h3><span class="count-pill" id="statsPlayersCount">0</span>
+      <div class="tsec"><h3>All players</h3><span class="count-pill" id="statsPlayersCount">0</span><span class="tmeta" style="font-size:13px;color:var(--muted);">Tap a name to see only his stats</span>
         <div class="tools"><input type="search" id="statsSearch" placeholder="Search player or team" autocomplete="off"><select id="statsTeamFilter" aria-label="Team"></select><select id="statsRoleFilter" aria-label="Role"></select></div></div>
       <div class="tbl-wrap" id="statsPlayers"></div>
-      <p class="hint">Everything on this tab comes only from the Excel file you import here. Strike rate = runs per 100 balls faced. Economy = runs conceded per over, with 6 balls to an over.</p>
+      <p class="hint">Everything on this tab comes only from the Excel file you import here. Tap any player to see only his stats. Strike rate = runs per 100 balls faced. Economy = runs conceded per over, with 6 balls to an over.</p>
     </div>
+    </div>
+    <div id="statsPlayerView" hidden></div>
   </section>
 
   <section class="panel" id="panel-data">
@@ -1135,6 +1172,7 @@
   <div class="modal-box" id="modalBox"></div>
 </div>
 
+<div class="build-tag" id="buildTag"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -5267,6 +5305,8 @@ const STATS_COLUMNS = [   // [field, accepted header names (lower-case, letters 
 const BALLS_PER_OVER = 6;
 let statsData = null, statsUnsub = null, statsError = '', statsTournament = '';
 let statsSort = { teams: ['runs', -1], players: ['runs', -1] }, statsFilter = { q: '', team: '', role: '' };
+let statsPlayerId = null, statsScrollY = 0;   // which player's own screen is open (null = the list)
+const statsIndexRows = d => { if (d && d.rows) d.rows.forEach((r, i) => { r._i = i; }); return d; };
 
 const statsNorm = h => String(h == null ? '' : h).toLowerCase().replace(/[^a-z0-9]/g, '');
 const statsOvers = b => `${Math.floor(b / BALLS_PER_OVER)}.${b % BALLS_PER_OVER}`;
@@ -5350,7 +5390,7 @@ function statsLeaderCard(kind, list) {
   const rows = top.map((p, i) => {
     const chips = bat ? [`${p.balls} balls`, `SR ${statsFmt(statsSR(p.runs, p.balls), 1)}`, `${p.fours} \u00d7 4s`, `${p.sixes} \u00d7 6s`]
                       : [`${statsOvers(p.bowled)} ov`, `${p.conceded} runs`, `Econ ${statsFmt(statsEcon(p.conceded, p.bowled), 2)}`];
-    return `<div class="lead-row"><span class="rank r${i + 1}">${i + 1}</span>
+    return `<div class="lead-row" data-i="${p._i}" tabindex="0" role="button" aria-label="Show ${escapeHtml(p.name)}'s stats"><span class="rank r${i + 1}">${i + 1}</span>
       <div class="lead-main"><div class="lead-name">${escapeHtml(p.name)}</div><div class="lead-sub">${escapeHtml(p.team)}${p.role ? ' \u00b7 ' + escapeHtml(p.role) : ''}</div>
       <div class="lead-chips">${chips.map(c => `<span class="chip">${escapeHtml(c)}</span>`).join('')}</div></div>
       <div class="lead-val"><b>${p[key]}</b><span>${bat ? 'runs' : 'wickets'}</span></div></div>`;
@@ -5378,11 +5418,49 @@ function statsRenderPlayers(rows) {
   const sorted = statsSorted(list, 'players', { sr: r => statsSR(r.runs, r.balls), econ: r => statsEcon(r.conceded, r.bowled), overs: r => r.bowled });
   const cols = [['name', 'Player', true], ['team', 'Team', true], ['role', 'Role', true], ['runs', 'Runs'], ['balls', 'Balls'], ['sr', 'SR'], ['fours', '4s'], ['sixes', '6s'], ['wickets', 'Wkts'], ['overs', 'Overs'], ['conceded', 'Runs conc.'], ['econ', 'Econ']];
   $id('statsPlayersCount').textContent = list.length === rows.length ? rows.length : `${list.length} of ${rows.length}`;
-  $id('statsPlayers').innerHTML = sorted.length ? `<table class="tbl"><thead>${statsSortHead('players', cols)}</thead><tbody>${sorted.map(r => `<tr><td class="l"><b>${escapeHtml(r.name)}</b></td><td class="l">${escapeHtml(r.team)}</td><td class="l">${escapeHtml(r.role)}</td><td>${r.runs}</td><td>${r.balls}</td><td>${statsFmt(statsSR(r.runs, r.balls), 1)}</td><td>${r.fours}</td><td>${r.sixes}</td><td>${r.wickets}</td><td>${statsOvers(r.bowled)}</td><td>${r.conceded}</td><td>${statsFmt(statsEcon(r.conceded, r.bowled), 2)}</td></tr>`).join('')}</tbody></table>`
+  $id('statsPlayers').innerHTML = sorted.length ? `<table class="tbl"><thead>${statsSortHead('players', cols)}</thead><tbody>${sorted.map(r => `<tr data-i="${r._i}" tabindex="0" aria-label="Show ${escapeHtml(r.name)}'s stats"><td class="l"><b>${escapeHtml(r.name)}</b></td><td class="l">${escapeHtml(r.team)}</td><td class="l">${escapeHtml(r.role)}</td><td>${r.runs}</td><td>${r.balls}</td><td>${statsFmt(statsSR(r.runs, r.balls), 1)}</td><td>${r.fours}</td><td>${r.sixes}</td><td>${r.wickets}</td><td>${statsOvers(r.bowled)}</td><td>${r.conceded}</td><td>${statsFmt(statsEcon(r.conceded, r.bowled), 2)}</td></tr>`).join('')}</tbody></table>`
     : '<div class="empty-state" style="margin:14px;">No players match that filter.</div>';
+}
+
+// ----- one player's own screen: only his numbers, taken from the same imported rows -----
+function statsRenderPlayerView(r) {
+  const rows = statsByTournament();
+  const batters = statsTopBatters(rows), bowlers = statsTopBowlers(rows);
+  const teamRows = rows.filter(x => x.team === r.team), teamRuns = teamRows.reduce((a, x) => a + x.runs, 0), teamWk = teamRows.reduce((a, x) => a + x.wickets, 0);
+  const tile = (v, label, big) => `<div class="pv-tile${big ? ' big' : ''}"><b>${v}</b><span>${label}</span></div>`;
+  const batted = r.runs > 0 || r.balls > 0, bowledAny = r.wickets > 0 || r.bowled > 0 || r.conceded > 0;
+  const boundaryRuns = r.fours * 4 + r.sixes * 6;
+  const batting = batted
+    ? `<div class="pv-tiles">${tile(r.runs, 'Runs', true)}${tile(r.balls, 'Balls faced')}${tile(statsFmt(statsSR(r.runs, r.balls), 1), 'Strike rate')}${tile(r.fours, 'Fours')}${tile(r.sixes, 'Sixes')}${tile(r.runs > 0 ? Math.round(boundaryRuns / r.runs * 100) + '%' : '\u2013', 'Runs in boundaries')}</div>`
+    : '<div class="pv-none">Did not bat</div>';
+  const bowling = bowledAny
+    ? `<div class="pv-tiles">${tile(r.wickets, 'Wickets', true)}${tile(statsOvers(r.bowled), 'Overs')}${tile(r.conceded, 'Runs conceded')}${tile(statsFmt(statsEcon(r.conceded, r.bowled), 2), 'Economy')}${tile(r.wickets > 0 && r.bowled > 0 ? statsFmt(r.bowled / r.wickets, 1) : '\u2013', 'Balls per wicket')}${tile(r.wickets > 0 ? statsFmt(r.conceded / r.wickets, 1) : '\u2013', 'Runs per wicket')}</div>`
+    : '<div class="pv-none">Did not bowl</div>';
+  const bi = batters.indexOf(r), wi = bowlers.indexOf(r);
+  const share = (v, total) => total > 0 ? Math.round(v / total * 100) + '%' : '\u2013';
+  const initials = r.name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+  $id('statsPlayerView').innerHTML = `<button type="button" class="btn pv-back" id="statsBack">\u2190 Back to all stats</button>
+    <div class="pv-hero"><div class="pv-avatar" aria-hidden="true">${escapeHtml(initials)}</div><div><h2>${escapeHtml(r.name)}</h2>
+      <div class="pv-chips"><span>${escapeHtml(r.team)}</span>${r.role ? `<span>${escapeHtml(r.role)}</span>` : ''}<span>${escapeHtml(r.tournament)}</span></div></div></div>
+    <div class="pv-grid"><div class="pv-card bat"><h3>Batting</h3>${batting}</div><div class="pv-card bowl"><h3>Bowling</h3>${bowling}</div></div>
+    <div class="pv-card pos"><h3>In the tournament</h3><div class="pv-pos">${tile(bi > -1 ? '#' + (bi + 1) : '\u2013', 'Batting rank (of ' + batters.length + ')')}${tile(wi > -1 ? '#' + (wi + 1) : '\u2013', 'Bowling rank (of ' + bowlers.length + ')')}${tile(share(r.runs, teamRuns), 'Of ' + escapeHtml(r.team) + '\u2019s runs')}${tile(share(r.wickets, teamWk), 'Of ' + escapeHtml(r.team) + '\u2019s wickets')}</div></div>`;
+}
+function openStatsPlayer(i) {
+  statsScrollY = window.scrollY; statsPlayerId = i; renderTournamentStats(); window.scrollTo({ top: 0 });
+  const b = $id('statsBack'); if (b) b.focus({ preventScroll: true });
+}
+function closeStatsPlayer() {
+  statsPlayerId = null; renderTournamentStats(); window.scrollTo({ top: statsScrollY });
 }
 function renderTournamentStats() {
   const body = $id('statsBody'), empty = $id('statsEmpty'); if (!body) return;
+  const pv = $id('statsPlayerView'), main = $id('statsMain');
+  if (statsPlayerId != null && statsData) {
+    const one = statsData.rows.find(x => x._i === statsPlayerId);
+    if (one) { main.hidden = true; pv.hidden = false; if (statsTournament !== one.tournament) statsTournament = one.tournament; statsRenderPlayerView(one); return; }
+    statsPlayerId = null;
+  }
+  pv.hidden = true; main.hidden = false;
   $id('statsClearBtn').style.display = statsData && statsData.rows.length ? '' : 'none';
   if (!statsData || !statsData.rows.length) {
     body.hidden = true; empty.hidden = false;
@@ -5416,11 +5494,11 @@ function renderTournamentStats() {
 // ----- storing: the stats have their own document; nothing else is touched -----
 function statsFromDoc(d) {
   if (!d) return null;
-  try { const rows = JSON.parse(d.rowsJson || '[]'); return { rows: Array.isArray(rows) ? rows : [], fileName: d.fileName || '', importedAt: d.importedAt || 0 }; } catch (e) { return null; }
+  try { const rows = JSON.parse(d.rowsJson || '[]'); return statsIndexRows({ rows: Array.isArray(rows) ? rows : [], fileName: d.fileName || '', importedAt: d.importedAt || 0 }); } catch (e) { return null; }
 }
 function startStatsListener() {
   if (statsUnsub) return;
-  if (!db) { try { statsData = JSON.parse(localStorage.getItem(STATS_LOCAL_KEY) || 'null'); } catch (e) {} renderTournamentStats(); return; }   // no cloud database: keep it on this device
+  if (!db) { try { statsData = statsIndexRows(JSON.parse(localStorage.getItem(STATS_LOCAL_KEY) || 'null')); } catch (e) {} renderTournamentStats(); return; }   // no cloud database: keep it on this device
   statsUnsub = db.collection(STATS_COLLECTION).doc(STATS_DOC).onSnapshot(snap => {
     statsData = snap.exists ? statsFromDoc(snap.data()) : null; statsError = ''; renderTournamentStats();
   }, err => { console.warn('Stats listener error', err); statsError = 'Could not load the stats. Check your internet connection and the Firestore rules.'; renderTournamentStats(); });
@@ -5429,7 +5507,7 @@ async function statsSave(parsed, fileName) {
   const data = { rows: parsed.rows, fileName, importedAt: Date.now() };
   if (db) await db.collection(STATS_COLLECTION).doc(STATS_DOC).set({ rowsJson: JSON.stringify(parsed.rows), fileName, importedAt: data.importedAt, importedBy: currentUser ? currentUser.mobile : '' });
   else { try { localStorage.setItem(STATS_LOCAL_KEY, JSON.stringify(data)); } catch (e) {} }
-  statsData = data; statsError = ''; statsTournament = ''; statsFilter = { q: '', team: '', role: '' }; renderTournamentStats();
+  statsData = statsIndexRows(data); statsError = ''; statsTournament = ''; statsPlayerId = null; statsFilter = { q: '', team: '', role: '' }; renderTournamentStats();
 }
 async function statsClear() {
   if (!confirm('Remove all imported stats from the site? You can import the Excel again any time.')) return;
@@ -5463,12 +5541,15 @@ function setupStatsTab() {
   });
   const panel = $id('panel-stats');
   panel.addEventListener('click', e => {
+    if (e.target.closest('#statsBack')) { closeStatsPlayer(); return; }
+    const row = e.target.closest('[data-i]'); if (row) { openStatsPlayer(parseInt(row.dataset.i, 10)); return; }
     const th = e.target.closest('th[data-sort]'); if (!th) return;
     const t = th.dataset.table, k = th.dataset.sort;
     statsSort[t] = statsSort[t][0] === k ? [k, -statsSort[t][1]] : [k, (k === 'name' || k === 'team' || k === 'role') ? 1 : -1];
     if (t === 'teams') statsRenderTeams(statsByTournament()); else statsRenderPlayers(statsByTournament());
   });
-  panel.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('th[data-sort]')) { e.preventDefault(); e.target.click(); } });
+  panel.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('th[data-sort], [data-i]')) { e.preventDefault(); e.target.click(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && statsPlayerId != null && panel.classList.contains('active') && !document.getElementById('modalOverlay').classList.contains('show')) closeStatsPlayer(); });
   $id('statsTournamentSel').addEventListener('change', e => { statsTournament = e.target.value; statsFilter = { q: '', team: '', role: '' }; $id('statsSearch').value = ''; renderTournamentStats(); });
   $id('statsSearch').addEventListener('input', e => { statsFilter.q = e.target.value; statsRenderPlayers(statsByTournament()); });
   $id('statsTeamFilter').addEventListener('change', e => { statsFilter.team = e.target.value; statsRenderPlayers(statsByTournament()); });
@@ -5476,8 +5557,30 @@ function setupStatsTab() {
   renderTournamentStats();
 }
 
+// ---------------- Which version is this? ----------------
+// The page shows its own version at the bottom, and quietly checks the website for a newer one (cached copies are common on phones).
+const APP_BUILD = 2026102804;   // YYYYMMDD + two digits
+const buildLabel = b => { const t = String(b); return t.slice(0, 4) + '-' + t.slice(4, 6) + '-' + t.slice(6, 8) + ' #' + parseInt(t.slice(8), 10); };
+async function checkForNewVersion() {
+  if (location.protocol === 'file:') return;
+  try {
+    const res = await fetch(location.pathname + '?cb=' + Date.now(), { cache: 'no-store', headers: { Range: 'bytes=0-2999' } });
+    const m = (await res.text()).match(/name="app-build" content="(\d+)"/);
+    const latest = m ? parseInt(m[1], 10) : 0;
+    if (latest > APP_BUILD && !document.getElementById('updateBar')) {
+      const bar = document.createElement('div'); bar.className = 'update-bar'; bar.id = 'updateBar'; bar.setAttribute('role', 'status');
+      bar.innerHTML = '<span>A newer version of this site is available.</span><button type="button">Update now</button>';
+      bar.querySelector('button').addEventListener('click', () => { location.href = location.pathname + '?v=' + latest; });
+      document.body.appendChild(bar);
+    }
+  } catch (e) { /* offline or blocked: nothing to do */ }
+}
+
 async function init() {
   applyBrandLogo();
+  const bt = document.getElementById('buildTag'); if (bt) bt.textContent = 'Version ' + buildLabel(APP_BUILD);
+  const lv = document.getElementById('lockVer'); if (lv) lv.textContent = 'Version ' + buildLabel(APP_BUILD);
+  checkForNewVersion();
   try { const cachedName = localStorage.getItem('anandAplTName'); if (cachedName) document.querySelectorAll('.js-tname').forEach(el => { el.textContent = cachedName; }); } catch (e) {}
   if (REQUIRE_SIGN_IN && isFirebaseConfigured()) { const entered = await accessGate(); if (!entered) return; }
   await loadState();
