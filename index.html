@@ -388,6 +388,7 @@
   th[aria-sort="ascending"] .sort-arrow, th[aria-sort="descending"] .sort-arrow { color:var(--blue-b); opacity:1; }
   .st-pill { display:inline-block; padding:3px 11px; border-radius:999px; font-size:12.5px; font-weight:700; white-space:nowrap; background:var(--pill-bg); color:var(--muted); }
   .st-pill.reg { background:var(--green-bg); color:var(--green); }
+  .st-pill.reserved { background:var(--amber-bg); color:var(--amber); }
   .muted-dash { color:var(--muted); }
   .tname-display { margin-right:8px; font-family:var(--display); font-size:22px; font-weight:800; letter-spacing:-.02em; word-break:break-word; }
   .auto-toggle { display:inline-flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; }
@@ -998,7 +999,7 @@
         <option value="team:1">Sort: Team A–Z</option><option value="team:-1">Sort: Team Z–A</option>
         <option value="reference:1">Sort: Reference A–Z</option><option value="reference:-1">Sort: Reference Z–A</option>
       </select>
-      <select class="filter-input" id="recordsStatusFilter" style="flex:0 0 auto;width:auto;"><option value="all">All statuses</option><option value="reg">Registered</option><option value="pend">Not Registered</option></select>
+      <select class="filter-input" id="recordsStatusFilter" style="flex:0 0 auto;width:auto;"><option value="all">All statuses</option><option value="reg">Registered</option><option value="pend">Not Registered</option><option value="reserved">Reserved (registered, no team)</option></select>
     </div>
     <div class="add-msg" id="recordsMsg" role="status"></div>
     <div id="recordsTableWrap"></div>
@@ -3995,6 +3996,33 @@ function setRecordsSort(key, dir) {
   renderRecords();
 }
 
+// Reserved = Registered but not in any team (the same meaning as on the Teams tab).
+const isReserved = p => p.status === REGISTERED && !cleanTeam(p.team);
+const NEW_CATEGORY = '__new_category__', NEW_TEAM = '__new_team__';
+function categoryOptionsHtml(cur, reg) {
+  const c = String(cur || '').trim(), cats = getAllCategoryNames().slice();
+  if (c && !cats.some(x => x.toLowerCase() === c.toLowerCase())) cats.push(c);
+  return `<option value=""${c ? '' : ' selected'}>${reg ? 'Choose\u2026' : '\u2014'}</option>`
+    + cats.map(x => `<option value="${escapeHtml(x)}"${x.toLowerCase() === c.toLowerCase() ? ' selected' : ''}>${escapeHtml(x)}</option>`).join('')
+    + `<option value="${NEW_CATEGORY}">+ New category\u2026</option>`;
+}
+function teamOptionsHtml(cur, reg) {
+  const t = cleanTeam(cur).toLowerCase();
+  return `<option value=""${t ? '' : ' selected'}>${reg ? 'Reserved (no team)' : '\u2014 none'}</option>`
+    + teamNames().map(n => `<option value="${escapeHtml(n)}"${n.toLowerCase() === t ? ' selected' : ''}>${escapeHtml(n)}</option>`).join('')
+    + `<option value="${NEW_TEAM}">+ New team\u2026</option>`;
+}
+// Rebuild the Category / Team dropdowns of every row so a newly created category or team appears everywhere, and the
+// "Reserved" wording follows each row's current status.
+function refreshRecordSelects() {
+  const wrap = $id('recordsTableWrap'); if (!wrap) return;
+  wrap.querySelectorAll('select[data-field="category"], select[data-field="team"]').forEach(sel => {
+    const p = participants.find(x => x.id === sel.dataset.id); if (!p) return;
+    const reg = p.status === REGISTERED;
+    sel.innerHTML = sel.dataset.field === 'category' ? categoryOptionsHtml(p.category, reg) : teamOptionsHtml(p.team, reg);
+  });
+}
+
 function renderRecords() {
   const wrap = $id('recordsTableWrap');
   if (!wrap) return;
@@ -4021,7 +4049,7 @@ function renderRecords() {
   wrap.classList.toggle('editing', ed);
   const q = recordsFilterText.trim().toLowerCase();
   const rows = participants
-    .filter(p => matchesFilter(p, q) && (recordsStatusFilter === 'all' || (recordsStatusFilter === 'reg' ? p.status === REGISTERED : p.status !== REGISTERED)))
+    .filter(p => matchesFilter(p, q) && (recordsStatusFilter === 'all' || (recordsStatusFilter === 'reg' ? p.status === REGISTERED : recordsStatusFilter === 'reserved' ? isReserved(p) : p.status !== REGISTERED)))
     .slice().sort(recordsComparator);
   $id('recordsCount').textContent = rows.length === participants.length ? participants.length : `${rows.length} of ${participants.length}`;
   if (!participants.length) { wrap.innerHTML = '<div class="empty-state">No participants yet. Add one above.</div>'; return; }
@@ -4033,13 +4061,13 @@ function renderRecords() {
     const reg = p.status === REGISTERED;
     if (!ed) {
       return `<tr>${view(p, 'fullName', 'Full name')}${view(p, 'followup', 'Followup')}${view(p, 'mobile', 'Mobile')}`
-        + `<td data-label="Status"><span class="st-pill ${reg ? 'reg' : ''}">${reg ? 'Registered' : 'Not Registered'}</span></td>${view(p, 'category', 'Category')}${view(p, 'team', 'Team')}${view(p, 'reference', 'Reference')}</tr>`;
+        + `<td data-label="Status"><span class="st-pill ${reg ? 'reg' : ''}">${reg ? 'Registered' : 'Not Registered'}</span></td>${view(p, 'category', 'Category')}<td data-label="Team">${cleanTeam(p.team) ? escapeHtml(p.team) : (reg ? '<span class="st-pill reserved">Reserved</span>' : '<span class="muted-dash">\u2014</span>')}</td>${view(p, 'reference', 'Reference')}</tr>`;
     }
     return `<tr data-row="${p.id}" class="${reg ? 'is-reg' : ''}">`
       + input(p, 'fullName', 'Full name') + input(p, 'followup', 'Followup', 'list="followupDatalist"') + input(p, 'mobile', 'Mobile', 'inputmode="tel"')
       + `<td data-label="Status"><select class="cell-input" data-id="${p.id}" data-field="status"><option value="${REGISTERED}" ${reg ? 'selected' : ''}>Registered</option><option value="${NOT_REGISTERED}" ${reg ? '' : 'selected'}>Not Registered</option></select></td>`
-      + input(p, 'category', 'Category', `list="categoryDatalist" placeholder="${reg ? 'Required' : 'Category'}"`)
-      + input(p, 'team', 'Team', 'list="teamDatalist" placeholder="Team"')
+      + `<td data-label="Category"><select class="cell-input" data-id="${p.id}" data-field="category">${categoryOptionsHtml(p.category, reg)}</select></td>`
+      + `<td data-label="Team"><select class="cell-input" data-id="${p.id}" data-field="team">${teamOptionsHtml(p.team, reg)}</select></td>`
       + input(p, 'reference', 'Reference', 'list="referenceDatalist" placeholder="Brought by"')
       + `<td class="actions-cell" data-label="Actions"><button class="btn small danger rec-del" data-id="${p.id}">Delete</button></td></tr>`;
   }).join('');
@@ -4097,11 +4125,29 @@ function applyRecordEdit(el) {
     }
     p.status = val === REGISTERED ? REGISTERED : NOT_REGISTERED;
   } else if (f === 'category') {
-    if (!val && p.status === REGISTERED) { el.value = p.category; return fail('Category is required while Registered.'); }
-    p.category = val;
-    if (val) { categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : []; if (!categoryMaster.includes(val)) { categoryMaster.push(val); categoryMasterDirty = true; } }
+    let v = val;
+    if (v === NEW_CATEGORY) {
+      const n = (window.prompt('Name of the new category:', '') || '').trim().replace(/\s+/g, ' ');
+      if (!n) { el.value = p.category || ''; return; }
+      v = getAllCategoryNames().find(c => c.toLowerCase() === n.toLowerCase()) || n;
+    }
+    if (!v && p.status === REGISTERED) { el.value = p.category || ''; return fail('Category is required while Registered.'); }
+    p.category = v;
+    if (v) { categoryMaster = Array.isArray(categoryMaster) ? categoryMaster : []; if (!categoryMaster.includes(v)) { categoryMaster.push(v); categoryMasterDirty = true; } }
   } else if (f === 'team') {
-    p.team = canonicalTeam(val); el.value = p.team;
+    let v = val;
+    if (v === NEW_TEAM) {
+      const n = (window.prompt('Name of the new team:', '') || '').trim();
+      if (!n) { el.value = canonicalTeam(p.team); return; }
+      v = n;
+    }
+    const oldT = cleanTeam(p.team), newT = canonicalTeam(v);       // empty = Reserved (for a Registered player)
+    // Teams only exist while someone is in them, so warn before the last player leaves one.
+    if (oldT && newT.toLowerCase() !== oldT.toLowerCase() && !participants.some(x => x !== p && cleanTeam(x.team).toLowerCase() === oldT.toLowerCase())
+        && !window.confirm(`${p.fullName} is the only player in ${oldT}. If you move them, ${oldT} disappears from the team list (you can bring it back with "+ New team\u2026"). Continue?`)) {
+      el.value = canonicalTeam(p.team); return;
+    }
+    p.team = newT;
   } else if (f === 'reference') {
     p.reference = cleanTeam(val); el.value = p.reference;
   }
@@ -4109,11 +4155,12 @@ function applyRecordEdit(el) {
   if (prev !== p.status) logStatusChange(p, prev);
   const reg = p.status === REGISTERED;
   row.classList.toggle('is-reg', reg); sel.value = p.status;
-  cat.value = p.category; cat.disabled = false; cat.classList.remove('cell-err'); cat.placeholder = reg ? 'Required' : 'Category';
+  cat.classList.remove('cell-err');
   markParticipantDirty(p.id);
   recordsEditing = true; renderAll(); recordsEditing = false;
+  refreshRecordSelects();
   refreshSuggestions(); scheduleSave();
-  recordsSay('Saved.', 'ok');
+  recordsSay(f === 'team' && isReserved(p) ? `${p.fullName} moved to Reserved.` : f === 'team' && p.team ? `${p.fullName} moved to ${p.team}.` : 'Saved.', 'ok');
 }
 
 function setupRecordsTab() {
