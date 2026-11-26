@@ -488,7 +488,6 @@
   .lock-link:disabled { color:var(--muted); text-decoration:none; cursor:default; }
   .lock-actions { display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 10px; }
   .lock-actions .lock-link { margin-top:10px; }
-  .otp-input { text-align:center; font-size:26px !important; font-weight:800; letter-spacing:.45em; padding-left:calc(14px + .45em) !important; }
   .lock-verified { margin:0 0 14px; padding:9px 12px; border-radius:12px; font-size:13px; font-weight:700; line-height:1.45; text-align:left; color:var(--green); background:var(--green-bg); }
   .setup-box { margin-top:14px; padding:12px 14px; text-align:left; font-size:13px; line-height:1.6; background:var(--card-2); border:1px solid var(--border); border-radius:14px; }
   .setup-box ol { margin:8px 0 10px; padding-left:20px; }
@@ -496,9 +495,10 @@
   .creds { margin-top:14px; padding:14px; background:var(--green-bg); border:1px solid var(--border); border-radius:14px; }
   .creds pre { margin:8px 0 10px; padding:10px 12px; white-space:pre-wrap; word-break:break-word; font:inherit; font-size:13.5px; line-height:1.55; background:var(--card); border-radius:10px; }
   .acc-form .fg { margin:0; }
+  .acc-form .fg-wide { grid-column:1 / span 4; }
   .acc-form .opt { margin-left:6px; font-size:12px; font-weight:600; color:var(--muted); }
   table.access .cell-input { border-color:var(--border); background:var(--card); max-width:140px; }
-  @media (max-width:780px) { .acc-form { grid-template-columns:1fr; } .acc-form .btn { width:100%; } }
+  @media (max-width:780px) { .acc-form { grid-template-columns:1fr; } .acc-form .fg-wide { grid-column:auto; } .acc-form .btn { width:100%; } }
 
   /* ---------- Tournament stats ---------- */
   .tstats-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:16px; }
@@ -782,7 +782,6 @@
     <h1 class="js-tname" id="lockTitle">Anand APL 2026</h1>
     <p class="lock-sub" id="lockSub">Loading&hellip;</p>
     <div id="lockBody"></div>
-    <div id="recaptchaHost"></div>
     <p class="lock-hint" id="lockVer" style="font-size:11.5px;margin-top:18px;"></p>
   </div>
 </div>
@@ -1051,6 +1050,7 @@
         <div class="fg"><label for="accMobile">Mobile number</label><input id="accMobile" type="tel" inputmode="numeric" maxlength="20" placeholder="10-digit number" autocomplete="off"></div>
         <div class="fg"><label for="accRole">Access</label><select id="accRole"><option value="viewer">Viewer</option><option value="admin">Admin</option></select></div>
         <div class="fg"><label for="accPass">Password</label><div class="pw"><input id="accPass" type="text" autocomplete="off" autocapitalize="off"><button type="button" class="pw-eye" id="accGen" title="Make a new password">New</button></div></div>
+        <div class="fg fg-wide"><label for="accEmail">Google email <span class="opt">(optional: lets this person reset their own password with Google)</span></label><input id="accEmail" type="email" inputmode="email" autocomplete="off" autocapitalize="off" placeholder="name@gmail.com"></div>
         <button class="btn primary" id="accAdd">Give access</button>
       </div>
       <div class="add-msg" id="accMsg" role="status"></div>
@@ -4967,7 +4967,8 @@ function setupTournamentName() {
 // writes a session note that contains the hash of what they typed, and the Firestore rules (see firestore.rules) only
 // let them in when it matches the stored hash. So the check happens on the server, not just on this page.
 //   admin  = everything          viewer = read-only (Registered, Pending, Followup, Category, Teams)
-// Forgot password: the person types their mobile number, gets an OTP by SMS (Firebase Phone Authentication), types it, then sets a new password.
+// Forgot password: the person types their mobile number and signs in with Google. If that Google email is the one an admin linked to their
+// entry (the optional 'email' field), they can set a new password. Admins link emails on the Access tab.
 // Set REQUIRE_SIGN_IN to false to go back to an open site.
 const REQUIRE_SIGN_IN = true;
 const ACCESS_COLLECTION = 'anand_apl_access';
@@ -4978,6 +4979,7 @@ let authObj = null, roleUnsub = null, signingOut = false, myPassHash = '', login
 const isAdmin = () => userRole === 'admin';
 const cleanMobile = v => { let d = String(v || '').replace(/\D/g, ''); if (d.length === 12 && d.startsWith('91')) d = d.slice(2); else if (d.length === 11 && d[0] === '0') d = d.slice(1); return d; };
 const validMobile = m => /^[6-9]\d{9}$/.test(m);
+const validEmail = v => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) && v.length <= 120;
 const sessionRef = () => db.collection(SESSIONS_COLLECTION).doc(authObj.currentUser.uid);
 const accessRef = m => db.collection(ACCESS_COLLECTION).doc(m);
 
@@ -5057,28 +5059,17 @@ function lockShow(state, data) {
       <button type="button" class="lock-link" data-act="back">Back to sign in</button>`;
   } else if (state === 'forgot') {
     sub.textContent = 'Reset your password';
-    body.innerHTML = `<p class="lock-hint" style="margin:0 0 12px;text-align:left;">Enter the mobile number you sign in with. We will send a 6-digit OTP to it by SMS.</p>
+    body.innerHTML = `<p class="lock-hint" style="margin:0 0 12px;text-align:left;">Enter the mobile number you sign in with, then confirm it is you with the Google account your admin linked to that number.</p>
       <form id="forgotForm" class="lock-form" novalidate>
         <div class="fg"><label for="fgMobile">Mobile number</label><input id="fgMobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="20" placeholder="10-digit number" value="${escapeHtml((data && data.mobile) || '')}"></div>
-        <button type="submit" class="btn primary lock-go" id="fgGo">Generate OTP</button>
+        <button type="submit" class="btn primary lock-go" id="fgGo">Continue with Google</button>
         <div class="lock-msg" id="lockMsg" role="alert"></div>
       </form>
-      <div class="lock-actions"><button type="button" class="lock-link" data-act="back">Back to sign in</button><button type="button" class="lock-link" data-act="forgotAdmin">Not getting the OTP? Ask an admin</button></div>`;
+      <div class="lock-actions"><button type="button" class="lock-link" data-act="back">Back to sign in</button><button type="button" class="lock-link" data-act="forgotAdmin">No Google email linked? Ask an admin</button></div>`;
     setTimeout(() => { const i = $id('fgMobile'); if (i && !i.value) i.focus(); }, 0);
-  } else if (state === 'forgotOtp') {
-    sub.textContent = 'Enter the OTP';
-    body.innerHTML = `<p class="lock-hint" style="margin:0 0 12px;text-align:left;">We sent a 6-digit OTP by SMS to <b>+91 ${escapeHtml(otpMasked(otp.mobile))}</b>. It can take up to a minute to arrive.</p>
-      <form id="otpForm" class="lock-form" novalidate>
-        <div class="fg"><label for="otpCode">OTP</label><input id="otpCode" class="otp-input" type="tel" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="------"></div>
-        <button type="submit" class="btn primary lock-go" id="otpGo">Verify OTP</button>
-        <div class="lock-msg" id="lockMsg" role="alert"></div>
-      </form>
-      <div class="lock-actions"><button type="button" class="lock-link" id="otpResend" data-act="otpResend" disabled>Resend OTP</button><button type="button" class="lock-link" data-act="otpChange">Change number</button></div>`;
-    otpStartTimer();
-    setTimeout(() => { const i = $id('otpCode'); if (i) i.focus(); }, 0);
   } else if (state === 'forgotNew') {
     sub.textContent = 'Set a new password';
-    body.innerHTML = `<div class="lock-verified">\u2713 Mobile number verified: +91 ${escapeHtml(otpMasked(otp.mobile))}</div>
+    body.innerHTML = `<div class="lock-verified">\u2713 Verified with Google: ${escapeHtml(reset.email)}<br>Mobile number: ${escapeHtml(reset.mobile)}</div>
       <form id="newPassForm" class="lock-form" novalidate>
         <div class="fg"><label for="npPass">New password (8+ characters)</label><div class="pw"><input id="npPass" type="password" autocomplete="new-password" autocapitalize="off" placeholder="New password"><button type="button" class="pw-eye" data-act="eye" data-target="npPass">Show</button></div></div>
         <div class="fg"><label for="npPass2">New password again</label><div class="pw"><input id="npPass2" type="password" autocomplete="new-password" autocapitalize="off" placeholder="Repeat the password"><button type="button" class="pw-eye" data-act="eye" data-target="npPass2">Show</button></div></div>
@@ -5166,102 +5157,69 @@ async function doSetup() {
     <button type="button" class="btn small" data-act="copyhash" data-hash="${hash}">Copy passHash</button></div>`;
 }
 
-// ----- "Forgot password" with an OTP sent by SMS -----
-// Uses Firebase Phone Authentication, so the OTP is sent and checked by Google's servers, never by this page.
-// Once the right OTP is typed, this device is signed in as that phone number, and the Firestore rules (see firestore.rules)
-// then allow exactly one thing: changing the passHash of anand_apl_access/<that same number>. Nothing else is opened up.
-// As soon as the password is saved (or the person backs out) this device goes back to being an ordinary anonymous visitor.
-const RESEND_SECONDS = 30;
-const otp = { mobile: '', confirmation: null, verifier: null, sentAt: 0, timer: null };
-const otpMasked = m => String(m || '').slice(0, 2) + '\u2022\u2022\u2022\u2022\u2022\u2022' + String(m || '').slice(-2);
-function otpErrText(e, step) {
+// ----- "Forgot password" with Google sign-in (free) -----
+// The person types their mobile number and signs in with Google. Each access entry can hold the Google email an admin linked to
+// that person (anand_apl_access/<mobile>.email). When Google confirms that exact email, the Firestore rules (see firestore.rules)
+// let this device read that one entry and change its passHash, and nothing else. As soon as the password is saved (or the person
+// backs out) this device goes back to being an ordinary anonymous visitor.
+const reset = { mobile: '', email: '' };
+function googleErrText(e) {
   const c = (e && e.code) || '';
   switch (c) {
-    case 'app/file-protocol': return 'OTP works only when this page is opened from its website address, not from a file saved on the phone.';
-    case 'auth/invalid-phone-number': return 'That mobile number is not valid.';
-    case 'auth/too-many-requests': return 'Too many attempts. Please wait a few minutes and try again.';
-    case 'auth/quota-exceeded': return 'The SMS limit has been reached for now. Try again later, or use "Ask an admin".';
+    case 'auth/popup-closed-by-user': case 'auth/cancelled-popup-request': return 'The Google window was closed before finishing. Tap the button and try again.';
+    case 'auth/popup-blocked': return 'Your browser blocked the Google window. Allow pop-ups for this site and try again.';
     case 'auth/network-request-failed': case 'unavailable': return 'Could not reach the server. Check your internet connection and try again.';
-    case 'auth/captcha-check-failed': return 'The security check failed. Reload the page and try again.';
-    case 'auth/operation-not-allowed': return 'OTP is not switched on yet. An admin must enable "Phone" under Authentication > Sign-in method in Firebase.';
-    case 'auth/unauthorized-domain': return 'This website address is not approved for OTP yet. An admin must add it under Authentication > Settings > Authorized domains in Firebase.';
-    case 'auth/billing-not-enabled': return 'SMS is not available because billing is not switched on for the Firebase project. Please ask an admin.';
-    case 'auth/invalid-verification-code': return 'That OTP is not correct. Check the SMS and try again.';
-    case 'auth/missing-verification-code': return 'Enter the 6-digit OTP.';
-    case 'auth/code-expired': case 'auth/session-expired': return 'This OTP has expired. Tap "Resend OTP" to get a new one.';
-    default: return step === 'verify' ? 'Could not check the OTP. Please try again.' : 'Could not send the OTP. Please try again in a moment.';
+    case 'auth/operation-not-allowed': return 'Google sign-in is not switched on yet. An admin must enable "Google" under Authentication > Sign-in method in Firebase.';
+    case 'auth/unauthorized-domain': return 'This website address is not approved for Google sign-in yet. An admin must add it under Authentication > Settings > Authorized domains in Firebase.';
+    case 'auth/operation-not-supported-in-this-environment': case 'auth/web-storage-unsupported': case 'app/file-protocol':
+      return 'Google sign-in does not work here. Open this page in Chrome or Safari from its website address (not inside WhatsApp or from a saved file).';
+    case 'app/unverified': return 'That Google account has no verified email, so it cannot be used. Try another Google account.';
+    default: return 'Could not sign in with Google. Please try again.';
   }
 }
-function otpStopTimer() { if (otp.timer) { clearInterval(otp.timer); otp.timer = null; } }
-function otpStartTimer() {
-  otpStopTimer();
-  const tick = () => {
-    const b = $id('otpResend'); if (!b) { otpStopTimer(); return; }
-    const left = Math.max(0, RESEND_SECONDS - Math.floor((Date.now() - otp.sentAt) / 1000));
-    b.disabled = left > 0; b.textContent = left > 0 ? `Resend OTP in ${left}s` : 'Resend OTP';
-    if (!left) otpStopTimer();
-  };
-  tick(); otp.timer = setInterval(tick, 1000);
-}
-function otpClearVerifier() {
-  try { if (otp.verifier) otp.verifier.clear(); } catch (e) {}
-  otp.verifier = null;
-  const h = $id('recaptchaHost'); if (h) h.innerHTML = '';
-}
-// Leave the OTP flow: forget everything and make sure this device is only an anonymous visitor again.
-async function otpAbandon() {
-  otpStopTimer(); otpClearVerifier(); otp.confirmation = null; otp.mobile = '';
+// Leave the reset flow: forget everything and make sure this device is only an anonymous visitor again.
+async function googleAbandon() {
+  reset.mobile = ''; reset.email = '';
   try {
     if (authObj && authObj.currentUser && !authObj.currentUser.isAnonymous) await authObj.signOut();
     if (authObj && !authObj.currentUser) await authObj.signInAnonymously();
   } catch (e) { console.warn('Could not return to the anonymous sign-in', e); }
 }
-async function otpSend(mobile) {
-  if (location.protocol === 'file:') throw { code: 'app/file-protocol' };
-  otpClearVerifier();
-  const el = document.createElement('div'); $id('recaptchaHost').appendChild(el);
-  otp.verifier = new firebase.auth.RecaptchaVerifier(el, { size: 'invisible' });
-  try {
-    otp.confirmation = await authObj.signInWithPhoneNumber('+91' + mobile, otp.verifier);
-  } catch (e) { otpClearVerifier(); throw e; }
-  otp.mobile = mobile; otp.sentAt = Date.now();
-}
-async function doOtpSend() {                 // step 1: mobile number -> "Generate OTP"
+async function doGoogleReset() {             // step 1: mobile number -> Google
   const mobile = cleanMobile($id('fgMobile').value);
   if (!validMobile(mobile)) { lockMsg('Enter your 10-digit mobile number.'); $id('fgMobile').focus(); return; }
-  const btn = $id('fgGo'); btn.disabled = true; btn.textContent = 'Sending OTP\u2026'; lockMsg('');
-  try { await otpSend(mobile); lockShow('forgotOtp'); }
-  catch (e) {
-    console.warn('OTP not sent', e && e.code);
-    const b = $id('fgGo'); if (b) { b.disabled = false; b.textContent = 'Generate OTP'; }
-    lockMsg(otpErrText(e, 'send'));
-  }
-}
-async function doOtpResend() {
-  const b = $id('otpResend'); if (b) b.disabled = true; lockMsg('');
-  try { await otpSend(otp.mobile); lockShow('forgotOtp'); }
-  catch (e) { console.warn('OTP not re-sent', e && e.code); lockMsg(otpErrText(e, 'send')); otpStartTimer(); }
-}
-async function doOtpVerify() {               // step 2: type the OTP
-  const code = $id('otpCode').value.replace(/\D/g, '');
-  if (code.length !== 6) { lockMsg('Enter the 6-digit OTP.'); $id('otpCode').focus(); return; }
-  if (!otp.confirmation) { lockMsg('Please generate a new OTP.'); return; }
-  const btn = $id('otpGo'); btn.disabled = true; btn.textContent = 'Checking\u2026'; lockMsg('');
+  if (location.protocol === 'file:') { lockMsg(googleErrText({ code: 'app/file-protocol' })); return; }
+  const btn = $id('fgGo'); btn.disabled = true; btn.textContent = 'Opening Google\u2026'; lockMsg('');
+  let user;
   try {
-    await otp.confirmation.confirm(code);
-    const u = authObj.currentUser;
-    if (!u || u.phoneNumber !== '+91' + otp.mobile) throw { code: 'app/phone-mismatch' };
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });      // always let them pick the account, even on a shared phone
+    user = (await authObj.signInWithPopup(provider)).user;
   } catch (e) {
-    console.warn('OTP check failed', e && e.code);
-    const b = $id('otpGo'); if (b) { b.disabled = false; b.textContent = 'Verify OTP'; }
-    lockMsg(otpErrText(e, 'verify')); return;
+    console.warn('Google sign-in failed', e && e.code);
+    const b = $id('fgGo'); if (b) { b.disabled = false; b.textContent = 'Continue with Google'; }
+    lockMsg(googleErrText(e)); return;
   }
-  otpStopTimer(); otpClearVerifier();
+  const email = String(user.email || '').toLowerCase();
+  try {
+    if (!user.emailVerified || !email) throw { code: 'app/unverified' };
+    const snap = await accessRef(mobile).get({ source: 'server' });     // only succeeds when this email is the one linked to this number
+    if (!snap.exists) throw { code: 'permission-denied' };
+  } catch (e) {
+    console.warn('Google account not linked to this number', e && e.code);
+    const c = (e && e.code) || '';
+    await googleAbandon();
+    lockShow('forgot', { mobile });
+    lockMsg(c === 'unavailable' ? googleErrText(e) : c === 'app/unverified' ? googleErrText(e)
+      : `The Google account ${email} is not linked to this mobile number. Ask an admin to add this email to your entry on the Access tab, or tap "Ask an admin" below.`);
+    return;
+  }
+  reset.mobile = mobile; reset.email = email;
   lockShow('forgotNew');
 }
-async function doNewPassword() {             // step 3: choose the new password
-  const p1 = $id('npPass').value, p2 = $id('npPass2').value, mobile = otp.mobile;
-  if (!mobile || !authObj.currentUser || authObj.currentUser.phoneNumber !== '+91' + mobile) { lockMsg('Your OTP check has expired. Please start again.'); return; }
+async function doNewPassword() {             // step 2: choose the new password
+  const p1 = $id('npPass').value, p2 = $id('npPass2').value, mobile = reset.mobile, u = authObj.currentUser;
+  if (!mobile || !u || u.isAnonymous || String(u.email || '').toLowerCase() !== reset.email) { lockMsg('Your Google check has expired. Please start again.'); return; }
   if (p1.length < 8) { lockMsg('Use at least 8 characters.'); $id('npPass').focus(); return; }
   if (p1 !== p2) { lockMsg('The two passwords do not match.'); $id('npPass2').focus(); return; }
   const btn = $id('npGo'); btn.disabled = true; btn.textContent = 'Saving\u2026'; lockMsg('');
@@ -5274,10 +5232,10 @@ async function doNewPassword() {             // step 3: choose the new password
     const b = $id('npGo'); if (b) { b.disabled = false; b.textContent = 'Save new password'; }
     const c = (e && e.code) || '';
     lockMsg(c === 'unavailable' || c === 'auth/network-request-failed' ? 'Could not reach the server. Check your internet connection and try again.'
-      : 'Could not save the new password. This number may not have been given access: please ask an admin.');
+      : 'Could not save the new password. Your Google email may have been unlinked: please ask an admin.');
     return;
   }
-  await otpAbandon();
+  await googleAbandon();
   lockShow('forgotDone', { mobile });
 }
 
@@ -5316,18 +5274,16 @@ function accessGate() {
       const act = b.dataset.act;
       if (act === 'retry') location.reload();
       else if (act === 'setup') lockShow('setup');
-      else if (act === 'back') { await otpAbandon(); lockShow('login', { mobile: b.dataset.mobile || '' }); }
+      else if (act === 'back') { await googleAbandon(); lockShow('login', { mobile: b.dataset.mobile || '' }); }
       else if (act === 'forgot') lockShow('forgot', { mobile: ($id('lgMobile') || {}).value });
-      else if (act === 'forgotAdmin') { await otpAbandon(); lockShow('forgotAdmin', { name: ($id('lgName') || {}).value, mobile: ($id('fgMobile') || {}).value }); }
-      else if (act === 'otpResend') doOtpResend();
-      else if (act === 'otpChange') { const m = otp.mobile; await otpAbandon(); lockShow('forgot', { mobile: m }); }
+      else if (act === 'forgotAdmin') { await googleAbandon(); lockShow('forgotAdmin', { name: ($id('lgName') || {}).value, mobile: ($id('fgMobile') || {}).value }); }
       else if (act === 'eye') { const i = $id(b.dataset.target || 'lgPass'); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.textContent = show ? 'Hide' : 'Show'; }
       else if (act === 'copyhash') { try { await navigator.clipboard.writeText(b.dataset.hash); b.textContent = 'Copied'; } catch (e) { window.prompt('Copy this value', b.dataset.hash); } }
     });
-    lock.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.id === 'loginForm') doLogin(); else if (ev.target.id === 'setupForm') doSetup(); else if (ev.target.id === 'forgotForm') doOtpSend(); else if (ev.target.id === 'otpForm') doOtpVerify(); else if (ev.target.id === 'newPassForm') doNewPassword(); else if (ev.target.id === 'forgotAdminForm') doForgot(); });
+    lock.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.id === 'loginForm') doLogin(); else if (ev.target.id === 'setupForm') doSetup(); else if (ev.target.id === 'forgotForm') doGoogleReset(); else if (ev.target.id === 'newPassForm') doNewPassword(); else if (ev.target.id === 'forgotAdminForm') doForgot(); });
     try {
       if (!authObj.currentUser) await new Promise((res, rej) => { const un = authObj.onAuthStateChanged(u => { un(); res(u); }, rej); });
-      if (authObj.currentUser && !authObj.currentUser.isAnonymous) await authObj.signOut();   // left over from an unfinished password reset: never keep a phone-verified sign-in
+      if (authObj.currentUser && !authObj.currentUser.isAnonymous) await authObj.signOut();   // left over from an unfinished password reset: never keep a Google sign-in
       if (!authObj.currentUser) await authObj.signInAnonymously();
     } catch (e) {
       console.error('Anonymous sign-in failed', e);
@@ -5377,7 +5333,12 @@ function openAccountModal() {
   openModal(`<h3>Your account</h3>
     <p class="desc" style="margin:0 0 4px;"><b>${escapeHtml(currentUser.name || '')}</b><br>${escapeHtml(currentUser.mobile)}</p>
     <p style="margin:10px 0 0;"><span class="role-pill ${userRole}">${userRole === 'admin' ? 'Admin' : 'Viewer'}</span> <span class="hint" style="margin-left:6px;">${userRole === 'admin' ? 'Can edit everything.' : 'Can view lists, not change them.'}</span></p>
+    <p class="hint" id="acctEmail" style="margin:10px 0 0;">Checking password-reset email\u2026</p>
     <div class="btn-row"><button class="btn" id="acctPw">Change password</button><button class="btn danger" id="acctSignOut">Sign out</button><button class="btn" id="acctClose">Close</button></div>`);
+  accessRef(currentUser.mobile).get().then(sn => {
+    const el = $id('acctEmail'); if (!el) return; const em = sn.exists && sn.data().email;
+    el.innerHTML = em ? `Forgot password works with this Google account: <b>${escapeHtml(em)}</b>` : 'No Google email is linked yet, so \"Forgot password\" will not work for you. Ask an admin to add yours.';
+  }).catch(() => { const el = $id('acctEmail'); if (el) el.textContent = ''; });
   $id('acctClose').addEventListener('click', closeModal);
   $id('acctSignOut').addEventListener('click', () => { closeModal(); signOutNow(); });
   $id('acctPw').addEventListener('click', openChangePasswordModal);
@@ -5471,10 +5432,10 @@ function renderAccess() {
     const self = p.mobile === me;
     const when = p.addedAt ? new Date(p.addedAt).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : '';
     return `<tr data-mobile="${escapeHtml(p.mobile)}">
-      <td data-label="Person"><b>${escapeHtml(p.name || p.mobile)}</b>${self ? ' <span class="role-pill viewer">You</span>' : ''}<div class="sg-time">${escapeHtml(p.mobile)}</div></td>
+      <td data-label="Person"><b>${escapeHtml(p.name || p.mobile)}</b>${self ? ' <span class="role-pill viewer">You</span>' : ''}<div class="sg-time">${escapeHtml(p.mobile)}</div><div class="sg-time">${p.email ? '\u2709 ' + escapeHtml(p.email) : 'No Google email linked'}</div></td>
       <td data-label="Access">${self ? '<span class="role-pill admin">Admin</span>' : `<select class="cell-input acc-role" aria-label="Access"><option value="viewer"${p.role === 'viewer' ? ' selected' : ''}>Viewer</option><option value="admin"${p.role === 'admin' ? ' selected' : ''}>Admin</option></select>`}</td>
       <td data-label="Added">${escapeHtml(when)}</td>
-      <td class="actions-cell" data-label="Actions">${self ? '<span class="sg-time">Use your account button to change your password</span>' : '<button class="btn small acc-reset">New password</button> <button class="btn small danger acc-del">Remove</button>'}</td></tr>`;
+      <td class="actions-cell" data-label="Actions">${self ? '<button class="btn small acc-email">Google email</button> <span class="sg-time">Use your account button to change your password</span>' : '<button class="btn small acc-email">Google email</button> <button class="btn small acc-reset">New password</button> <button class="btn small danger acc-del">Remove</button>'}</td></tr>`;
   }).join('');
   wrap.innerHTML = `<table class="data access"><thead><tr><th>Person</th><th>Access</th><th>Added</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -5509,10 +5470,13 @@ function setupAccessUi() {
     if (!name) { accSay('Enter the person\'s name.', 'err'); $id('accName').focus(); return; }
     if (!validMobile(mobile)) { accSay('Enter a valid 10-digit mobile number.', 'err'); $id('accMobile').focus(); return; }
     if (pass.length < 8) { accSay('The password needs at least 8 characters.', 'err'); $id('accPass').focus(); return; }
+    const email = $id('accEmail').value.trim().toLowerCase();
+    if (email && !validEmail(email)) { accSay('That does not look like an email address.', 'err'); $id('accEmail').focus(); return; }
+    if (email && accessList.some(p => (p.email || '').toLowerCase() === email)) { accSay('This email is already linked to another person.', 'err'); $id('accEmail').focus(); return; }
     if (accessList.some(p => p.mobile === mobile)) { accSay('This mobile number already has access. Use "New password" or change the access in the list below.', 'err'); return; }
     try {
-      await accessRef(mobile).set({ name, role, passHash: await passHashOf(mobile, pass), addedBy: currentUser.mobile, addedAt: Date.now() });
-      $id('accName').value = ''; $id('accMobile').value = ''; $id('accPass').value = makePassword();
+      await accessRef(mobile).set(Object.assign({ name, role, passHash: await passHashOf(mobile, pass), addedBy: currentUser.mobile, addedAt: Date.now() }, email ? { email } : {}));
+      $id('accName').value = ''; $id('accMobile').value = ''; $id('accEmail').value = ''; $id('accPass').value = makePassword();
       accSay(`${name} can now sign in as ${role === 'admin' ? 'an Admin' : 'a Viewer'}.`, 'ok');
       accShowCreds('Send this to ' + name, loginMessage(name, mobile, role, pass));
     } catch (e) { console.error(e); accSay('Could not save. Check your internet connection and the Firestore rules.', 'err'); }
@@ -5527,6 +5491,16 @@ function setupAccessUi() {
   $id('accWrap').addEventListener('click', async e => {
     const tr = e.target.closest('tr[data-mobile]'); if (!tr) return;
     const mobile = tr.dataset.mobile, p = accessList.find(x => x.mobile === mobile) || {};
+    if (e.target.closest('.acc-email')) {
+      const v = prompt(`Google email for ${p.name || mobile}.\n\nThey use it on the sign-in screen (Forgot password > Continue with Google) to set a new password themselves.\nLeave empty to remove it.`, p.email || '');
+      if (v === null) return;
+      const em = v.trim().toLowerCase();
+      if (em && !validEmail(em)) { accSay('That does not look like an email address.', 'err'); return; }
+      if (em && accessList.some(x => x.mobile !== mobile && (x.email || '').toLowerCase() === em)) { accSay('This email is already linked to another person.', 'err'); return; }
+      try { await accessRef(mobile).update({ email: em || firebase.firestore.FieldValue.delete() }); accSay(em ? `${p.name || mobile} can now reset their password with ${em}.` : `Google email removed for ${p.name || mobile}.`, 'ok'); }
+      catch (err) { console.error(err); accSay('Could not save the email. Check your internet connection and the Firestore rules.', 'err'); }
+      return;
+    }
     if (e.target.closest('.acc-reset')) {
       if (!confirm(`Set a new password for ${p.name || mobile}? Their old password stops working and they will be signed out.`)) return;
       const pass = makePassword();
