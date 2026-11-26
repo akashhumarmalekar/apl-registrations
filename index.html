@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="app-build" content="2026102804">
+<meta name="app-build" content="2026112501">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Anand APL 2026 - Tournament Registration</title>
 <meta name="theme-color" content="#1A2257">
@@ -481,6 +481,9 @@
   .lock-form .fg { margin-bottom:12px; }
   .lock-form label { display:block; margin-bottom:6px; font-size:13px; font-weight:700; }
   .lock-go { width:100%; height:50px; margin-top:4px; font-size:16px; }
+  .lock-forgot { margin:-4px 0 12px; text-align:right; }
+  .lock-forgot .lock-link { margin:0; padding:2px 0; }
+  .lock-ok { display:grid; place-items:center; width:64px; height:64px; margin:4px auto 14px; border-radius:50%; font-size:32px; font-weight:800; color:#fff; background:linear-gradient(135deg,#25C493,#0E8F5F); box-shadow:0 14px 26px -12px rgba(14,143,95,.7); }
   .lock-link { margin-top:14px; padding:4px 6px; font:inherit; font-size:13px; font-weight:600; color:var(--blue); background:none; border:0; text-decoration:underline; cursor:pointer; }
   .setup-box { margin-top:14px; padding:12px 14px; text-align:left; font-size:13px; line-height:1.6; background:var(--card-2); border:1px solid var(--border); border-radius:14px; }
   .setup-box ol { margin:8px 0 10px; padding-left:20px; }
@@ -807,7 +810,7 @@
     <button class="tab-btn" data-tab="qr"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20v.01M20 20v1"/></svg><span>QR Sign-ups</span><span class="tab-badge" id="qrBadge" hidden>0</span></button>
     <button class="tab-btn" data-tab="log"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log</span></button>
     <button class="tab-btn" data-tab="data"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4"/></svg><span>Import / Export</span></button>
-    <button class="tab-btn" data-tab="access"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span>Access</span></button>
+    <button class="tab-btn" data-tab="access"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span>Access</span><span class="tab-badge" id="accBadge" hidden>0</span></button>
   </div>
 </nav>
 
@@ -1029,6 +1032,11 @@
   </section>
 
   <section class="panel" id="panel-access">
+    <div class="card" id="accResetsCard" hidden>
+      <h3>Password reset requests <span class="count-pill" id="accResetCount">0</span></h3>
+      <p class="desc">These people say they forgot their password. Contact them to check it is really them, then press <b>Set new password</b> and send them the message.</p>
+      <div id="accResets"></div>
+    </div>
     <div class="card">
       <h3>Give access</h3>
       <p class="desc">Add a person's mobile number and choose what they can do. They open the site and sign in with their name, that mobile number and the password you give them. You decide which number gets which access.</p>
@@ -5022,6 +5030,7 @@ function lockShow(state, data) {
       <div class="fg"><label for="lgName">Your name</label><input id="lgName" type="text" autocomplete="name" autocapitalize="words" placeholder="Full name" value="${escapeHtml(last.name || '')}"></div>
       <div class="fg"><label for="lgMobile">Mobile number</label><input id="lgMobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="20" placeholder="10-digit number" value="${escapeHtml(last.mobile || '')}"></div>
       <div class="fg"><label for="lgPass">Password</label><div class="pw"><input id="lgPass" type="password" autocomplete="current-password" autocapitalize="off" placeholder="Password"><button type="button" class="pw-eye" data-act="eye">Show</button></div></div>
+      <div class="lock-forgot"><button type="button" class="lock-link" data-act="forgot">Forgot password?</button></div>
       <button type="submit" class="btn primary lock-go" id="lgGo">Sign in</button>
       <div class="lock-msg" id="lockMsg" role="alert"></div>
     </form>
@@ -5029,7 +5038,7 @@ function lockShow(state, data) {
     <button type="button" class="lock-link" data-act="setup">First-time setup (create the first admin)</button>`;
   } else if (state === 'setup') {
     sub.textContent = 'First-time setup';
-    body.innerHTML = `<p class="lock-hint" style="margin:0 0 12px;text-align:left;">Use this once to create the very first admin. Nothing is sent anywhere: it only works out the values you paste into Firebase.</p>
+    body.innerHTML = `<p class="lock-hint" style="margin:0 0 12px;text-align:left;">Use this once to create the very first admin. Nothing is sent anywhere: it only works out the values you paste into Firebase. If the only admin forgot their password, work out a new value here and paste it over <code>passHash</code> in that admin\'s document.</p>
       <form id="setupForm" class="lock-form" novalidate>
         <div class="fg"><label for="suName">Admin name</label><input id="suName" type="text" autocomplete="off" placeholder="e.g. Akash"></div>
         <div class="fg"><label for="suMobile">Admin mobile number</label><input id="suMobile" type="tel" inputmode="numeric" maxlength="20" placeholder="10-digit number"></div>
@@ -5039,6 +5048,21 @@ function lockShow(state, data) {
       </form>
       <div id="setupOut"></div>
       <button type="button" class="lock-link" data-act="back">Back to sign in</button>`;
+  } else if (state === 'forgot') {
+    sub.textContent = 'Forgot your password?';
+    body.innerHTML = `<p class="lock-hint" style="margin:0 0 12px;text-align:left;">Enter your name and the mobile number you sign in with. An admin gets your request, sets a new password and sends it to you.</p>
+      <form id="forgotForm" class="lock-form" novalidate>
+        <div class="fg"><label for="fgName">Your name</label><input id="fgName" type="text" autocomplete="name" autocapitalize="words" placeholder="Full name" value="${escapeHtml((data && data.name) || '')}"></div>
+        <div class="fg"><label for="fgMobile">Mobile number</label><input id="fgMobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="20" placeholder="10-digit number" value="${escapeHtml((data && data.mobile) || '')}"></div>
+        <button type="submit" class="btn primary lock-go" id="fgGo">Send request to admin</button>
+        <div class="lock-msg" id="lockMsg" role="alert"></div>
+      </form>
+      <button type="button" class="lock-link" data-act="back">Back to sign in</button>`;
+  } else if (state === 'forgotDone') {
+    sub.textContent = 'Request sent';
+    body.innerHTML = `<div class="lock-ok" aria-hidden="true">\u2713</div>
+      <p class="lock-hint" style="margin:0 0 6px;">An admin will set a new password and send it to you, usually on WhatsApp. When you get it, sign in with your name, mobile number and the new password.</p>
+      <button type="button" class="btn primary lock-go" data-act="back">Back to sign in</button>`;
   } else {
     sub.textContent = 'Something went wrong';
     body.innerHTML = `<div class="lock-msg show" role="alert">${escapeHtml(data || 'Could not check your access.')}</div>
@@ -5098,6 +5122,28 @@ async function doSetup() {
     <button type="button" class="btn small" data-act="copyhash" data-hash="${hash}">Copy passHash</button></div>`;
 }
 
+// "Forgot password": leaves a note for the admins. Nothing changes until an admin sets a new password.
+// The screen says the same thing whether or not the number has access, so nobody can use it to find out who has access.
+const RESETS_COLLECTION = 'anand_apl_resets';
+async function doForgot() {
+  const name = $id('fgName').value.trim().replace(/\s+/g, ' '), mobile = cleanMobile($id('fgMobile').value);
+  if (!name) { lockMsg('Please enter your name.'); $id('fgName').focus(); return; }
+  if (!validMobile(mobile)) { lockMsg('Enter your 10-digit mobile number.'); $id('fgMobile').focus(); return; }
+  const btn = $id('fgGo'); btn.disabled = true; btn.textContent = 'Sending\u2026'; lockMsg('');
+  try {
+    const timer = new Promise((_, rej) => setTimeout(() => rej({ code: 'unavailable' }), 15000));
+    await Promise.race([db.collection(RESETS_COLLECTION).doc(mobile).set({ name, mobile, at: Date.now() }), timer]);
+  } catch (e) {
+    const c = (e && e.code) || '';
+    if (c === 'unavailable' || c === 'auth/network-request-failed') {
+      const b = $id('fgGo'); if (b) { b.disabled = false; b.textContent = 'Send request to admin'; }
+      lockMsg('Could not reach the server. Check your internet connection and try again.'); return;
+    }
+    console.warn('Reset request not stored (this is normal for a number without access)', c);
+  }
+  lockShow('forgotDone');
+}
+
 // Resolves true once someone is let in. Never resolves for anyone else (the lock screen stays).
 function accessGate() {
   lockShow('loading', 'Checking your access\u2026');
@@ -5112,10 +5158,11 @@ function accessGate() {
       if (act === 'retry') location.reload();
       else if (act === 'setup') lockShow('setup');
       else if (act === 'back') lockShow('login');
+      else if (act === 'forgot') lockShow('forgot', { name: ($id('lgName') || {}).value, mobile: ($id('lgMobile') || {}).value });
       else if (act === 'eye') { const i = $id('lgPass'); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; b.textContent = show ? 'Hide' : 'Show'; }
       else if (act === 'copyhash') { try { await navigator.clipboard.writeText(b.dataset.hash); b.textContent = 'Copied'; } catch (e) { window.prompt('Copy this value', b.dataset.hash); } }
     });
-    lock.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.id === 'loginForm') doLogin(); else if (ev.target.id === 'setupForm') doSetup(); });
+    lock.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.id === 'loginForm') doLogin(); else if (ev.target.id === 'setupForm') doSetup(); else if (ev.target.id === 'forgotForm') doForgot(); });
     try {
       if (!authObj.currentUser) await new Promise((res, rej) => { const un = authObj.onAuthStateChanged(u => { un(); res(u); }, rej); });
       if (!authObj.currentUser) await authObj.signInAnonymously();
@@ -5212,11 +5259,40 @@ function accShowCreds(title, text) {
   $id('accCopyCreds').addEventListener('click', async () => { try { await navigator.clipboard.writeText(text); $id('accCopyCreds').textContent = 'Copied'; } catch (e) { window.prompt('Copy this message', text); } });
 }
 
+// ----- password reset requests (admins) -----
+let resetList = [], resetsUnsub = null;
+function resetMessage(name, mobile, password) {
+  const url = location.origin + location.pathname.replace(/[^\/]*$/, '');
+  return `Hi ${name}, your password for ${tName()} has been reset.\nOpen: ${url}\nMobile: ${mobile}\nNew password: ${password}\n(You can change it after signing in from the round button at the top right.)`;
+}
+function startResetsListener() {
+  if (!db || resetsUnsub || !isAdmin() || !REQUIRE_SIGN_IN || !authObj) return;
+  resetsUnsub = db.collection(RESETS_COLLECTION).onSnapshot(snap => {
+    resetList = snap.docs.map(d => ({ mobile: d.id, ...d.data() })).sort((a, b) => (a.at || 0) - (b.at || 0));
+    renderResets();
+  }, err => console.warn('Reset requests listener error (check your Firestore rules)', err));
+}
+function renderResets() {
+  const card = $id('accResetsCard'), wrap = $id('accResets'), badge = $id('accBadge'); if (!card || !wrap) return;
+  card.hidden = resetList.length === 0;
+  $id('accResetCount').textContent = resetList.length;
+  if (badge) { badge.textContent = resetList.length; badge.hidden = resetList.length === 0; }
+  const rows = resetList.map(r => {
+    const person = accessList.find(p => p.mobile === r.mobile);
+    const when = r.at ? new Date(r.at).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+    return `<tr data-mobile="${escapeHtml(r.mobile)}">
+      <td data-label="Person"><b>${escapeHtml(person ? (person.name || r.mobile) : (r.name || r.mobile))}</b>${person && r.name && r.name.toLowerCase() !== (person.name || '').toLowerCase() ? `<div class="sg-time">typed: ${escapeHtml(r.name)}</div>` : ''}<div class="sg-time">${escapeHtml(r.mobile)}</div></td>
+      <td data-label="Requested">${escapeHtml(when)}</td>
+      <td class="actions-cell" data-label="Actions">${person ? '<button class="btn small primary rs-set">Set new password</button> ' : '<span class="warn-txt">This number has no access</span> '}<button class="btn small rs-del">Dismiss</button></td></tr>`;
+  }).join('');
+  wrap.innerHTML = `<table class="data access"><thead><tr><th>Person</th><th>Requested</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 function startAccessListener() {
   if (!db || accessUnsub || !isAdmin() || !REQUIRE_SIGN_IN || !authObj) return;
   accessUnsub = db.collection(ACCESS_COLLECTION).onSnapshot(snap => {
     accessList = snap.docs.map(d => ({ mobile: d.id, ...d.data() }));
-    accessErr = ''; renderAccess();
+    accessErr = ''; renderAccess(); renderResets();
   }, err => { console.error('Access list error', err); accessErr = 'Could not load the list of people. Check your Firestore rules.'; renderAccess(); });
 }
 
@@ -5246,6 +5322,23 @@ function setupAccessUi() {
   if (btn && on) btn.addEventListener('click', openAccountModal);
   if (!on || !isAdmin()) return;
   startAccessListener();
+  startResetsListener();
+  $id('accResets').addEventListener('click', async e => {
+    const tr = e.target.closest('tr[data-mobile]'); if (!tr) return;
+    const mobile = tr.dataset.mobile, req = resetList.find(r => r.mobile === mobile) || {}, person = accessList.find(x => x.mobile === mobile);
+    if (e.target.closest('.rs-del')) { try { await db.collection(RESETS_COLLECTION).doc(mobile).delete(); } catch (err) { console.error(err); accSay('Could not dismiss this request.', 'err'); } return; }
+    if (!e.target.closest('.rs-set') || !person) return;
+    const label = person.name || req.name || mobile;
+    if (!confirm(`Set a new password for ${label} (${mobile})?\n\nCheck that it is really them first. Their old password stops working and they are signed out everywhere.`)) return;
+    const pass = makePassword();
+    try {
+      await accessRef(mobile).update({ passHash: await passHashOf(mobile, pass) });
+      try { await db.collection(RESETS_COLLECTION).doc(mobile).delete(); } catch (err2) { /* the request note can stay; dismiss it by hand */ }
+      accSay(`New password set for ${label}.`, 'ok');
+      accShowCreds('Send this to ' + label, resetMessage(label, mobile, pass));
+      const box = $id('accCreds'); if (box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) { console.error(err); accSay('Could not set the new password. Check your internet connection.', 'err'); }
+  });
   $id('accPass').value = makePassword();
   $id('accGen').addEventListener('click', () => { $id('accPass').value = makePassword(); });
   $id('accAdd').addEventListener('click', async () => {
@@ -5559,7 +5652,7 @@ function setupStatsTab() {
 
 // ---------------- Which version is this? ----------------
 // The page shows its own version at the bottom, and quietly checks the website for a newer one (cached copies are common on phones).
-const APP_BUILD = 2026102804;   // YYYYMMDD + two digits
+const APP_BUILD = 2026112501;   // YYYYMMDD + two digits
 const buildLabel = b => { const t = String(b); return t.slice(0, 4) + '-' + t.slice(4, 6) + '-' + t.slice(6, 8) + ' #' + parseInt(t.slice(8), 10); };
 async function checkForNewVersion() {
   if (location.protocol === 'file:') return;
