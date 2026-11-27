@@ -1010,6 +1010,9 @@
     <div class="card" id="qrCard">
       <h3>Registration QR code</h3>
       <p class="desc">Upload <b>register.html</b> to any web host, paste its public address here, then print or display the QR code. People scan it and first choose New or Existing. Existing players type the first letters of their name and pick it from your list (no reference asked); new players type their name and a reference name. Everyone then chooses a team (or Reserved) and enters a contact number. They appear in the queue below instantly, where you add their followup and category and press Add.</p>
+      <div class="btn-row" style="align-items:center;"><button class="btn" id="cfgPublish">Update registration form list</button></div>
+      <div class="add-msg" id="cfgStatus" role="status"></div>
+      <p class="hint" style="margin:4px 0 12px;">The form gets its team names and the names existing players search for from this list. It updates by itself whenever this tab is open as an admin; press the button to send it right now.</p>
       <div class="fg"><label for="qrUrl">Registration form address (URL)</label><input id="qrUrl" type="url" placeholder="https://your-site.com/register.html"></div>
       <div class="btn-row">
         <button class="btn primary" id="qrGen">Generate QR code</button>
@@ -4382,29 +4385,47 @@ function approveSignup(docId, auto) {
 
 // Publish team names (and category / followup names) so the public form can show them as dropdowns, and the names of the people
 // already in your list (names only, never numbers) so existing players can find themselves by typing the first letters.
-let lastCfgSig = '', cfgFailAt = 0;
-function maybePublishSignupConfig() {
-  if (!db || !firebaseReady || !isAdmin() || !participants.length || Date.now() - cfgFailAt < 60000) return;
+let lastCfgSig = '', cfgFailAt = 0, cfgStatus = { state: 'idle' };
+function renderCfgStatus() {
+  const el = $id('cfgStatus'); if (!el) return;
+  const st = cfgStatus, t = d => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  el.className = 'add-msg ' + (st.state === 'ok' ? 'ok' : st.state === 'err' ? 'err' : '');
+  el.textContent = st.state === 'ok' ? `Registration form is up to date: ${st.players} names and ${st.teams} teams sent at ${t(st.at)}.`
+    : st.state === 'sending' ? 'Updating the registration form\u2026'
+    : st.state === 'err' ? `Could not update the registration form (${st.code}). Check your internet connection and that the latest Firestore rules are published.`
+    : (isAdmin() ? 'The registration form list has not been sent yet. Press the button.' : 'Only admins can update the registration form list.');
+}
+function maybePublishSignupConfig(force) {
+  if (force) { lastCfgSig = ''; cfgFailAt = 0; }
+  if (!db || !firebaseReady || !isAdmin() || !participants.length || Date.now() - cfgFailAt < 60000) {
+    if (force) { cfgStatus = { state: 'err', code: !isAdmin() ? 'admins only' : !participants.length ? 'no players loaded yet' : 'not connected' }; renderCfgStatus(); }
+    return;
+  }
   const uniq = arr => Array.from(new Set(arr.map(x => (x || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   const categories = uniq([...(categoryMaster || []), ...participants.map(p => p.category)]);
   const followups = uniq(participants.map(p => p.followup));
   const teams = teamNames();
-  const players = uniq(participants.map(p => p.fullName));
+  const seenNames = new Set();      // one entry per person: extra spaces and capital letters do not make a different name
+  const players = participants.map(p => String(p.fullName || '').replace(/\s+/g, ' ').trim())
+    .filter(n => { const k = n.toLowerCase(); if (!n || seenNames.has(k)) return false; seenNames.add(k); return true; })
+    .sort((a, b) => a.localeCompare(b));
   const sig = JSON.stringify([categories, followups, teams, players, tName()]);
   if (sig === lastCfgSig) return;
   lastCfgSig = sig;
+  cfgStatus = { state: 'sending' }; renderCfgStatus();
   clearTimeout(maybePublishSignupConfig._t);
   maybePublishSignupConfig._t = setTimeout(() => {
     db.collection(SIGNUPS_COLLECTION).doc('_config').set({ categories, followups, teams, players, tournamentName: tName(), updatedAt: Date.now() })
-      .catch(e => { lastCfgSig = ''; cfgFailAt = Date.now(); console.warn('Could not publish form options', e); });
-  }, 1500);
+      .then(() => { cfgStatus = { state: 'ok', at: Date.now(), players: players.length, teams: teams.length }; renderCfgStatus(); })
+      .catch(e => { lastCfgSig = ''; cfgFailAt = Date.now(); cfgStatus = { state: 'err', code: (e && e.code) || 'error' }; renderCfgStatus(); console.warn('Could not publish form options', e); });
+  }, force ? 0 : 1500);
 }
 
 function renderQr() {
   const pend = pendingSignups();
   const badge = $id('qrBadge');
   if (badge) { badge.textContent = pend.length; badge.hidden = pend.length === 0; }
-  maybePublishSignupConfig();
+  maybePublishSignupConfig(); renderCfgStatus();
   const wrap = $id('signupsWrap');
   if (!wrap) return;
   $id('signupsErr').textContent = signupsError;
@@ -4468,6 +4489,7 @@ function setupQrTab() {
     say('QR code ready. Test it with your phone camera before printing.', 'ok');
   };
   $id('qrGen').addEventListener('click', draw);
+  $id('cfgPublish').addEventListener('click', () => maybePublishSignupConfig(true));
   $id('qrDownload').addEventListener('click', () => {
     const c = $id('qrCanvas').querySelector('canvas');
     if (!c) return;
