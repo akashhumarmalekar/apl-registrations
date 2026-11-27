@@ -1009,7 +1009,7 @@
   <section class="panel" id="panel-qr">
     <div class="card" id="qrCard">
       <h3>Registration QR code</h3>
-      <p class="desc">Upload <b>register.html</b> to any web host, paste its public address here, then print or display the QR code. People scan it and enter their full name, reference name, team, contact number and whether they are a New or Existing player. They appear in the queue below instantly, where you add their followup and category and press Add.</p>
+      <p class="desc">Upload <b>register.html</b> to any web host, paste its public address here, then print or display the QR code. People scan it and first choose New or Existing. Existing players type the first letters of their name and pick it from your list (no reference asked); new players type their name and a reference name. Everyone then chooses a team (or Reserved) and enters a contact number. They appear in the queue below instantly, where you add their followup and category and press Add.</p>
       <div class="fg"><label for="qrUrl">Registration form address (URL)</label><input id="qrUrl" type="url" placeholder="https://your-site.com/register.html"></div>
       <div class="btn-row">
         <button class="btn primary" id="qrGen">Generate QR code</button>
@@ -4380,7 +4380,8 @@ function approveSignup(docId, auto) {
   afterSaved(p.id, () => deleteSignupDoc(docId));
 }
 
-// Publish team names (and category / followup names) so the public form can show them as dropdowns.
+// Publish team names (and category / followup names) so the public form can show them as dropdowns, and the names of the people
+// already in your list (names only, never numbers) so existing players can find themselves by typing the first letters.
 let lastCfgSig = '', cfgFailAt = 0;
 function maybePublishSignupConfig() {
   if (!db || !firebaseReady || !isAdmin() || !participants.length || Date.now() - cfgFailAt < 60000) return;
@@ -4388,12 +4389,13 @@ function maybePublishSignupConfig() {
   const categories = uniq([...(categoryMaster || []), ...participants.map(p => p.category)]);
   const followups = uniq(participants.map(p => p.followup));
   const teams = teamNames();
-  const sig = JSON.stringify([categories, followups, teams, tName()]);
+  const players = uniq(participants.map(p => p.fullName));
+  const sig = JSON.stringify([categories, followups, teams, players, tName()]);
   if (sig === lastCfgSig) return;
   lastCfgSig = sig;
   clearTimeout(maybePublishSignupConfig._t);
   maybePublishSignupConfig._t = setTimeout(() => {
-    db.collection(SIGNUPS_COLLECTION).doc('_config').set({ categories, followups, teams, tournamentName: tName(), updatedAt: Date.now() })
+    db.collection(SIGNUPS_COLLECTION).doc('_config').set({ categories, followups, teams, players, tournamentName: tName(), updatedAt: Date.now() })
       .catch(e => { lastCfgSig = ''; cfgFailAt = Date.now(); console.warn('Could not publish form options', e); });
   }, 1500);
 }
